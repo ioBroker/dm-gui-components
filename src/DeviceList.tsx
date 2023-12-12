@@ -37,6 +37,8 @@ interface DeviceListProps extends CommunicationProps {
     title?: string;
     /* Style of a component that displays all devices */
     style: React.CSSProperties;
+    /* Use small cards for devices */
+    smallCards: boolean;
 }
 
 interface DeviceListState extends CommunicationState {

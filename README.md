@@ -20,6 +20,9 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) return the style of big cards
+
 ### 0.0.3 (2023-12-12)
 * (bluefox) initial commit
 
