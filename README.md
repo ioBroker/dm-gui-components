@@ -20,7 +20,7 @@ render() {
 -->
 
 ## Changelog
-### 0.0.2 (2023-12-12)
+### **WORK IN PROGRESS**
 * (bluefox) initial commit
 
 ## License

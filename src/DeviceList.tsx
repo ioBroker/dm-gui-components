@@ -32,8 +32,8 @@ interface DeviceListProps extends CommunicationProps {
     /* Filter devices with this string */
     filter?: string;
     /* If this component is used in GUI with own toolbar. `false` if this list is used with multiple instances and true if only with one (in this case, it will monitor alive itself */
-    empbedded?: boolean;
-    /* If empbedded, this text will is shown in toolbar */
+    embedded?: boolean;
+    /* If embedded, this text is shown in the toolbar */
     title?: string;
     /* Style of a component that displays all devices */
     style: React.CSSProperties;
@@ -66,7 +66,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     private lastPropsFilter: string | undefined;
     private lastInstance: string;
     private filterTimeout: ReturnType<typeof setTimeout> | null;
-    private language: ioBroker.Languages;
+    private readonly language: ioBroker.Languages;
 
     constructor(props: DeviceListProps) {
         super(props);
@@ -90,7 +90,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         }
 
         // @ts-ignore
-        Object.assing(this.state, {
+        Object.assign(this.state, {
             devices: [],
             filteredDevices: [],
             filter: '',
@@ -106,7 +106,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     }
 
     async componentDidMount() {
-        if (!this.props.empbedded) {
+        if (!this.props.embedded) {
             try {
                 // check if instance is alive
                 const alive = await this.props.socket.getState(`system.adapter.${this.props.selectedInstance}.alive`);
@@ -131,7 +131,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     }
 
     componentWillUnmount() {
-        if (!this.props.empbedded) {
+        if (!this.props.embedded) {
             this.props.socket.unsubscribeState(`system.adapter.${this.props.selectedInstance}.alive`, this.aliveHandler);
         }
     }
@@ -178,7 +178,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     }
 
     applyFilter() {
-        const filter = this.props.empbedded ? this.props.filter : this.state.filter;
+        const filter = this.props.embedded ? this.props.filter : this.state.filter;
 
         // filter devices name
         if (filter) {
@@ -206,17 +206,17 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             padding: 25,
         };
 
-        if (this.props.empbedded && this.lastPropsFilter !== this.props.filter) {
+        if (this.props.embedded && this.lastPropsFilter !== this.props.filter) {
             this.lastPropsFilter = this.props.filter;
             setTimeout(() => this.applyFilter(), 50);
         }
-        if (this.props.empbedded && this.lastInstance !== this.props.selectedInstance) {
+        if (this.props.embedded && this.lastInstance !== this.props.selectedInstance) {
             this.lastInstance = this.props.selectedInstance;
             setTimeout(() => this.loadData().catch(console.error), 50);
         }
 
         let list;
-        if (!this.props.empbedded && !this.state.alive) {
+        if (!this.props.embedded && !this.state.alive) {
             list = <div style={emptyStyle}>
                 <span>{getTranslation('instanceNotAlive')}</span>
             </div>;
@@ -243,7 +243,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             />);
         }
 
-        if (this.props.empbedded) {
+        if (this.props.embedded) {
             return list;
         }
 
