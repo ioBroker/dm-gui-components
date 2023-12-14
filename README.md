@@ -20,6 +20,9 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added alive flag
+
 ### 0.0.4 (2023-12-12)
 * (bluefox) return the style of big cards
 
