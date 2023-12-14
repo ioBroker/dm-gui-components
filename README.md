@@ -20,7 +20,7 @@ render() {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 0.0.8 (2023-12-14)
 * (bluefox) Changed layout of the device list
 
 ### 0.0.7 (2023-12-14)

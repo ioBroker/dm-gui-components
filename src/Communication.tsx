@@ -215,7 +215,7 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
                     console.log('Response content', response.result);
                     if (response.result.refresh) {
                         if (response.result.refresh === true) {
-                            this.loadData().catch(console.error);
+                            this.loadData();
                             console.log('Refreshing all');
                         } else if (response.result.refresh === 'instance') {
                             console.log(`Refreshing instance infos: ${this.props.selectedInstance}`);
