@@ -354,6 +354,7 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
             minHeight: 280,
             margin: 10,
             overflow: 'hidden',
+            display: 'inline-block',
         };
         /** @type {CSSProperties} */
         const headerStyle: React.CSSProperties = {
