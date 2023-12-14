@@ -138,8 +138,8 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
     }
 
     // eslint-disable-next-line class-methods-use-this
-    loadData(): Promise<void> {
-        return Promise.resolve();
+    loadData(): void {
+        console.error('loadData not implemented');
     }
 
     sendActionToInstance = (command: string, messageToSend: any, refresh?: () => void) => {
