@@ -20,7 +20,7 @@ render() {
 -->
 
 ## Changelog
-### 0.0.6 (2023-12-14)
+### **WORK IN PROGRESS**
 * (bluefox) Added alive flag
 
 ### 0.0.4 (2023-12-12)
