@@ -44,6 +44,7 @@ interface DeviceCardProps {
     controlHandler: (deviceId: string, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
     controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
     smallCards?: boolean;
+    alive: boolean;
 }
 
 function getText(text: ioBroker.StringOrTranslated | undefined): string | undefined {
@@ -159,6 +160,7 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
             </DialogContent>
             <DialogActions>
                 <Button
+                    disabled={!this.props.alive}
                     variant="contained"
                     color="primary"
                     onClick={() => this.setState({ open: false })}
@@ -171,7 +173,7 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
     }
 
     renderControlDialog() {
-        if (!this.state.showControlDialog) {
+        if (!this.state.showControlDialog || !this.props.alive) {
             return null;
         }
         const colors = { primary: '#111', secondary: '#888' };
@@ -193,9 +195,10 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
                     <CloseIcon />
                 </IconButton>
             </DialogTitle>
-            <DialogContent>
+            <DialogContent style={{ display: 'flex', flexDirection: 'column' }}>
                 {this.props.device.controls?.map(control =>
                     <DeviceControlComponent
+                        disabled={false}
                         key={control.id}
                         control={control}
                         socket={this.props.socket}
@@ -214,6 +217,7 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
         if (this.props.device.controls?.length === 1 && firstControl && ((firstControl.type === 'icon' || firstControl.type === 'switch') && !firstControl.label)) {
             // control can be placed in button icon
             return <DeviceControlComponent
+                disabled={!this.props.alive}
                 control={firstControl}
                 colors={colors}
                 socket={this.props.socket}
@@ -227,6 +231,7 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
             // place button and show controls dialog
             return <Fab
                 size="small"
+                disabled={!this.props.alive}
                 onClick={() => this.setState({ showControlDialog: true })}
             >
                 <ControlIcon />
@@ -237,6 +242,7 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
 
     renderActions() {
         return this.props.device.actions?.length ? this.props.device.actions.map(a => <DeviceActionButton
+            disabled={!this.props.alive}
             key={a.id}
             deviceId={this.props.device.id}
             action={a}
@@ -291,7 +297,7 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
                         {getTranslation('manufacturer')}
                         :
                     </b>
-                        {getText(this.props.device.manufacturer)}
+                    {getText(this.props.device.manufacturer)}
                 </span> : null}
             />
             <CardContent style={{ position: 'relative' }}>
@@ -423,6 +429,7 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
                 </div>
                 <div style={titleStyle}>{this.props.title}</div>
                 {this.props.device.hasDetails ? <Fab
+                    disabled={!this.props.alive}
                     size="small"
                     style={detailsButtonStyle}
                     onClick={() => {
@@ -442,13 +449,22 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
             <div style={bodyStyle}>
                 <Typography variant="body1" style={deviceInfoStyle}>
                     <div onClick={this.copyToClipboard}>
-                        <b>ID:</b> {this.props.device.id.replace(/.*\.\d\./, '')}
+                        <b style={{ marginRight: 4 }}>ID:</b>
+                        {this.props.device.id.replace(/.*\.\d\./, '')}
                     </div>
                     {this.props.device.manufacturer ? <div>
-                        <b>{getTranslation('manufacturer')}:</b> {getText(this.props.device.manufacturer)}
+                        <b style={{ marginRight: 4 }}>
+                            {getTranslation('manufacturer')}
+                            :
+                        </b>
+                        {getText(this.props.device.manufacturer)}
                     </div> : null}
                     {this.props.device.model ? <div>
-                        <b>{getTranslation('model')}:</b> {getText(this.props.device.model)}
+                        <b style={{ marginRight: 4 }}>
+                            {getTranslation('model')}
+                            :
+                        </b>
+                        {getText(this.props.device.model)}
                     </div> : null}
                 </Typography>
                 {!!this.props.device.actions?.length && <div
@@ -464,6 +480,8 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
                     }}
                 >
                     {this.renderActions()}
+                    <div style={{ flexGrow: 1 }} />
+                    {this.renderControls()}
                 </div>}
             </div>
             {this.renderDialog()}

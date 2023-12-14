@@ -13,6 +13,7 @@ interface DeviceControlProps {
     controlHandler: (deviceId: string, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
     controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
     colors: any;
+    disabled?: boolean;
 }
 
 interface DeviceControlState {
@@ -49,7 +50,7 @@ export default class DeviceControl extends Component<DeviceControlProps, DeviceC
         if (id === this.props.control.stateId && state) {
             // request new state
             const newState: ioBroker.State | null = await (this.props.controlStateHandler(this.props.deviceId, this.props.control)());
-            if (newState?.ts && newState.ts > this.state.ts) {
+            if (newState?.ts && (!this.state.ts || newState.ts > this.state.ts)) {
                 this.setState({
                     value: newState.val,
                     ts: newState.ts,
@@ -65,7 +66,7 @@ export default class DeviceControl extends Component<DeviceControlProps, DeviceC
     }
 
     static getDerivedStateFromProps(props: DeviceControlProps, state: DeviceControlState) {
-        if (props.control.state?.ts > state.ts) {
+        if (props.control.state?.ts && (!state.ts || props.control.state?.ts > state.ts)) {
             return {
                 value: props.control.state.val,
                 ts: props.control.state.ts,
@@ -77,7 +78,7 @@ export default class DeviceControl extends Component<DeviceControlProps, DeviceC
 
     async sendControl(deviceId: string, control: ControlBase, value: ControlState) {
         const result = await (this.props.controlHandler(deviceId, control, value)());
-        if (result?.ts && result?.ts > this.state.ts) {
+        if (result?.ts && (!this.state.ts || result?.ts > this.state.ts)) {
             this.setState({
                 value: result.val,
                 ts: result.ts,
@@ -91,6 +92,7 @@ export default class DeviceControl extends Component<DeviceControlProps, DeviceC
 
         if (!this.props.control.label) {
             return <Fab
+                disabled={this.props.disabled}
                 title={tooltip}
                 onClick={() => this.sendControl(this.props.deviceId, this.props.control, true)}
             >
@@ -98,6 +100,7 @@ export default class DeviceControl extends Component<DeviceControlProps, DeviceC
             </Fab>;
         }
         return <Button
+            disabled={this.props.disabled}
             title={tooltip}
             onClick={() => this.sendControl(this.props.deviceId, this.props.control, true)}
             startIcon={icon}
@@ -111,6 +114,7 @@ export default class DeviceControl extends Component<DeviceControlProps, DeviceC
         // const icon = renderIcon(this.props.control, this.props.colors, this.state.value);
 
         return <Switch
+            disabled={this.props.disabled}
             title={tooltip}
             checked={this.state.value}
             onChange={e => this.sendControl(this.props.deviceId, this.props.control, e.target.checked)}
@@ -152,6 +156,7 @@ export default class DeviceControl extends Component<DeviceControlProps, DeviceC
 
         if (!this.props.control.label) {
             return <Fab
+                disabled={this.props.disabled}
                 size="small"
                 title={tooltip}
                 color={color === this.props.colors.primary ? 'primary' : (color === this.props.colors.secondary ? 'secondary' : undefined)}
@@ -162,6 +167,7 @@ export default class DeviceControl extends Component<DeviceControlProps, DeviceC
             </Fab>;
         }
         return <Button
+            disabled={this.props.disabled}
             title={tooltip}
             color={color === this.props.colors.primary ? 'primary' : (color === this.props.colors.secondary ? 'secondary' : undefined)}
             style={color === this.props.colors.primary || color === this.props.colors.secondary ? undefined : { color }}

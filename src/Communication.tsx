@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 
 import {
     Backdrop,
@@ -17,7 +17,7 @@ import { Connection } from '@iobroker/adapter-react-v5';
 import { ActionBase, ControlBase, ControlState } from '@iobroker/dm-utils/build/types/base';
 import { DeviceRefresh } from '@iobroker/dm-utils/build/types';
 
-import {getTranslation} from './Utils';
+import { getTranslation } from './Utils';
 import JsonConfig from './JsonConfig';
 
 export type CommunicationProps = {
@@ -25,6 +25,7 @@ export type CommunicationProps = {
     socket: Connection;
     /* Instance to communicate with device-manager backend, like `adapterName.X` */
     selectedInstance: string; // adapterName.X
+    registerHandler?: (handler: null | ((command: string) => void)) => void;
 }
 
 interface CommunicationForm {
@@ -64,28 +65,28 @@ interface DmControlResponse extends DmResponse {
         error?: {
             code: number;
             message: string;
-        },
-        state?: ioBroker.State,
-        deviceId: string,
-        controlId: string,
-    },
+        };
+        state?: ioBroker.State;
+        deviceId: string;
+        controlId: string;
+    };
 }
 
 interface DmActionResponse extends DmResponse {
     result: {
-        refresh?: DeviceRefresh,
+        refresh?: DeviceRefresh;
         error?: {
             code: number;
             message: string;
-        },
-    },
+        };
+    };
     message?: string;
     confirm?: string;
     form?: any;
     progress?: {
         open: boolean;
         progress: number;
-    }
+    };
 }
 
 /**
@@ -95,10 +96,17 @@ interface DmActionResponse extends DmResponse {
  * @param {string} params.selectedInstance - Selected instance
  * @returns {*[]} - Array of device cards
  */
-abstract class Communication<P extends CommunicationProps, S extends CommunicationState> extends Component<P, S> {
+class Communication<P extends CommunicationProps, S extends CommunicationState> extends Component<P, S> {
+    // eslint-disable-next-line react/no-unused-class-component-methods
     instanceHandler: (action: ActionBase<'api'>) => () => void;
+
+    // eslint-disable-next-line react/no-unused-class-component-methods
     deviceHandler: (deviceId: string, action: ActionBase<'api'>, refresh: () => void) => () => void;
+
+    // eslint-disable-next-line react/no-unused-class-component-methods
     controlHandler: (deviceId: string, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
+
+    // eslint-disable-next-line react/no-unused-class-component-methods
     controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
 
     constructor(props: P) {
@@ -114,13 +122,25 @@ abstract class Communication<P extends CommunicationProps, S extends Communicati
             progress: null,
         };
 
+        // eslint-disable-next-line react/no-unused-class-component-methods
         this.instanceHandler = action => () => this.sendActionToInstance('dm:instanceAction', { actionId: action.id });
+
+        // eslint-disable-next-line react/no-unused-class-component-methods
         this.deviceHandler = (deviceId, action, refresh) => () => this.sendActionToInstance('dm:deviceAction', { deviceId, actionId: action.id }, refresh);
+
+        // eslint-disable-next-line react/no-unused-class-component-methods
         this.controlHandler = (deviceId, control, state) => () => this.sendControlToInstance('dm:deviceControl', { deviceId, controlId: control.id, state });
+
+        // eslint-disable-next-line react/no-unused-class-component-methods
         this.controlStateHandler = (deviceId, control) => () => this.sendControlToInstance('dm:deviceControlState', { deviceId, controlId: control.id });
+
+        this.props.registerHandler && this.props.registerHandler(() => this.loadData());
     }
 
-    abstract loadData(): Promise<void>;
+    // eslint-disable-next-line class-methods-use-this
+    loadData(): Promise<void> {
+        return Promise.resolve();
+    }
 
     sendActionToInstance = (command: string, messageToSend: any, refresh?: () => void) => {
         const send = async () => {
@@ -243,10 +263,12 @@ abstract class Communication<P extends CommunicationProps, S extends Communicati
         return null;
     };
 
+    // eslint-disable-next-line react/no-unused-class-component-methods
     loadDevices() {
         return this.props.socket.sendTo(this.props.selectedInstance, 'dm:listDevices');
     }
 
+    // eslint-disable-next-line react/no-unused-class-component-methods
     loadInstanceInfos() {
         return this.props.socket.sendTo(this.props.selectedInstance, 'dm:instanceInfo');
     }
@@ -280,7 +302,7 @@ abstract class Communication<P extends CommunicationProps, S extends Communicati
         if (!this.state.confirm) {
             return null;
         }
-        // @ts-ignore
+
         return <Dialog
             open={!0}
             onClose={() => this.state.confirm?.handleClose()}
@@ -341,7 +363,7 @@ abstract class Communication<P extends CommunicationProps, S extends Communicati
                         const form: CommunicationForm | null | undefined = { ...this.state.form };
                         if (form) {
                             form.data = data;
-                            this.setState({form});
+                            this.setState({ form });
                         }
                     }}
                 />
@@ -382,6 +404,7 @@ abstract class Communication<P extends CommunicationProps, S extends Communicati
         </Dialog>;
     }
 
+    // eslint-disable-next-line class-methods-use-this
     renderContent(): React.JSX.Element | React.JSX.Element[] | null {
         return null;
     }

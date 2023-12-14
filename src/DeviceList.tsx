@@ -36,9 +36,9 @@ interface DeviceListProps extends CommunicationProps {
     /* If embedded, this text is shown in the toolbar */
     title?: string;
     /* Style of a component that displays all devices */
-    style: React.CSSProperties;
+    style?: React.CSSProperties;
     /* Use small cards for devices */
-    smallCards: boolean;
+    smallCards?: boolean;
 }
 
 interface DeviceListState extends CommunicationState {
@@ -66,8 +66,11 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     static i18nInitialized = false;
 
     private lastPropsFilter: string | undefined;
+
     private lastInstance: string;
+
     private filterTimeout: ReturnType<typeof setTimeout> | null;
+
     private readonly language: ioBroker.Languages;
 
     constructor(props: DeviceListProps) {
@@ -91,7 +94,6 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             });
         }
 
-        // @ts-ignore
         Object.assign(this.state, {
             devices: [],
             filteredDevices: [],
@@ -102,40 +104,50 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         });
 
         this.lastPropsFilter = this.props.filter;
-        this.lastInstance = '';
+        this.lastInstance = this.props.selectedInstance;
         this.filterTimeout = null;
         this.language = I18n.getLanguage();
     }
 
     async componentDidMount() {
-        if (!this.props.embedded) {
+        let alive = false;
+        if (this.state.alive === null) {
             try {
                 // check if instance is alive
-                const alive = await this.props.socket.getState(`system.adapter.${this.props.selectedInstance}.alive`);
-                this.props.socket.unsubscribeState(`system.adapter.${this.props.selectedInstance}.alive`, this.aliveHandler);
-                if (!alive || !alive.val) {
-                    this.setState({ alive: false });
-                    return;
+                const stateAlive = await this.props.socket.getState(`system.adapter.${this.props.selectedInstance}.alive`);
+                if (stateAlive?.val) {
+                    alive = true;
                 }
-                const instanceInfo = await this.loadInstanceInfos();
-                this.setState({ alive: true, instanceInfo });
             } catch (error) {
                 console.error(error);
-                this.setState({ alive: false });
             }
+            this.setState({ alive }, () => this.props.socket.subscribeState(`system.adapter.${this.props.selectedInstance}.alive`, this.aliveHandler));
+            if (!alive) {
+                return;
+            }
+        } else {
+            alive = this.state.alive;
         }
 
-        try {
-            await this.loadData();
-        } catch (error) {
-            console.error(error);
+        if (!this.props.embedded && alive) {
+            try {
+                const instanceInfo = await this.loadInstanceInfos();
+                this.setState({ instanceInfo });
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        if (alive) {
+            try {
+                await this.loadData();
+            } catch (error) {
+                console.error(error);
+            }
         }
     }
 
     componentWillUnmount() {
-        if (!this.props.embedded) {
-            this.props.socket.unsubscribeState(`system.adapter.${this.props.selectedInstance}.alive`, this.aliveHandler);
-        }
+        this.props.socket.unsubscribeState(`system.adapter.${this.props.selectedInstance}.alive`, this.aliveHandler);
     }
 
     aliveHandler: ioBroker.StateChangeHandler = (id: string, state: ioBroker.State | null | undefined) => {
@@ -232,6 +244,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             </div>;
         } else {
             list = this.state.filteredDevices.map(device => <DeviceCard
+                alive={!!this.state.alive}
                 key={device.id}
                 id={device.id}
                 title={this.getText(device.name)}

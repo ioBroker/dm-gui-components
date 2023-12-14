@@ -9,11 +9,12 @@ interface DeviceActionButtonProps {
     action: any;
     refresh: () => void;
     deviceHandler: (deviceId: string, action: ActionBase<'api'>, refresh: () => void) => () => void;
+    disabled?: boolean;
 }
 
 export default function DeviceActionButton(props: DeviceActionButtonProps): React.JSX.Element {
     const {
-        deviceId, action, refresh, deviceHandler,
+        deviceId, action, refresh, deviceHandler, disabled,
     } = props;
 
     const tooltip = getTranslation(action.description);
@@ -23,7 +24,7 @@ export default function DeviceActionButton(props: DeviceActionButtonProps): Reac
     return <TooltipButton
         label={action.label || (icon ? null : action.id)}
         tooltip={tooltip}
-        disabled={action.disabled}
+        disabled={disabled || action.disabled}
         Icon={icon}
         onClick={deviceHandler(deviceId, action, refresh)}
     />;
