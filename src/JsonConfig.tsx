@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import JsonConfigComponent from '@iobroker/adapter-react-v5/Components/JsonConfigComponent';
-import { Connection } from '@iobroker/adapter-react-v5';
+import { Connection, JsonConfigComponent } from '@iobroker/adapter-react-v5';
 
 interface JsonConfigProps {
     instanceId: string;
