@@ -20,7 +20,7 @@ render() {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 0.1.0 (2023-12-22)
 * (foxriver76) update adapter-react-v5 version
 
 ### 0.0.10 (2023-12-14)
