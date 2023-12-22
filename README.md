@@ -20,6 +20,9 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+* (foxriver76) update adapter-react-v5 version
+
 ### 0.0.10 (2023-12-14)
 * (bluefox) Changed layout of the device list
 
