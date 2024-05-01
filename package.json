@@ -46,7 +46,7 @@
   "homepage": "https://github.com/ioBroker/dm-gui-components#readme",
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react-dom": "^18.3.1",
     "@iobroker/adapter-react-v5": "^4.9.10",
     "@mui/icons-material": "^5.15.11",
     "@mui/material": "5.14.14",
