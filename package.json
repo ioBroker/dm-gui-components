@@ -49,7 +49,7 @@
     "react-dom": "^18.2.0",
     "@iobroker/adapter-react-v5": "^4.9.10",
     "@mui/icons-material": "^5.15.11",
-    "@mui/material": "5.14.14",
+    "@mui/material": "5.16.6",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
     "eslint": "^8.57.0",
