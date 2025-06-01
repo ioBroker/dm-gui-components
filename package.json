@@ -71,7 +71,7 @@
     "@babel/plugin-syntax-jsx": "^7.23.3",
     "@types/node": "^20.11.24",
     "@types/react": "^18.2.61",
-    "@iobroker/dm-utils": "^0.1.8",
+    "@iobroker/dm-utils": "^1.0.10",
     "babel": "^6.23.0",
     "babel-plugin-inline-json-import": "^0.3.2",
     "eslint": "^8.57.0",
