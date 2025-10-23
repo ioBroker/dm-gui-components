@@ -38,7 +38,7 @@ import {
     I18n,
     Icon,
     Utils,
-} from '@iobroker/gui-components';
+} from '@iobroker/adapter-react-v5';
 import type {
     ActionBase,
     ControlBase,

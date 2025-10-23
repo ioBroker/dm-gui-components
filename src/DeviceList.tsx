@@ -12,7 +12,7 @@ import {
 
 import { Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
 
-import { I18n, DeviceTypeIcon } from '@iobroker/gui-components';
+import { I18n, DeviceTypeIcon } from '@iobroker/adapter-react-v5';
 import type { DeviceInfo, InstanceDetails } from '@iobroker/dm-utils';
 
 import DeviceCard from './DeviceCard';

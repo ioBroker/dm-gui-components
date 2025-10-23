@@ -34,7 +34,7 @@ import {
     WifiOff,
 } from '@mui/icons-material';
 
-import { I18n, Icon } from '@iobroker/gui-components';
+import { I18n, Icon } from '@iobroker/adapter-react-v5';
 
 /**
  * Get Icon by font-awesome name. Do not use these names, use names from getIconByName

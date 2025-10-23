@@ -27,7 +27,7 @@ import {
     type ThemeType,
     type IobTheme,
     DeviceTypeIcon,
-} from '@iobroker/gui-components';
+} from '@iobroker/adapter-react-v5';
 import {
     type DeviceDetails,
     type DeviceInfo,

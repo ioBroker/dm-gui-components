@@ -13,7 +13,7 @@ import {
     InputAdornment,
 } from '@mui/material';
 
-import { type Connection, Icon } from '@iobroker/gui-components';
+import { type Connection, Icon } from '@iobroker/adapter-react-v5';
 import type { ControlBase, ControlState, DeviceControl } from '@iobroker/dm-utils';
 
 import { renderControlIcon, getTranslation } from './Utils';
