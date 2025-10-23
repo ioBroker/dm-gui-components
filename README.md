@@ -23,7 +23,7 @@ render() {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 8.0.2 (2025-10-23)
 - (@GermanBluefox) Renamed gui-components to adapter-react-v5
 
 ### 8.0.1 (2025-10-23)
