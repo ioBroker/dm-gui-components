@@ -23,7 +23,7 @@ render() {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 8.0.3 (2025-10-25)
 - (@GermanBluefox) Updated packages
 
 ### 8.0.2 (2025-10-23)
