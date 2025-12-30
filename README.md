@@ -23,7 +23,7 @@ render() {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 8.0.6 (2025-12-30)
 - (@GermanBluefox) Added update icon for device actions
 - (@GermanBluefox) Added indeterminate progress
 
