@@ -29,6 +29,7 @@ import {
     Settings,
     Stop,
     Visibility,
+    Upgrade,
     WbIncandescent,
     Wifi,
     WifiOff,
@@ -219,6 +220,9 @@ function getIconByName(name: string, altName?: string, color?: string): React.JS
     }
     if (name === 'user' || altName === 'user') {
         return <Person style={{ color }} />;
+    }
+    if (name === 'update') {
+        return <Upgrade style={{ color }} />;
     }
     if (name === 'qrcode' || altName === 'qrcode') {
         return <QrCode style={{ color }} />;

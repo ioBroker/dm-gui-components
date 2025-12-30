@@ -110,10 +110,16 @@ export type CommunicationState = {
         handleClose: (confirmation?: boolean) => void;
     } | null;
     form: CommunicationFormInState | null;
-    progress: {
-        open: boolean;
-        progress: number;
-    } | null;
+    progress:
+        | {
+              open: boolean;
+              indeterminate: boolean;
+          }
+        | {
+              open: boolean;
+              progress: number;
+          }
+        | null;
     showConfirmation: InputAction | null;
     showInput: InputAction | null;
     inputValue: string | boolean | number | null;
@@ -160,10 +166,15 @@ interface DmActionResponse extends DmResponse {
     message?: string;
     confirm?: string;
     form?: CommunicationForm;
-    progress?: {
-        open: boolean;
-        progress: number;
-    };
+    progress?:
+        | {
+              open: boolean;
+              indeterminate: boolean;
+          }
+        | {
+              open: boolean;
+              progress: number;
+          };
 }
 
 /**
@@ -694,17 +705,32 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
         if (!this.state.progress?.open) {
             return null;
         }
-
         return (
             <Dialog
                 open={!0}
                 onClose={() => {}}
                 hideBackdrop
             >
-                <LinearProgress
-                    variant="determinate"
-                    value={this.state.progress?.progress || 0}
-                />
+                {(
+                    this.state.progress as {
+                        open: boolean;
+                        indeterminate: boolean;
+                    }
+                ).indeterminate ? (
+                    <LinearProgress variant="indeterminate" />
+                ) : (
+                    <LinearProgress
+                        variant="determinate"
+                        value={
+                            (
+                                this.state.progress as {
+                                    open: boolean;
+                                    progress: number;
+                                }
+                            ).progress || 0
+                        }
+                    />
+                )}
             </Dialog>
         );
     }
