@@ -221,7 +221,7 @@ function getIconByName(name: string, altName?: string, color?: string): React.JS
     if (name === 'user' || altName === 'user') {
         return <Person style={{ color }} />;
     }
-    if (name === 'update') {
+    if (name === 'update' || altName === 'update') {
         return <Upgrade style={{ color }} />;
     }
     if (name === 'qrcode' || altName === 'qrcode') {

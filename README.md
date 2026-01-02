@@ -23,6 +23,9 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Added `ignoreApplyDisabled` flag
+
 ### 8.0.6 (2025-12-30)
 - (@GermanBluefox) Added update icon for device actions
 - (@GermanBluefox) Added indeterminate progress
@@ -57,7 +60,7 @@ render() {
 
 MIT License
 
-Copyright (c) 2023-2025 Jey Cee <iobroker@all-smart.net>
+Copyright (c) 2023-2026 Jey Cee <iobroker@all-smart.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

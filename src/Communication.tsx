@@ -83,6 +83,8 @@ interface CommunicationForm {
     maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
     /** Minimal width of the dialog */
     minWidth?: number;
+    /** Always allow the apply button. Even when nothing was changed */
+    ignoreApplyDisabled?: boolean;
 }
 
 interface CommunicationFormInState extends CommunicationForm {
@@ -544,10 +546,13 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
         if (typeof button === 'string') {
             button = undefined;
         }
+
+        // TODO: detect if any input fields are present and if no one, do not disable the button
+
         return (
             <Button
                 key="apply"
-                disabled={!this.state.form?.changed}
+                disabled={!this.state.form?.changed && !this.state.form?.ignoreApplyDisabled}
                 variant={button?.variant || 'contained'}
                 color={
                     button?.color === 'primary' ? 'primary' : button?.color === 'secondary' ? 'secondary' : 'primary'
