@@ -23,7 +23,7 @@ render() {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 8.0.7 (2026-01-02)
 - (@GermanBluefox) Added `ignoreApplyDisabled` flag
 
 ### 8.0.6 (2025-12-30)
