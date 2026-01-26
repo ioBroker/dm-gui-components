@@ -64,7 +64,7 @@ export type CommunicationProps = {
     /** Socket connection */
     socket: Connection;
     /** Instance to communicate with device-manager backend, like `adapterName.X` */
-    selectedInstance: string; // adapterName.X
+    selectedInstance?: string; // adapterName.X
     registerHandler?: (handler: null | ((command: string) => void)) => void;
     themeName: ThemeName;
     themeType: ThemeType;
@@ -259,9 +259,7 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
         this.controlStateHandler = (deviceId, control) => () =>
             this.sendControlToInstance('dm:deviceControlState', { deviceId, controlId: control.id });
 
-        if (this.props.registerHandler) {
-            this.props.registerHandler(() => this.loadData());
-        }
+        this.props.registerHandler?.(() => this.loadData());
     }
 
     componentWillUnmount(): void {
@@ -279,6 +277,11 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
     sendActionToInstance = (command: `dm:${string}`, messageToSend: Message, refresh?: () => void): void => {
         const send = async (): Promise<void> => {
             this.setState({ showSpinner: true });
+
+            if (!this.props.selectedInstance) {
+                throw new Error('No instance selected');
+            }
+
             this.responseTimeout = setTimeout(() => {
                 this.setState({ showSpinner: false });
                 window.alert(I18n.t('ra_No response from the backend'));
@@ -431,6 +434,9 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
         command: string,
         messageToSend: { deviceId: string; controlId: string; state?: ControlState },
     ): Promise<null | ioBroker.State> => {
+        if (!this.props.selectedInstance) {
+            throw new Error('No instance selected');
+        }
         const response: DmControlResponse = await this.props.socket.sendTo(
             this.props.selectedInstance,
             command,
@@ -455,11 +461,17 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
 
     // eslint-disable-next-line react/no-unused-class-component-methods
     loadDevices(): Promise<DeviceInfo[]> {
+        if (!this.props.selectedInstance) {
+            throw new Error('No instance selected');
+        }
         return this.props.socket.sendTo(this.props.selectedInstance, 'dm:listDevices');
     }
 
     // eslint-disable-next-line react/no-unused-class-component-methods
     loadInstanceInfos(): Promise<InstanceDetails> {
+        if (!this.props.selectedInstance) {
+            throw new Error('No instance selected');
+        }
         return this.props.socket.sendTo(this.props.selectedInstance, 'dm:instanceInfo');
     }
 
@@ -599,8 +611,11 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
     }
 
     renderFormDialog(): React.JSX.Element | null {
-        if (!this.state.form || !this.state.form.schema) {
+        if (!this.state.form?.schema) {
             return null;
+        }
+        if (!this.props.selectedInstance) {
+            throw new Error('No instance selected');
         }
         let buttons: React.JSX.Element[];
         if (this.state.form.buttons) {
@@ -659,7 +674,7 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
         return (
             <Dialog
                 open={!0}
-                onClose={() => this.state.form!.handleClose && this.state.form!.handleClose()}
+                onClose={() => this.state.form!.handleClose?.()}
                 hideBackdrop
                 fullWidth
                 sx={{

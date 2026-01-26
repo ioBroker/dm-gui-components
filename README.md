@@ -23,6 +23,9 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Added support of instance selection if not provided
+
 ### 8.0.7 (2026-01-02)
 - (@GermanBluefox) Added `ignoreApplyDisabled` flag
 

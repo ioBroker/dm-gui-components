@@ -8,6 +8,8 @@ import {
     LinearProgress,
     Select,
     MenuItem,
+    FormControl,
+    InputLabel,
 } from '@mui/material';
 
 import { Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
@@ -58,6 +60,8 @@ interface DeviceListState extends CommunicationState {
     alive: boolean | null;
     triggerLoad: number;
     groupKey: string;
+    dmInstances: { [instanceName: string]: { title: string; instance: number } } | null;
+    selectedInstance: string;
 }
 
 /**
@@ -96,6 +100,13 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             });
         }
 
+        let selectedInstance: string;
+        if (this.props.selectedInstance === undefined) {
+            selectedInstance = window.localStorage.getItem('dmSelectedInstance') || '';
+        } else {
+            selectedInstance = this.props.selectedInstance;
+        }
+
         Object.assign(this.state, {
             devices: [],
             filteredDevices: [],
@@ -104,20 +115,62 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             loading: null,
             alive: null,
             groupKey: '',
+            dmInstances: null,
+            selectedInstance,
         });
 
         this.lastPropsFilter = this.props.filter;
-        this.lastInstance = this.props.selectedInstance;
+        this.lastInstance = selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
         this.filterTimeout = null;
         this.language = I18n.getLanguage();
     }
 
+    private async loadAdapters(): Promise<void> {
+        await this.props.socket.waitForFirstConnection();
+
+        console.log('Loading adapters...');
+        const res = await this.props.socket.getObjectViewSystem('instance', 'system.adapter.', 'system.adapter.\u9999');
+        const dmInstances: { [instanceName: string]: { title: string; instance: number } } = {};
+        for (const id in res) {
+            if (!res[id]?.common?.messagebox) {
+                continue;
+            }
+            if (!res[id].common.supportedMessages?.deviceManager) {
+                continue;
+            }
+
+            const instanceName = id.substring('system.adapter.'.length);
+            try {
+                // Check if the instance is alive by getting the state alive
+                const alive = await this.props.socket.getState(`system.adapter.${instanceName}.alive`);
+                if (!alive?.val) {
+                    continue;
+                }
+
+                const instance = parseInt(instanceName.split('.').pop() || '0') || 0;
+                dmInstances[instanceName] = {
+                    title: '',
+                    instance,
+                };
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        this.setState({ dmInstances });
+    }
+
     async componentDidMount(): Promise<void> {
         let alive = false;
+        if (this.props.selectedInstance === undefined) {
+            // show instance selector
+            await this.loadAdapters();
+        }
+
         if (this.state.alive === null) {
             try {
-                // check if instance is alive
+                // check if the instance is alive
                 const stateAlive = await this.props.socket.getState(
                     `system.adapter.${this.props.selectedInstance}.alive`,
                 );
@@ -286,7 +339,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             setTimeout(() => this.applyFilter(), 50);
         }
         // if instance changed
-        if (this.props.embedded && this.lastInstance !== this.props.selectedInstance) {
+        if (this.props.embedded && this.lastInstance !== this.props.selectedInstance && this.props.selectedInstance) {
             this.lastInstance = this.props.selectedInstance;
             setTimeout(() => this.loadData(), 50);
         }
@@ -377,7 +430,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                 }
             }
 
-            if (filteredDevices.length) {
+            if (filteredDevices.length && this.props.selectedInstance) {
                 list = filteredDevices.map(device => (
                     <DeviceCard
                         alive={!!this.state.alive}
@@ -385,7 +438,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         id={device.id}
                         title={this.getText(device.name)}
                         device={device}
-                        instanceId={this.props.selectedInstance}
+                        instanceId={this.props.selectedInstance!}
                         uploadImagesToInstance={this.props.uploadImagesToInstance}
                         deviceHandler={this.deviceHandler}
                         controlHandler={this.controlHandler}
@@ -417,6 +470,32 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     style={{ backgroundColor: '#777', display: 'flex' }}
                 >
                     {this.props.title}
+                    {this.props.selectedInstance === null && this.state.dmInstances ? (
+                        <FormControl>
+                            <InputLabel id="instance-select-label">{getTranslation('instanceLabelText')}</InputLabel>
+                            <Select
+                                labelId="instance-select-label"
+                                id="instance-select"
+                                value={this.state.selectedInstance}
+                                onChange={event => {
+                                    window.localStorage.setItem('dmSelectedInstance', event.target.value);
+                                    this.setState({ selectedInstance: event.target.value });
+                                }}
+                                displayEmpty
+                                variant="standard"
+                                sx={{ minWidth: 120 }}
+                            >
+                                {Object.keys(this.state.dmInstances).map(([id]) => (
+                                    <MenuItem
+                                        key={id}
+                                        value={id}
+                                    >
+                                        {id}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    ) : null}
                     {this.props.selectedInstance ? (
                         <Tooltip
                             title={getTranslation('refreshTooltip')}
