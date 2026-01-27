@@ -162,7 +162,7 @@ interface DeviceCardState {
 /**
  * Device Card Component
  */
-class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
+export default class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
     constructor(props: DeviceCardProps) {
         super(props);
 
@@ -704,5 +704,3 @@ class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
         return this.renderBig();
     }
 }
-
-export default DeviceCard;
