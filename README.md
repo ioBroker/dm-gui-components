@@ -23,7 +23,7 @@ render() {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 8.0.8 (2026-01-27)
 - (@GermanBluefox) Added support of instance selection if not provided
 
 ### 8.0.7 (2026-01-02)
