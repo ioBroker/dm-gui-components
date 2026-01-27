@@ -18,7 +18,6 @@
   "scripts": {
     "prepublishOnly": "npm run build",
     "clean": "rimraf build",
-    "test:package": "node -e \"process.exit(0)\"",
     "build": "tsc && tsc-alias",
     "check-ts": "tsc --noEmit --checkJS false",
     "lint": "eslint -c eslint.config.mjs src",
