@@ -182,7 +182,7 @@ interface DmActionResponse extends DmResponse {
 /**
  * Device List Component
  */
-class Communication<P extends CommunicationProps, S extends CommunicationState> extends Component<P, S> {
+export default class Communication<P extends CommunicationProps, S extends CommunicationState> extends Component<P, S> {
     private responseTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
@@ -1077,5 +1077,3 @@ class Communication<P extends CommunicationProps, S extends CommunicationState> 
         );
     }
 }
-
-export default Communication;

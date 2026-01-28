@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Todos los dispositivos filtrados",
+    "apiVersionError": "El backend es más reciente que la interfaz gráfica de usuario. Por favor, actualice el administrador.",
     "batteryTooltip": "Batería",
     "cancelButtonText": "Cancelar",
     "closeButtonText": "Cerca",

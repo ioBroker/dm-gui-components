@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Усі пристрої відфільтровано",
+    "apiVersionError": "Бекенд новіший, як графічний інтерфейс. Будь ласка, оновіть адміністратора",
     "batteryTooltip": "Батарея",
     "cancelButtonText": "Скасувати",
     "closeButtonText": "Закрити",

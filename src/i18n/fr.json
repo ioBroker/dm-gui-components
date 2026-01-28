@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Tous les appareils filtrés",
+    "apiVersionError": "L'interface d'administration est plus récente que l'interface graphique. Veuillez mettre à jour l'interface d'administration.",
     "batteryTooltip": "Batterie",
     "cancelButtonText": "Annuler",
     "closeButtonText": "Fermer",

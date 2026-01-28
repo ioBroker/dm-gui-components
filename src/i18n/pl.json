@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Wszystkie urządzenia zostały odfiltrowane",
+    "apiVersionError": "Zaplecze jest nowsze i ma interfejs graficzny. Proszę zaktualizować administratora.",
     "batteryTooltip": "Bateria",
     "cancelButtonText": "Anulować",
     "closeButtonText": "Zamknąć",

@@ -23,6 +23,9 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Analyze API version and do not show anything if version is higher than supported
+
 ### 8.0.8 (2026-01-27)
 - (@GermanBluefox) Added support of instance selection if not provided
 

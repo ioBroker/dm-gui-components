@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "所有设备均被过滤掉",
+    "apiVersionError": "后端比图形用户界面更新。请更新管理员。",
     "batteryTooltip": "电池",
     "cancelButtonText": "取消",
     "closeButtonText": "关闭",

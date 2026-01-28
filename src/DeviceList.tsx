@@ -62,6 +62,7 @@ interface DeviceListState extends CommunicationState {
     groupKey: string;
     dmInstances: { [instanceName: string]: { title: string; instance: number } } | null;
     selectedInstance: string;
+    apiVersionError: boolean;
 }
 
 /**
@@ -117,6 +118,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             groupKey: '',
             dmInstances: null,
             selectedInstance,
+            apiVersionError: false,
         });
 
         this.lastPropsFilter = this.props.filter;
@@ -196,7 +198,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         if (!this.props.embedded && alive) {
             try {
                 const instanceInfo = await this.loadInstanceInfos();
-                this.setState({ instanceInfo });
+                this.setState({ instanceInfo, apiVersionError: instanceInfo.apiVersion !== 'v1' });
             } catch (error) {
                 console.error(error);
             }
@@ -504,7 +506,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             <span>
                                 <IconButton
                                     onClick={() => this.loadData()}
-                                    disabled={!this.state.alive}
+                                    disabled={!this.state.alive || this.state.apiVersionError}
                                     size="small"
                                 >
                                     <Refresh />
@@ -512,7 +514,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             </span>
                         </Tooltip>
                     ) : null}
-                    {this.state.alive && this.state.instanceInfo?.actions?.length ? (
+                    {!this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.actions?.length ? (
                         <div style={{ marginLeft: 20 }}>
                             {this.state.instanceInfo.actions.map(action => (
                                 <InstanceActionButton
@@ -526,8 +528,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
                     <div style={{ flexGrow: 1 }} />
 
-                    {this.renderGroups(deviceGroups)}
-                    {this.state.alive ? (
+                    {!this.state.apiVersionError && this.renderGroups(deviceGroups)}
+                    {!this.state.apiVersionError && this.state.alive ? (
                         <TextField
                             variant="standard"
                             style={{ width: 200 }}
@@ -573,7 +575,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     }}
                 >
                     {this.state.loading ? <LinearProgress style={{ width: '100%' }} /> : null}
-                    {list}
+                    {this.state.apiVersionError ? <div>{I18n.t('apiVersionError')}</div> : list}
                 </div>
             </div>
         );

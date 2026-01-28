@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Все устройства отфильтрованы",
+    "apiVersionError": "Бэкенд обновлен и теперь имеет графический интерфейс. Пожалуйста, обновите админку.",
     "batteryTooltip": "Батарея",
     "cancelButtonText": "Отмена",
     "closeButtonText": "Закрыть",

@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Alle apparaten zijn eruit gefilterd",
+    "apiVersionError": "De backend is nieuwer dan de GUI. Update de beheerder.",
     "batteryTooltip": "Batterij",
     "cancelButtonText": "Annuleren",
     "closeButtonText": "Dichtbij",
