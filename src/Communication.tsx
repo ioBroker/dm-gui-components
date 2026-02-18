@@ -1,5 +1,15 @@
-import React, { Component } from 'react';
-
+import {
+    I18n,
+    Icon,
+    Utils,
+    type AdminConnection,
+    type Connection,
+    type IobTheme,
+    type ThemeName,
+    type ThemeType,
+} from '@iobroker/adapter-react-v5';
+import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
+import { Check, Close, ContentCopy } from '@mui/icons-material';
 import {
     Backdrop,
     Box,
@@ -26,33 +36,20 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
-
-import { Close, Check, ContentCopy } from '@mui/icons-material';
-
-import {
-    type Connection,
-    type AdminConnection,
-    type ThemeName,
-    type ThemeType,
-    type IobTheme,
-    I18n,
-    Icon,
-    Utils,
-} from '@iobroker/adapter-react-v5';
-import type {
-    ActionBase,
-    ControlBase,
-    ControlState,
-    DeviceInfo,
-    DeviceRefresh,
-    InstanceDetails,
-    JsonFormSchema,
-    ActionButton,
-} from '@iobroker/dm-utils';
-import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
-
-import { getTranslation } from './Utils';
+import React, { Component } from 'react';
 import JsonConfig from './JsonConfig';
+import type { ActionBase, ActionButton, ControlBase, ControlState, InstanceDetails } from './protocol/api';
+import type {
+    CommandName,
+    CommunicationForm,
+    DmProtocolBase,
+    LoadDevicesCallback,
+    Message,
+} from './protocol/DmProtocolBase';
+import { DmProtocolV1 } from './protocol/DmProtocolV1';
+import { DmProtocolV2 } from './protocol/DmProtocolV2';
+import { UnknownDmProtocol } from './protocol/UnknownDmProtocol';
+import { getTranslation } from './Utils';
 
 declare module '@mui/material/Button' {
     interface ButtonPropsColorOverrides {
@@ -72,20 +69,6 @@ export type CommunicationProps = {
     isFloatComma: boolean;
     dateFormat: string;
 };
-
-interface CommunicationForm {
-    title?: ioBroker.StringOrTranslated | null | undefined;
-    label?: ioBroker.StringOrTranslated | null | undefined; // same as title
-    noTranslation?: boolean; // Do not translate title/label
-    schema: JsonFormSchema;
-    data?: Record<string, any>;
-    buttons?: (ActionButton | 'apply' | 'cancel' | 'close')[];
-    maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-    /** Minimal width of the dialog */
-    minWidth?: number;
-    /** Always allow the apply button. Even when nothing was changed */
-    ignoreApplyDisabled?: boolean;
-}
 
 interface CommunicationFormInState extends CommunicationForm {
     handleClose?: (data?: Record<string, any>) => void;
@@ -127,62 +110,11 @@ export type CommunicationState = {
     inputValue: string | boolean | number | null;
 };
 
-interface DmResponse {
-    /* Type of message */
-    type: 'message' | 'confirm' | 'progress' | 'result' | 'form';
-    /* Origin */
-    origin: string;
-}
-
-interface DmControlResponse extends DmResponse {
-    result: {
-        error?: {
-            code: number;
-            message: string;
-        };
-        state?: ioBroker.State;
-        deviceId: string;
-        controlId: string;
-    };
-}
-
-interface Message {
-    actionId?: string;
-    deviceId?: string;
-    value?: unknown;
-    origin?: string;
-    confirm?: boolean;
-    data?: any;
-    /** Inform backend, how long the frontend will wait for an answer */
-    timeout?: number;
-}
-
-interface DmActionResponse extends DmResponse {
-    result: {
-        refresh?: DeviceRefresh;
-        error?: {
-            code: number;
-            message: string;
-        };
-    };
-    message?: string;
-    confirm?: string;
-    form?: CommunicationForm;
-    progress?:
-        | {
-              open: boolean;
-              indeterminate: boolean;
-          }
-        | {
-              open: boolean;
-              progress: number;
-          };
-}
-
 /**
- * Device List Component
+ * Communication Component
  */
 export default class Communication<P extends CommunicationProps, S extends CommunicationState> extends Component<P, S> {
+    private protocol: DmProtocolBase = new UnknownDmProtocol();
     private responseTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
@@ -274,24 +206,16 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         console.error('loadData not implemented');
     }
 
-    sendActionToInstance = (command: `dm:${string}`, messageToSend: Message, refresh?: () => void): void => {
+    sendActionToInstance = (command: CommandName, messageToSend: Message, refresh?: () => void): void => {
         const send = async (): Promise<void> => {
             this.setState({ showSpinner: true });
-
-            if (!this.props.selectedInstance) {
-                throw new Error('No instance selected');
-            }
 
             this.responseTimeout = setTimeout(() => {
                 this.setState({ showSpinner: false });
                 window.alert(I18n.t('ra_No response from the backend'));
             }, messageToSend.timeout || 5000);
 
-            const response: DmActionResponse = await this.props.socket.sendTo(
-                this.props.selectedInstance,
-                command,
-                messageToSend,
-            );
+            const response = await this.protocol.sendAction(command, messageToSend);
 
             if (this.responseTimeout) {
                 clearTimeout(this.responseTimeout);
@@ -395,15 +319,15 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
                 case 'result':
                     console.log('Response content', response.result);
-                    if (response.result.refresh) {
-                        if (response.result.refresh === true) {
+                    if ('refresh' in response.result && response.result.refresh) {
+                        if (response.result.refresh === true || response.result.refresh === 'all') {
                             console.log('Refreshing all');
                             this.loadData();
                         } else if (response.result.refresh === 'instance') {
                             console.log(`Refreshing instance infos: ${this.props.selectedInstance}`);
-                        } else if (response.result.refresh === 'device') {
+                        } else if (response.result.refresh === 'devices') {
                             if (!refresh) {
-                                console.log('No refresh function provided to refresh "device"');
+                                console.log('No refresh function provided to refresh "devices"');
                             } else {
                                 console.log(`Refreshing device infos: ${this.props.selectedInstance}`);
                                 refresh();
@@ -412,7 +336,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                             console.log('Not refreshing anything');
                         }
                     }
-                    if (response.result.error) {
+                    if ('error' in response.result && response.result.error) {
                         console.error(`Error: ${response.result.error.message}`);
                         this.setState({ showToast: response.result.error.message, showSpinner: false });
                     } else {
@@ -431,17 +355,10 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     };
 
     sendControlToInstance = async (
-        command: string,
+        command: CommandName,
         messageToSend: { deviceId: string; controlId: string; state?: ControlState },
     ): Promise<null | ioBroker.State> => {
-        if (!this.props.selectedInstance) {
-            throw new Error('No instance selected');
-        }
-        const response: DmControlResponse = await this.props.socket.sendTo(
-            this.props.selectedInstance,
-            command,
-            messageToSend,
-        );
+        const response = await this.protocol.sendControl(command, messageToSend);
         const type = response.type;
         console.log(`Response: ${response.type}`);
         if (response.type === 'result') {
@@ -460,19 +377,25 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     };
 
     // eslint-disable-next-line react/no-unused-class-component-methods
-    loadDevices(): Promise<DeviceInfo[]> {
-        if (!this.props.selectedInstance) {
-            throw new Error('No instance selected');
-        }
-        return this.props.socket.sendTo(this.props.selectedInstance, 'dm:listDevices');
+    loadDevices(callback: LoadDevicesCallback): Promise<void> {
+        return this.protocol.loadDevices(callback);
     }
 
     // eslint-disable-next-line react/no-unused-class-component-methods
-    loadInstanceInfos(): Promise<InstanceDetails> {
+    async loadInstanceInfos(): Promise<InstanceDetails> {
         if (!this.props.selectedInstance) {
             throw new Error('No instance selected');
         }
-        return this.props.socket.sendTo(this.props.selectedInstance, 'dm:instanceInfo');
+        const details = await this.props.socket.sendTo(this.props.selectedInstance, 'dm:instanceInfo');
+        if (details.apiVersion === 'v1') {
+            this.protocol = new DmProtocolV1(this.props.selectedInstance, this.props.socket);
+        } else if (details.apiVersion === 'v2') {
+            this.protocol = new DmProtocolV2(this.props.selectedInstance, this.props.socket);
+        } else {
+            this.protocol = new UnknownDmProtocol();
+        }
+
+        return this.protocol.convertInstanceDetails(details);
     }
 
     renderMessageDialog(): React.JSX.Element | null {

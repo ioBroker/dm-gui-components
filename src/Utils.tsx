@@ -1,7 +1,6 @@
 import React from 'react';
 
-import type { ControlBase } from '@iobroker/dm-utils/build/types/base';
-import type { ActionBase } from '@iobroker/dm-utils/build/types/api';
+import type { ActionBase, ControlBase } from './protocol/api';
 import {
     Add,
     Article,

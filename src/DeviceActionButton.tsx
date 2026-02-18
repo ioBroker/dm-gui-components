@@ -1,14 +1,13 @@
 import React from 'react';
-
-import type { ActionBase, DeviceAction } from '@iobroker/dm-utils';
+import type { ActionBase, DeviceAction, DeviceId } from './protocol/api';
 import TooltipButton from './TooltipButton';
-import { renderActionIcon, getTranslation } from './Utils';
+import { getTranslation, renderActionIcon } from './Utils';
 
 interface DeviceActionButtonProps {
-    deviceId: string;
+    deviceId: DeviceId;
     action: DeviceAction;
     refresh: () => void;
-    deviceHandler: (deviceId: string, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
     disabled?: boolean;
 }
 

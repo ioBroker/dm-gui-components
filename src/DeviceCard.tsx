@@ -1,49 +1,48 @@
-import React, { Component, type JSX } from 'react';
-
 import {
+    DeviceTypeIcon,
+    I18n,
+    Utils,
+    type Connection,
+    type IobTheme,
+    type ThemeName,
+    type ThemeType,
+} from '@iobroker/adapter-react-v5';
+import { ACTIONS } from '@iobroker/dm-utils';
+import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
+import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon } from '@mui/icons-material';
+import {
+    Box,
     Button,
-    Typography,
+    Card,
+    CardActions,
+    CardContent,
+    CardHeader,
     Dialog,
     DialogActions,
     DialogContent,
-    IconButton,
-    Fab,
     DialogTitle,
-    Card,
-    CardActions,
-    CardHeader,
-    CardContent,
+    Fab,
+    IconButton,
     Paper,
-    Box,
+    Typography,
 } from '@mui/material';
-
-import { MoreVert as MoreVertIcon, VideogameAsset as ControlIcon, Close as CloseIcon } from '@mui/icons-material';
-
-import {
-    Utils,
-    type Connection,
-    I18n,
-    type ThemeName,
-    type ThemeType,
-    type IobTheme,
-    DeviceTypeIcon,
-} from '@iobroker/adapter-react-v5';
-import {
-    type DeviceDetails,
-    type DeviceInfo,
-    type ActionBase,
-    type ControlBase,
-    type ControlState,
-    ACTIONS,
-} from '@iobroker/dm-utils';
-
+import React, { Component, type JSX } from 'react';
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
+import DeviceImageUpload from './DeviceImageUpload';
 import DeviceStatusComponent from './DeviceStatus';
 import JsonConfig from './JsonConfig';
-import DeviceImageUpload from './DeviceImageUpload';
+import type {
+    ActionBase,
+    ControlBase,
+    ControlState,
+    DeviceDetails,
+    DeviceInfo,
+    DeviceId,
+    ConfigConnectionType,
+} from './protocol/api';
 import { getTranslation } from './Utils';
-import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
+import { StateOrObjectHandler } from './StateOrObjectHandler';
 
 const styles: Record<string, React.CSSProperties> = {
     cardStyle: {
@@ -119,21 +118,22 @@ function NoImageIcon(props: { style?: React.CSSProperties; className?: string })
 }
 
 interface DeviceCardProps {
-    title?: string;
+    filter?: string;
     /* Device ID */
-    id: string;
+    id: DeviceId;
+    identifierLabel: ioBroker.StringOrTranslated;
     device: DeviceInfo;
     instanceId: string;
     socket: Connection;
     /* Instance, where the images should be uploaded to */
     uploadImagesToInstance?: string;
-    deviceHandler: (deviceId: string, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
     controlHandler: (
-        deviceId: string,
+        deviceId: DeviceId,
         control: ControlBase,
         state: ControlState,
     ) => () => Promise<ioBroker.State | null>;
-    controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
+    controlStateHandler: (deviceId: DeviceId, control: ControlBase) => () => Promise<ioBroker.State | null>;
     smallCards?: boolean;
     alive: boolean;
     themeName: ThemeName;
@@ -155,14 +155,27 @@ interface DeviceCardState {
     open: boolean;
     details: DeviceDetails | null;
     data: Record<string, any>;
-    icon: string | undefined;
     showControlDialog: boolean;
+
+    // values possibly loaded from states/objects
+    name?: string;
+    identifier?: string;
+    hasDetails?: boolean;
+    icon?: string;
+    backgroundColor?: string;
+    color?: string;
+    manufacturer?: string;
+    model?: string;
+    connectionType?: ConfigConnectionType;
+    enabled?: boolean;
 }
 
 /**
  * Device Card Component
  */
 export default class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
+    private readonly stateOrObjectHandler: StateOrObjectHandler;
+
     constructor(props: DeviceCardProps) {
         super(props);
 
@@ -170,25 +183,19 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
             open: false,
             details: null,
             data: {},
-            icon: props.device.icon,
             showControlDialog: false,
         };
+
+        this.stateOrObjectHandler = new StateOrObjectHandler(this.props.socket);
     }
 
     async fetchIcon(): Promise<void> {
         if (!this.props.device.icon) {
-            const lang = I18n.getLanguage();
-            const manufacturer =
-                this.props.device.manufacturer && typeof this.props.device.manufacturer === 'object'
-                    ? this.props.device.manufacturer[lang] || this.props.device.manufacturer.en
-                    : this.props.device.manufacturer;
-            const model =
-                this.props.device.model && typeof this.props.device.model === 'object'
-                    ? this.props.device.model[lang] || this.props.device.model.en
-                    : this.props.device.model;
+            const manufacturer = this.state.manufacturer;
+            const model = this.state.model;
 
             // try to load the icon from file storage
-            const fileName = `${manufacturer ? `${manufacturer}_` : ''}${model || this.props.device.id}`;
+            const fileName = `${manufacturer ? `${manufacturer}_` : ''}${model || JSON.stringify(this.props.device.id)}`;
 
             try {
                 const file = await this.props.socket.readFile(
@@ -220,21 +227,55 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         }
     }
 
-    componentDidMount(): void {
-        this.fetchIcon().catch(e => console.error(e));
+    async componentDidMount(): Promise<void> {
+        await this.stateOrObjectHandler.addListener(this.props.device.name, value => {
+            this.setState({ name: getText(value) });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.identifier, value => {
+            this.setState({ identifier: value });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.hasDetails, value => {
+            this.setState({ hasDetails: value });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.icon, value => {
+            this.setState({ icon: value });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.backgroundColor, value => {
+            this.setState({ backgroundColor: value });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.color, value => {
+            this.setState({ color: value });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.manufacturer, value => {
+            this.setState({ manufacturer: getText(value) });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.model, value => {
+            this.setState({ model: getText(value) });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.connectionType, value => {
+            this.setState({ connectionType: value });
+        });
+        await this.stateOrObjectHandler.addListener(this.props.device.enabled, value => {
+            this.setState({ enabled: value });
+        });
+        await this.fetchIcon().catch(e => console.error(e));
+    }
+
+    async componentWillUnmount(): Promise<void> {
+        await this.stateOrObjectHandler.unsubscribe();
     }
 
     /**
      * Load the device details
      */
     async loadDetails(): Promise<void> {
-        console.log(`Loading device details for ${this.props.device.id}... from ${this.props.instanceId}`);
+        console.log(`Loading device details for`, this.props.device.id, `... from ${this.props.instanceId}`);
         const details: DeviceDetails | null = await this.props.socket.sendTo(
             this.props.instanceId,
             'dm:deviceDetails',
             this.props.device.id,
         );
-        console.log(`Got device details for ${this.props.device.id}:`, details);
+        console.log(`Got device details for`, this.props.device.id, details);
         this.setState({ details, data: details?.data || {} });
     }
 
@@ -250,7 +291,10 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
      * Copy the device ID to the clipboard
      */
     copyToClipboard = (): void => {
-        const textToCopy = this.props.device.id;
+        const textToCopy = this.state.identifier;
+        if (!textToCopy) {
+            return;
+        }
         Utils.copyToClipboard(textToCopy);
         alert(`${getTranslation('copied')} ${textToCopy} ${getTranslation('toClipboard')}!`);
     };
@@ -306,7 +350,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                 onClose={() => this.setState({ showControlDialog: false })}
             >
                 <DialogTitle>
-                    {this.props.title}
+                    {this.state.name}
                     <IconButton
                         style={{
                             position: 'absolute',
@@ -395,7 +439,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     }
 
     renderSmall(): JSX.Element {
-        const hasDetails = this.props.device.hasDetails;
+        const hasDetails = this.state.hasDetails;
         const status = !this.props.device.status
             ? []
             : Array.isArray(this.props.device.status)
@@ -421,8 +465,8 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                                 <DeviceImageUpload
                                     uploadImagesToInstance={this.props.uploadImagesToInstance}
                                     deviceId={this.props.device.id}
-                                    manufacturer={getText(this.props.device.manufacturer)}
-                                    model={getText(this.props.device.model)}
+                                    manufacturer={this.state.manufacturer}
+                                    model={this.state.model}
                                     onImageSelect={(imageData: string): void => {
                                         if (imageData) {
                                             this.setState({ icon: imageData });
@@ -449,12 +493,12 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             </IconButton>
                         ) : null
                     }
-                    title={this.props.title}
+                    title={this.state.name}
                     subheader={
-                        this.props.device.manufacturer ? (
+                        this.state.manufacturer ? (
                             <span>
                                 <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
-                                {getText(this.props.device.manufacturer)}
+                                {this.state.manufacturer}
                             </span>
                         ) : null
                     }
@@ -475,9 +519,10 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             {status.map((s, i) => (
                                 <DeviceStatusComponent
                                     key={i}
+                                    socket={this.props.socket}
                                     status={s}
-                                    connectionType={this.props.device.connectionType}
-                                    enabled={this.props.device.enabled}
+                                    connectionType={this.state.connectionType}
+                                    enabled={this.state.enabled}
                                     deviceId={this.props.device.id}
                                     statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
                                     disableEnableAction={this.props.device.actions?.find(
@@ -492,23 +537,25 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                     ) : null}
                     <div>
                         <Typography variant="body1">
-                            <div
-                                onClick={this.copyToClipboard}
-                                style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}
-                            >
-                                <b>ID:</b>
-                                <span style={{ marginLeft: 4 }}>{this.props.device.id.replace(/.*\.\d\./, '')}</span>
-                            </div>
-                            {this.props.device.manufacturer ? (
-                                <div>
-                                    <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
-                                    {getText(this.props.device.manufacturer)}
+                            {this.state.identifier ? (
+                                <div
+                                    onClick={this.copyToClipboard}
+                                    style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}
+                                >
+                                    <b>{getText(this.props.identifierLabel)}:</b>
+                                    <span style={{ marginLeft: 4 }}>{this.state.identifier}</span>
                                 </div>
                             ) : null}
-                            {this.props.device.model ? (
+                            {this.state.manufacturer ? (
+                                <div>
+                                    <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
+                                    {this.state.manufacturer}
+                                </div>
+                            ) : null}
+                            {this.state.model ? (
                                 <div>
                                     <b style={{ marginRight: 4 }}>{getTranslation('model')}:</b>
-                                    {getText(this.props.device.model)}
+                                    {this.state.model}
                                 </div>
                             ) : null}
                         </Typography>
@@ -526,31 +573,26 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     }
 
     getCardHeaderStyle(theme: IobTheme, maxWidth?: number): React.CSSProperties {
-        const device: DeviceInfo = this.props.device;
-        if (!device) {
-            return {};
-        }
-
         const backgroundColor =
-            device.backgroundColor === 'primary'
+            this.state.backgroundColor === 'primary'
                 ? theme.palette.primary.main
-                : device.backgroundColor === 'secondary'
+                : this.state.backgroundColor === 'secondary'
                   ? theme.palette.secondary.main
-                  : device.backgroundColor || theme.palette.secondary.main;
+                  : this.state.backgroundColor || theme.palette.secondary.main;
 
         let color;
-        if (device.color && device.color !== 'primary' && device.color !== 'secondary') {
+        if (this.state.color && this.state.color !== 'primary' && this.state.color !== 'secondary') {
             // Color was directly defined
-            color = device.color;
-        } else if (device.color === 'primary') {
+            color = this.state.color;
+        } else if (this.state.color === 'primary') {
             color = theme.palette.primary.main;
-        } else if (device.color === 'secondary') {
+        } else if (this.state.color === 'secondary') {
             color = theme.palette.secondary.main;
         } else {
             // Color was not defined
-            if (device.backgroundColor === 'primary') {
+            if (this.state.backgroundColor === 'primary') {
                 color = theme.palette.primary.contrastText;
-            } else if (device.backgroundColor === 'secondary' || !device.backgroundColor) {
+            } else if (this.state.backgroundColor === 'secondary' || !this.state.backgroundColor) {
                 color = theme.palette.secondary.contrastText;
             } else {
                 color = Utils.invertColor(backgroundColor, true);
@@ -581,12 +623,12 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         );
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
 
-        const title: string = this.state.details?.data?.name || this.props.title || '';
+        const title: string = this.state.details?.data?.name || this.props.device.name || '';
 
         return (
             <Paper
                 style={styles.cardStyle}
-                key={this.props.id}
+                key={JSON.stringify(this.props.id)}
             >
                 <Box
                     sx={headerStyle}
@@ -597,8 +639,8 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             <DeviceImageUpload
                                 uploadImagesToInstance={this.props.uploadImagesToInstance}
                                 deviceId={this.props.device.id}
-                                manufacturer={getText(this.props.device.manufacturer)}
-                                model={getText(this.props.device.model)}
+                                manufacturer={this.state.manufacturer}
+                                model={this.state.model}
                                 onImageSelect={(imageData: string): void => {
                                     if (imageData) {
                                         this.setState({ icon: imageData });
@@ -614,9 +656,9 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         title={title.length > 20 ? title : undefined}
                         sx={theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText })}
                     >
-                        {this.state.details?.data?.name || this.props.title}
+                        {this.state.details?.data?.name || this.state.name}
                     </Box>
-                    {this.props.device.hasDetails ? (
+                    {this.state.hasDetails ? (
                         <Fab
                             disabled={!this.props.alive}
                             size="small"
@@ -637,10 +679,11 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                     {status.map((s, i) => (
                         <DeviceStatusComponent
                             key={i}
+                            socket={this.props.socket}
                             deviceId={this.props.device.id}
-                            connectionType={this.props.device.connectionType}
+                            connectionType={this.state.connectionType}
                             status={s}
-                            enabled={this.props.device.enabled}
+                            enabled={this.state.enabled}
                             statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
                             disableEnableAction={this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE)}
                             deviceHandler={this.props.deviceHandler}
@@ -654,20 +697,22 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         variant="body1"
                         style={styles.deviceInfoStyle}
                     >
-                        <div onClick={this.copyToClipboard}>
-                            <b style={{ marginRight: 4 }}>ID:</b>
-                            {this.props.device.id.replace(/.*\.\d\./, '')}
-                        </div>
-                        {this.props.device.manufacturer ? (
-                            <div>
-                                <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
-                                {getText(this.props.device.manufacturer)}
+                        {this.state.identifier ? (
+                            <div onClick={this.copyToClipboard}>
+                                <b style={{ marginRight: 4 }}>{getText(this.props.identifierLabel)}:</b>
+                                {this.state.identifier}
                             </div>
                         ) : null}
-                        {this.props.device.model ? (
+                        {this.state.manufacturer ? (
+                            <div>
+                                <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
+                                {this.state.manufacturer}
+                            </div>
+                        ) : null}
+                        {this.state.model ? (
                             <div>
                                 <b style={{ marginRight: 4 }}>{getTranslation('model')}:</b>
-                                {getText(this.props.device.model)}
+                                {this.state.model}
                             </div>
                         ) : null}
                     </Typography>
@@ -697,6 +742,11 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     }
 
     render(): JSX.Element {
+        const name = this.state.name?.toLowerCase() ?? '';
+        if (this.props.filter && !name.includes(this.props.filter.toLowerCase())) {
+            return <></>;
+        }
+
         if (this.props.smallCards) {
             return this.renderSmall();
         }

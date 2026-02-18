@@ -14,23 +14,23 @@ import {
 } from '@mui/material';
 
 import { type Connection, Icon } from '@iobroker/adapter-react-v5';
-import type { ControlBase, ControlState, DeviceControl } from '@iobroker/dm-utils';
+import type { DeviceId, ControlBase, ControlState, DeviceControl } from './protocol/api';
 
 import { renderControlIcon, getTranslation } from './Utils';
 
 interface DeviceControlProps {
-    deviceId: string;
+    deviceId: DeviceId;
     /** Control object */
     control: DeviceControl;
     socket: Connection;
     /** Control handler to set the state */
     controlHandler: (
-        deviceId: string,
+        deviceId: DeviceId,
         control: ControlBase,
         state: ControlState,
     ) => () => Promise<ioBroker.State | null>;
     /** Control handler to read the state */
-    controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
+    controlStateHandler: (deviceId: DeviceId, control: ControlBase) => () => Promise<ioBroker.State | null>;
     colors: { primary: string; secondary: string };
     disabled?: boolean;
 }
@@ -204,7 +204,7 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
         return null;
     }
 
-    async sendControl(deviceId: string, control: ControlBase, value: ControlState): Promise<void> {
+    async sendControl(deviceId: DeviceId, control: ControlBase, value: ControlState): Promise<void> {
         const result = await this.props.controlHandler(deviceId, control, value)();
         if (result?.ts && (!this.state.ts || result?.ts > this.state.ts)) {
             this.setState({
