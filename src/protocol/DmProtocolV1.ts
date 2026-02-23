@@ -12,7 +12,7 @@ import {
 
 export class DmProtocolV1 extends DmProtocolBase {
     public override convertInstanceDetails(details: any): InstanceDetails {
-        if (details.apiVersion !== 'V1') {
+        if (details.apiVersion !== 'v1') {
             throw new Error(`Unsupported API version: ${details.apiVersion ?? 'unknown'}`);
         }
 

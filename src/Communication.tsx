@@ -387,6 +387,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             throw new Error('No instance selected');
         }
         const details = await this.props.socket.sendTo(this.props.selectedInstance, 'dm:instanceInfo');
+        console.log('Instance details of', this.props.selectedInstance, details);
         if (details.apiVersion === 'v1') {
             this.protocol = new DmProtocolV1(this.props.selectedInstance, this.props.socket);
         } else if (details.apiVersion === 'v2') {
