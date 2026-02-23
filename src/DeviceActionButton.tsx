@@ -24,6 +24,7 @@ export default function DeviceActionButton(props: DeviceActionButtonProps): Reac
             disabled={disabled || action.disabled}
             Icon={icon}
             onClick={deviceHandler(deviceId, action, refresh)}
+            url={'url' in action ? getTranslation(action.url) : undefined}
         />
     );
 }
