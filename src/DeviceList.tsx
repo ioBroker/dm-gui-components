@@ -10,6 +10,7 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
+    Box,
 } from '@mui/material';
 
 import { Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
@@ -17,7 +18,7 @@ import { Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material'
 import { I18n, DeviceTypeIcon } from '@iobroker/adapter-react-v5';
 import type { DeviceInfo, InstanceDetails } from './protocol/api';
 
-import DeviceCard from './DeviceCard';
+import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
 import { getTranslation } from './Utils';
 import Communication, { type CommunicationProps, type CommunicationState } from './Communication';
 import InstanceActionButton from './InstanceActionButton';
@@ -54,7 +55,6 @@ interface DeviceListProps extends CommunicationProps {
 interface DeviceListState extends CommunicationState {
     devices: DeviceInfo[];
     totalDevices?: number;
-    filteredDevices: DeviceInfo[];
     filter: string;
     instanceInfo: InstanceDetails;
     loading: boolean;
@@ -111,7 +111,6 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
         Object.assign(this.state, {
             devices: [],
-            filteredDevices: [],
             filter: '',
             instanceInfo: null,
             loading: null,
@@ -234,9 +233,11 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             console.log(`Loading devices for ${this.props.selectedInstance}...`);
             let devices: DeviceInfo[] = [];
             try {
+                this.setState({ devices, loading: true });
                 await this.loadDevices((batch, total) => {
                     devices = devices.concat(batch);
                     this.setState({ devices, loading: true, totalDevices: total });
+                    console.log(`Loaded ${devices.length} of ${total} devices...`);
                 });
             } catch (error) {
                 console.error(error);
@@ -244,6 +245,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             }
 
             this.setState({ devices, loading: false, totalDevices: devices.length });
+            console.log(`Loaded ${devices.length} devices for ${this.props.selectedInstance}`);
         });
     }
 
@@ -332,7 +334,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     <span>{getTranslation('instanceNotAlive')}</span>
                 </div>,
             ];
-        } else if (!this.state.devices.length && this.props.selectedInstance) {
+        } else if (!this.state.devices.length && this.props.selectedInstance && !this.state.loading) {
             list = [
                 <div
                     style={emptyStyle}
@@ -341,19 +343,10 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     <span>{getTranslation('noDevicesFoundText')}</span>
                 </div>,
             ];
-        } else if (this.state.devices.length && !this.state.filteredDevices.length) {
-            list = [
-                <div
-                    style={emptyStyle}
-                    key="filtered"
-                >
-                    <span>{getTranslation('allDevicesFilteredOut')}</span>
-                </div>,
-            ];
         } else {
             // build a device types list
-            let filteredDevices = this.state.filteredDevices;
-            if (!this.props.embedded && filteredDevices.find(device => device.group)) {
+            let filteredDevices = this.state.devices;
+            if (!this.state.loading && !this.props.embedded && filteredDevices.find(device => device.group)) {
                 deviceGroups.push({
                     name: I18n.t('All'),
                     value: '',
@@ -394,23 +387,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     } else {
                         filteredDevices = filteredDevices.filter(device => device.group?.key === this.state.groupKey);
                     }
-                    if (!filteredDevices.length) {
-                        list = [
-                            <div
-                                style={emptyStyle}
-                                key="filtered"
-                            >
-                                <span>{getTranslation('allDevicesFilteredOut')}</span>
-                            </div>,
-                        ];
-                    }
                 }
             }
 
-            if (filteredDevices.length && this.props.selectedInstance) {
+            if (this.props.selectedInstance) {
                 list = filteredDevices.map(device => (
                     <DeviceCard
                         key={JSON.stringify(device.id)}
+                        smallCards={this.props.smallCards}
                         filter={this.props.embedded ? this.props.filter : this.state.filter}
                         alive={!!this.state.alive}
                         id={device.id}
@@ -429,6 +413,32 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         dateFormat={this.props.dateFormat}
                     />
                 ));
+                if (this.state.loading) {
+                    const skeletons = (this.state.totalDevices ?? list.length + 1) - list.length;
+                    for (let i = 0; i < skeletons; i++) {
+                        list.push(
+                            <DeviceCardSkeleton
+                                key={`skeleton-${i}`}
+                                smallCards={this.props.smallCards}
+                                theme={this.props.theme}
+                            />,
+                        );
+                    }
+                } else if (this.state.devices.length > 0) {
+                    list.push(
+                        <Box
+                            key="filtered"
+                            sx={{
+                                padding: '25px',
+                                '&:not(:first-child)': {
+                                    display: 'none',
+                                },
+                            }}
+                        >
+                            <span>{getTranslation('allDevicesFilteredOut')}</span>
+                        </Box>,
+                    );
+                }
             }
         }
 

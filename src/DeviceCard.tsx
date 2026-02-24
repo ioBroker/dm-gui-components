@@ -7,7 +7,6 @@ import {
     type ThemeName,
     type ThemeType,
 } from '@iobroker/adapter-react-v5';
-import { ACTIONS } from '@iobroker/dm-utils';
 import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
 import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon } from '@mui/icons-material';
 import {
@@ -24,6 +23,7 @@ import {
     Fab,
     IconButton,
     Paper,
+    Skeleton,
     Typography,
 } from '@mui/material';
 import React, { Component, type JSX } from 'react';
@@ -43,6 +43,19 @@ import type {
 } from './protocol/api';
 import { getTranslation } from './Utils';
 import { StateOrObjectHandler } from './StateOrObjectHandler';
+
+const smallCardStyle = {
+    maxWidth: 345,
+    minWidth: 200,
+} as const;
+
+/** Reserved action names (this is copied from https://github.com/ioBroker/dm-utils/blob/main/src/types/base.ts as we can only have type references to dm-utils) */
+const ACTIONS = {
+    /** This action will be called when user clicks on connection icon */
+    STATUS: 'status',
+    /** This action will be called when the user clicks on enabled/disabled icon. The enabled/disabled icon will be shown only if the node status has "enabled" flag set to false or true */
+    ENABLE_DISABLE: 'enable/disable',
+};
 
 const styles: Record<string, React.CSSProperties> = {
     cardStyle: {
@@ -451,12 +464,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         const headerStyle = this.getCardHeaderStyle(this.props.theme, 345);
 
         return (
-            <Card
-                sx={{
-                    maxWidth: 345,
-                    minWidth: 200,
-                }}
-            >
+            <Card sx={smallCardStyle}>
                 <CardHeader
                     style={headerStyle}
                     avatar={
@@ -752,5 +760,114 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         }
 
         return this.renderBig();
+    }
+}
+
+type DeviceCardSkeletonProps = Pick<DeviceCardProps, 'smallCards' | 'theme'>;
+
+export class DeviceCardSkeleton extends Component<DeviceCardSkeletonProps> {
+    render(): JSX.Element {
+        if (this.props.smallCards) {
+            return this.renderSmall();
+        }
+
+        return this.renderBig();
+    }
+
+    renderSmall(): JSX.Element {
+        const headerStyle = this.getCardHeaderStyle(this.props.theme, 345);
+
+        return (
+            <Card sx={smallCardStyle}>
+                <CardHeader
+                    style={headerStyle}
+                    avatar={
+                        <div>
+                            <Skeleton
+                                variant="rounded"
+                                width={24}
+                                height={24}
+                            />
+                        </div>
+                    }
+                    title={<Skeleton />}
+                    subheader={<Skeleton />}
+                />
+                <CardContent style={{ position: 'relative' }}>
+                    <div>
+                        <Typography variant="body1">
+                            <div>
+                                <Skeleton />
+                            </div>
+                            <div>
+                                <Skeleton />
+                            </div>
+                            <div>
+                                <Skeleton />
+                            </div>
+                        </Typography>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    renderBig(): JSX.Element {
+        const headerStyle = this.getCardHeaderStyle(this.props.theme);
+
+        return (
+            <Paper style={styles.cardStyle}>
+                <Box
+                    sx={headerStyle}
+                    style={styles.headerStyle}
+                >
+                    <div style={styles.imgAreaStyle}>
+                        <Skeleton
+                            variant="rounded"
+                            width={24}
+                            height={24}
+                        />
+                    </div>
+                    <Box
+                        style={styles.titleStyle}
+                        sx={theme => ({
+                            color: headerStyle.color || theme.palette.secondary.contrastText,
+                            minWidth: '50%',
+                        })}
+                    >
+                        <Skeleton />
+                    </Box>
+                </Box>
+                <div style={styles.statusStyle}></div>
+                <div style={styles.bodyStyle}>
+                    <Typography
+                        variant="body1"
+                        style={styles.deviceInfoStyle}
+                    >
+                        <div>
+                            <Skeleton />
+                        </div>
+                        <div>
+                            <Skeleton />
+                        </div>
+                        <div>
+                            <Skeleton />
+                        </div>
+                    </Typography>
+                </div>
+            </Paper>
+        );
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    getCardHeaderStyle(theme: IobTheme, maxWidth?: number): React.CSSProperties {
+        const backgroundColor = theme.palette.secondary.main;
+        const color = theme.palette.secondary.contrastText;
+
+        return {
+            backgroundColor,
+            color,
+            maxWidth,
+        };
     }
 }
