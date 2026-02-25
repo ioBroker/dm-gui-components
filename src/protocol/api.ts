@@ -10,4 +10,5 @@ export type {
     DeviceStatus,
     ErrorResponse,
     JsonFormSchema,
+    ProgressUpdate,
 } from '@iobroker/dm-utils';

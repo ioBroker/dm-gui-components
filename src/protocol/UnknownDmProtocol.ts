@@ -1,13 +1,6 @@
 /* eslint-disable class-methods-use-this */
-import type { ControlState, InstanceDetails } from './api';
-import {
-    type CommandName,
-    type DmActionResponse,
-    type DmControlResponse,
-    DmProtocolBase,
-    type LoadDevicesCallback,
-    type Message,
-} from './DmProtocolBase';
+import type { ControlState, DmActionResponse, DmControlResponse, InstanceDetails } from './api';
+import { type CommandName, DmProtocolBase, type LoadDevicesCallback, type Message } from './DmProtocolBase';
 
 export class UnknownDmProtocol extends DmProtocolBase {
     constructor() {

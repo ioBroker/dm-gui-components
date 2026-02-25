@@ -1,13 +1,6 @@
 /* eslint-disable class-methods-use-this */
-import type { ControlState, DeviceLoadIncrement, InstanceDetails } from './api';
-import {
-    type CommandName,
-    type DmActionResponse,
-    type DmControlResponse,
-    DmProtocolBase,
-    type LoadDevicesCallback,
-    type Message,
-} from './DmProtocolBase';
+import type { ControlState, DeviceLoadIncrement, DmActionResponse, DmControlResponse, InstanceDetails } from './api';
+import { type CommandName, DmProtocolBase, type LoadDevicesCallback, type Message } from './DmProtocolBase';
 
 export class DmProtocolV2 extends DmProtocolBase {
     public override convertInstanceDetails(details: any): InstanceDetails {

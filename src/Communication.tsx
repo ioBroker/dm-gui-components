@@ -38,14 +38,16 @@ import {
 } from '@mui/material';
 import React, { Component } from 'react';
 import JsonConfig from './JsonConfig';
-import type { ActionBase, ActionButton, ControlBase, ControlState, InstanceDetails } from './protocol/api';
 import type {
-    CommandName,
+    ActionBase,
+    ActionButton,
     CommunicationForm,
-    DmProtocolBase,
-    LoadDevicesCallback,
-    Message,
-} from './protocol/DmProtocolBase';
+    ControlBase,
+    ControlState,
+    InstanceDetails,
+    ProgressUpdate,
+} from './protocol/api';
+import type { CommandName, DmProtocolBase, LoadDevicesCallback, Message } from './protocol/DmProtocolBase';
 import { DmProtocolV1 } from './protocol/DmProtocolV1';
 import { DmProtocolV2 } from './protocol/DmProtocolV2';
 import { UnknownDmProtocol } from './protocol/UnknownDmProtocol';
@@ -95,16 +97,7 @@ export type CommunicationState = {
         handleClose: (confirmation?: boolean) => void;
     } | null;
     form: CommunicationFormInState | null;
-    progress:
-        | {
-              open: boolean;
-              indeterminate: boolean;
-          }
-        | {
-              open: boolean;
-              progress: number;
-          }
-        | null;
+    progress: ProgressUpdate | null;
     showConfirmation: InputAction | null;
     showInput: InputAction | null;
     inputValue: string | boolean | number | null;
@@ -222,15 +215,16 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                 this.responseTimeout = null;
             }
 
-            const type: string = response.type;
-            console.log(`Response: ${response.type}`);
-            switch (type) {
-                case 'message':
-                    console.log(`Message received: ${response.message}`);
-                    if (response.message) {
+            const type = response.type;
+            console.log(`Response: ${type}`);
+            switch (response.type) {
+                case 'message': {
+                    const message = getTranslation(response.message);
+                    console.log(`Message received: ${message}`);
+                    if (message) {
                         this.setState({
                             message: {
-                                message: response.message,
+                                message,
                                 handleClose: () =>
                                     this.setState({ message: null }, () =>
                                         this.sendActionToInstance(
@@ -244,13 +238,15 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                         });
                     }
                     break;
+                }
 
-                case 'confirm':
-                    console.log(`Confirm received: ${response.confirm}`);
-                    if (response.confirm) {
+                case 'confirm': {
+                    const message = getTranslation(response.confirm);
+                    console.log(`Confirm received: ${message}`);
+                    if (message) {
                         this.setState({
                             confirm: {
-                                message: response.confirm,
+                                message: message,
                                 handleClose: (confirm?: boolean) =>
                                     this.setState({ confirm: null }, () =>
                                         this.sendActionToInstance(
@@ -267,6 +263,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                         });
                     }
                     break;
+                }
 
                 case 'form':
                     console.log('Form received');
@@ -306,8 +303,11 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                     break;
 
                 case 'progress':
+                    console.log('Progress received', response.progress);
                     if (response.progress) {
-                        if (this.state.progress) {
+                        if (response.progress.open === false) {
+                            this.setState({ progress: null, showSpinner: false });
+                        } else if (this.state.progress) {
                             const progress = { ...this.state.progress, ...response.progress };
                             this.setState({ progress, showSpinner: false });
                         } else {
@@ -363,7 +363,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         console.log(`Response: ${response.type}`);
         if (response.type === 'result') {
             console.log('Response content', response.result);
-            if (response.result.error) {
+            if ('error' in response.result) {
                 console.error(`Error: ${response.result.error.message}`);
                 this.setState({ showToast: response.result.error.message });
             } else if (response.result.state !== undefined) {
@@ -404,20 +404,21 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             return null;
         }
 
+        const message = this.state.message;
         return (
             <Dialog
                 open={!0}
-                onClose={() => this.state.message?.handleClose()}
+                onClose={() => message.handleClose()}
                 hideBackdrop
                 aria-describedby="message-dialog-description"
             >
                 <DialogContent>
-                    <DialogContentText id="message-dialog-description">{this.state.message?.message}</DialogContentText>
+                    <DialogContentText id="message-dialog-description">{message.message}</DialogContentText>
                 </DialogContent>
                 <DialogActions>
                     <Button
                         color="primary"
-                        onClick={() => this.state.message?.handleClose()}
+                        onClick={() => message.handleClose()}
                         variant="contained"
                         autoFocus
                     >
@@ -433,23 +434,24 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             return null;
         }
 
+        const confirm = this.state.confirm;
         return (
             <Dialog
                 open={!0}
-                onClose={() => this.state.confirm?.handleClose()}
+                onClose={() => confirm.handleClose()}
                 hideBackdrop
                 aria-describedby="confirm-dialog-description"
             >
                 <DialogContent>
                     <DialogContentText id="confirm-dialog-description">
-                        {getTranslation(this.state.confirm?.message)}
+                        {getTranslation(confirm.message)}
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
                     <Button
                         variant="contained"
                         color="primary"
-                        onClick={() => this.state.confirm?.handleClose(true)}
+                        onClick={() => confirm.handleClose(true)}
                         autoFocus
                     >
                         {getTranslation('yesButtonText')}
@@ -457,7 +459,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                     <Button
                         variant="contained"
                         color="grey"
-                        onClick={() => this.state.confirm?.handleClose(false)}
+                        onClick={() => confirm.handleClose(false)}
                         autoFocus
                     >
                         {getTranslation('noButtonText')}
@@ -541,10 +543,12 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         if (!this.props.selectedInstance) {
             throw new Error('No instance selected');
         }
+
+        const form = this.state.form;
         let buttons: React.JSX.Element[];
-        if (this.state.form.buttons) {
+        if (form.buttons) {
             buttons = [];
-            this.state.form.buttons.forEach((button: ActionButton | 'apply' | 'cancel' | 'close'): void => {
+            form.buttons.forEach((button: ActionButton | 'apply' | 'cancel' | 'close'): void => {
                 if (typeof button === 'object' && button.type === 'copyToClipboard') {
                     buttons.push(
                         <Button
@@ -565,16 +569,16 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 ...(button.style || undefined),
                             }}
                             onClick={() => {
-                                if (button.copyToClipboardAttr && this.state.form!.data) {
-                                    const val = this.state.form!.data[button.copyToClipboardAttr];
+                                if (button.copyToClipboardAttr && form.data) {
+                                    const val = form.data[button.copyToClipboardAttr];
                                     if (typeof val === 'string') {
                                         Utils.copyToClipboard(val);
                                     } else {
                                         Utils.copyToClipboard(JSON.stringify(val, null, 2));
                                     }
                                     window.alert(I18n.t('copied'));
-                                } else if (this.state.form?.data) {
-                                    Utils.copyToClipboard(JSON.stringify(this.state.form.data, null, 2));
+                                } else if (form.data) {
+                                    Utils.copyToClipboard(JSON.stringify(form.data, null, 2));
                                     window.alert(I18n.t('copied'));
                                 } else {
                                     window.alert(I18n.t('nothingToCopy'));
@@ -597,36 +601,28 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
         return (
             <Dialog
-                open={!0}
-                onClose={() => this.state.form!.handleClose?.()}
+                onClose={() => form.handleClose?.()}
                 hideBackdrop
                 fullWidth
+                open
                 sx={{
                     '& .MuiDialog-paper': {
-                        minWidth: this.state.form.minWidth || undefined,
+                        minWidth: form.minWidth || undefined,
                     },
                 }}
-                maxWidth={this.state.form.maxWidth || 'md'}
+                maxWidth={form.maxWidth || 'md'}
             >
-                {this.state.form?.title ? (
-                    <DialogTitle>
-                        {getTranslation(
-                            this.state.form?.label || this.state.form?.title,
-                            this.state.form.noTranslation,
-                        )}
-                    </DialogTitle>
+                {form.title ? (
+                    <DialogTitle>{getTranslation(form.label || form.title, form.noTranslation)}</DialogTitle>
                 ) : null}
                 <DialogContent>
                     <JsonConfig
                         instanceId={this.props.selectedInstance}
-                        schema={this.state.form.schema as ConfigItemPanel | ConfigItemTabs}
-                        data={this.state.form.data || {}}
+                        schema={form.schema as ConfigItemPanel | ConfigItemTabs}
+                        data={form.data || {}}
                         socket={this.props.socket as AdminConnection}
                         onChange={(data: Record<string, any>) => {
                             console.log('handleFormChange', { data });
-                            const form: CommunicationFormInState = {
-                                ...(this.state.form as CommunicationFormInState),
-                            };
                             if (form) {
                                 form.data = data;
                                 form.changed = JSON.stringify(data) !== form.originalData;
@@ -646,35 +642,25 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     }
 
     renderProgressDialog(): React.JSX.Element | null {
-        if (!this.state.progress?.open) {
+        if (!this.state.progress) {
             return null;
         }
         return (
             <Dialog
-                open={!0}
                 onClose={() => {}}
                 hideBackdrop
+                open
             >
-                {(
-                    this.state.progress as {
-                        open: boolean;
-                        indeterminate: boolean;
-                    }
-                ).indeterminate ? (
-                    <LinearProgress variant="indeterminate" />
-                ) : (
+                {this.state.progress.title && <DialogTitle>{getTranslation(this.state.progress.title)}</DialogTitle>}
+                <DialogContent>
+                    {this.state.progress.label && (
+                        <DialogContentText>{getTranslation(this.state.progress.label)}</DialogContentText>
+                    )}
                     <LinearProgress
-                        variant="determinate"
-                        value={
-                            (
-                                this.state.progress as {
-                                    open: boolean;
-                                    progress: number;
-                                }
-                            ).progress || 0
-                        }
+                        variant={this.state.progress.indeterminate ? 'indeterminate' : 'determinate'}
+                        value={this.state.progress.value}
                     />
-                )}
+                </DialogContent>
             </Dialog>
         );
     }
@@ -691,7 +677,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         return (
             <Backdrop
                 style={{ zIndex: 1000 }}
-                open={!0}
+                open
             >
                 <CircularProgress />
             </Backdrop>
@@ -704,8 +690,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         }
         return (
             <Dialog
-                open={!0}
                 onClose={() => this.setState({ showConfirmation: null })}
+                open
             >
                 <DialogTitle>
                     {getTranslation(
@@ -820,8 +806,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
         return (
             <Dialog
-                open={!0}
                 onClose={() => this.setState({ showInput: null })}
+                open
             >
                 <DialogTitle>{getTranslation('pleaseEnterValueText')}</DialogTitle>
                 <DialogContent>

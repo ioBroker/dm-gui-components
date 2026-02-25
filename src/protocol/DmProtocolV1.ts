@@ -1,14 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import type * as V1 from '@iobroker/dm-utils-v1/build/types/api';
-import type { ControlState, DeviceInfo, InstanceDetails } from './api';
-import {
-    type CommandName,
-    type DmActionResponse,
-    type DmControlResponse,
-    DmProtocolBase,
-    type LoadDevicesCallback,
-    type Message,
-} from './DmProtocolBase';
+import type { ControlState, DeviceInfo, DmActionResponse, DmControlResponse, InstanceDetails } from './api';
+import { DmProtocolBase, type CommandName, type LoadDevicesCallback, type Message } from './DmProtocolBase';
 
 export class DmProtocolV1 extends DmProtocolBase {
     public override convertInstanceDetails(details: any): InstanceDetails {
