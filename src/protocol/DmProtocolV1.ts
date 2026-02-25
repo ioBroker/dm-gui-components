@@ -10,7 +10,7 @@ export class DmProtocolV1 extends DmProtocolBase {
         }
 
         const v1 = details as V1.InstanceDetails;
-        return { ...v1, apiVersion: 'v2' };
+        return { ...v1, apiVersion: 'v3' };
     }
 
     public override async loadDevices(callback: LoadDevicesCallback): Promise<void> {

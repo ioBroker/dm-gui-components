@@ -50,6 +50,7 @@ import type {
 import type { CommandName, DmProtocolBase, LoadDevicesCallback, Message } from './protocol/DmProtocolBase';
 import { DmProtocolV1 } from './protocol/DmProtocolV1';
 import { DmProtocolV2 } from './protocol/DmProtocolV2';
+import { DmProtocolV3 } from './protocol/DmProtocolV3';
 import { UnknownDmProtocol } from './protocol/UnknownDmProtocol';
 import { getTranslation } from './Utils';
 
@@ -392,6 +393,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             this.protocol = new DmProtocolV1(this.props.selectedInstance, this.props.socket);
         } else if (details.apiVersion === 'v2') {
             this.protocol = new DmProtocolV2(this.props.selectedInstance, this.props.socket);
+        } else if (details.apiVersion === 'v3') {
+            this.protocol = new DmProtocolV3(this.props.selectedInstance, this.props.socket);
         } else {
             this.protocol = new UnknownDmProtocol();
         }

@@ -198,7 +198,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         if (!this.props.embedded && alive) {
             try {
                 const instanceInfo = await this.loadInstanceInfos();
-                this.setState({ instanceInfo, apiVersionError: !['v1', 'v2'].includes(instanceInfo.apiVersion) });
+                this.setState({ instanceInfo, apiVersionError: !['v1', 'v2', 'v3'].includes(instanceInfo.apiVersion) });
             } catch (error) {
                 console.error(error);
             }
