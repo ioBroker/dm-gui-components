@@ -14,7 +14,7 @@ export class DmProtocolV1 extends DmProtocolBase {
     }
 
     public override async loadDevices(callback: LoadDevicesCallback): Promise<void> {
-        // in V1, devices come in a single batch, thus we can simply call the callback with those
+        // in V1, devices come in a single batch; thus we can simply call the callback with those
         const devices = await this.send<V1.DeviceInfo[]>('dm:listDevices');
         await callback(devices.map<DeviceInfo>(d => ({ ...d, identifier: d.id })));
     }
