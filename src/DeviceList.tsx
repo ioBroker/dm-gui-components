@@ -484,7 +484,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     style={{ backgroundColor: '#777', display: 'flex' }}
                 >
                     {this.props.title}
-                    {this.props.selectedInstance === null && this.state.dmInstances ? (
+                    {this.props.selectedInstance === undefined && this.state.dmInstances ? (
                         <FormControl>
                             <InputLabel id="instance-select-label">{getTranslation('instanceLabelText')}</InputLabel>
                             <Select
