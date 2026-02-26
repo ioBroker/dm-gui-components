@@ -25,6 +25,7 @@ import { useStateOrObject } from './hooks';
 import type { ActionBase, ConfigConnectionType, DeviceAction, DeviceId, DeviceStatus } from './protocol/api';
 import Switch from './Switch';
 import { getTranslation } from './Utils';
+import type { StateOrObjectHandler } from './StateOrObjectHandler';
 
 export const ACTIONS = {
     STATUS: 'status',
@@ -129,6 +130,7 @@ interface DeviceStatusProps {
     deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
     refresh: () => void;
     theme: IobTheme;
+    stateOrObjectHandler: StateOrObjectHandler;
 }
 
 function rssiColor(signal: number, themeType: ThemeType): string {
@@ -210,10 +212,10 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
         status = props.status;
     }
 
-    const connection = useStateOrObject(status.connection, props.socket);
-    const rssi = useStateOrObject(status.rssi, props.socket);
-    const battery = useStateOrObject(status.battery, props.socket);
-    const warning = useStateOrObject(status.warning, props.socket);
+    const connection = useStateOrObject(status.connection, props.stateOrObjectHandler);
+    const rssi = useStateOrObject(status.rssi, props.stateOrObjectHandler);
+    const battery = useStateOrObject(status.battery, props.stateOrObjectHandler);
+    const warning = useStateOrObject(status.warning, props.stateOrObjectHandler);
 
     const batteryIconTooltip = useMemo<React.ReactNode>(() => {
         if (typeof battery === 'number') {

@@ -539,6 +539,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                                     deviceHandler={this.props.deviceHandler}
                                     refresh={this.refresh}
                                     theme={this.props.theme}
+                                    stateOrObjectHandler={this.stateOrObjectHandler}
                                 />
                             ))}
                         </div>
@@ -697,6 +698,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             deviceHandler={this.props.deviceHandler}
                             refresh={this.refresh}
                             theme={this.props.theme}
+                            stateOrObjectHandler={this.stateOrObjectHandler}
                         />
                     ))}
                 </div>
