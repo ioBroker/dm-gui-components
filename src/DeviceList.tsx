@@ -344,9 +344,12 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         }
 
         // if instance changed
-        if (this.props.embedded && this.lastInstance !== this.state.selectedInstance && this.state.selectedInstance) {
+        if (this.lastInstance !== this.state.selectedInstance) {
             this.lastInstance = this.state.selectedInstance;
             setTimeout(() => this.loadData(), 50);
+        }
+        if (this.props.selectedInstance && this.props.selectedInstance !== this.state.selectedInstance) {
+            setTimeout(() => this.setState({ selectedInstance: this.props.selectedInstance! }), 50);
         }
         const deviceGroups: { name: string; value: string; count: number; icon?: React.JSX.Element | string | null }[] =
             [];
@@ -499,7 +502,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                 variant="standard"
                                 sx={{ minWidth: 120 }}
                             >
-                                {Object.keys(this.state.dmInstances).map(([id]) => (
+                                {Object.keys(this.state.dmInstances).map(id => (
                                     <MenuItem
                                         key={id}
                                         value={id}
