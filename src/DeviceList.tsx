@@ -73,11 +73,13 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
     private lastInstance: string;
 
+    private lastAliveSubscribe = '';
+
     private lastTriggerLoad = 0;
 
-    private filterTimeout: ReturnType<typeof setTimeout> | null;
+    private filterTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    private readonly language: ioBroker.Languages;
+    private readonly language: ioBroker.Languages = I18n.getLanguage();
 
     constructor(props: DeviceListProps) {
         super(props);
@@ -113,8 +115,6 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
         this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
-        this.filterTimeout = null;
-        this.language = I18n.getLanguage();
     }
 
     private async loadAdapters(): Promise<void> {
@@ -169,15 +169,13 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             } catch (error) {
                 console.error(error);
             }
+            this.lastAliveSubscribe = this.state.selectedInstance;
             this.setState({ alive }, () =>
                 this.props.socket.subscribeState(
                     `system.adapter.${this.state.selectedInstance}.alive`,
                     this.aliveHandler,
                 ),
             );
-            if (!alive) {
-                return;
-            }
         } else if (this.state.alive !== null) {
             alive = this.state.alive;
         }
@@ -223,14 +221,50 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     override loadData(): void {
         this.setState({ loading: true }, async () => {
             console.log(`Loading devices for ${this.state.selectedInstance}...`);
+            let alive = this.state.alive;
+
+            if (this.state.selectedInstance !== this.lastAliveSubscribe) {
+                if (this.lastAliveSubscribe) {
+                    // unsubscribe from the old instance
+                    this.props.socket.unsubscribeState(
+                        `system.adapter.${this.lastAliveSubscribe}.alive`,
+                        this.aliveHandler,
+                    );
+                }
+
+                this.lastAliveSubscribe = this.state.selectedInstance;
+
+                if (this.state.selectedInstance) {
+                    try {
+                        // check if the instance is alive
+                        const stateAlive = await this.props.socket.getState(
+                            `system.adapter.${this.state.selectedInstance}.alive`,
+                        );
+                        if (stateAlive?.val) {
+                            alive = true;
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                    await this.props.socket.subscribeState(
+                        `system.adapter.${this.state.selectedInstance}.alive`,
+                        this.aliveHandler,
+                    );
+                } else {
+                    alive = false;
+                }
+            }
+
             let devices: DeviceInfo[] = [];
             try {
-                this.setState({ devices, loading: true });
-                await this.loadDevices((batch, total) => {
-                    devices = devices.concat(batch);
-                    this.setState({ devices, loading: true, totalDevices: total });
-                    console.log(`Loaded ${devices.length} of ${total} devices...`);
-                });
+                this.setState({ devices, loading: !!alive, alive });
+                if (alive) {
+                    await this.loadDevices((batch, total) => {
+                        devices = devices.concat(batch);
+                        this.setState({ devices, loading: true, totalDevices: total });
+                        console.log(`Loaded ${devices.length} of ${total} devices...`);
+                    });
+                }
             } catch (error) {
                 console.error(error);
                 devices = [];
