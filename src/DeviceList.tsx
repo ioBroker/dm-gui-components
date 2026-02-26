@@ -468,6 +468,15 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         </Box>,
                     );
                 }
+            } else {
+                list = [
+                    <div
+                        style={emptyStyle}
+                        key="selectInstance"
+                    >
+                        <span>{getTranslation('selectInstanceText')}</span>
+                    </div>,
+                ];
             }
         }
 
@@ -489,8 +498,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     {this.props.title}
                     {this.props.selectedInstance === undefined && this.state.dmInstances ? (
                         <FormControl>
-                            <InputLabel id="instance-select-label">{getTranslation('instanceLabelText')}</InputLabel>
+                            <InputLabel
+                                id="instance-select-label"
+                                style={{ transform: 'translate(0, -9px) scale(0.75)' }}
+                            >
+                                {getTranslation('instanceLabelText')}
+                            </InputLabel>
                             <Select
+                                style={{ marginTop: 0, minWidth: 120 }}
                                 labelId="instance-select-label"
                                 id="instance-select"
                                 value={this.state.selectedInstance}
@@ -500,7 +515,6 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                 }}
                                 displayEmpty
                                 variant="standard"
-                                sx={{ minWidth: 120 }}
                             >
                                 {Object.keys(this.state.dmInstances).map(id => (
                                     <MenuItem

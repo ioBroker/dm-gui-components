@@ -24,6 +24,7 @@
     "pleaseEnterValueText": "Пожалуйста входите",
     "refreshInstanceList": "Обновить список экземпляров",
     "refreshTooltip": "Обновить",
+    "selectInstanceText": "Пожалуйста, выберите экземпляр.",
     "toClipboard": "в буфер обмена",
     "yesButtonText": "Да"
 }
