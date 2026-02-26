@@ -51,9 +51,9 @@ const smallCardStyle = {
 
 /** Reserved action names (this is copied from https://github.com/ioBroker/dm-utils/blob/main/src/types/base.ts as we can only have type references to dm-utils) */
 const ACTIONS = {
-    /** This action will be called when user clicks on connection icon */
+    /** This action will be called when the user clicks on the connection icon */
     STATUS: 'status',
-    /** This action will be called when the user clicks on enabled/disabled icon. The enabled/disabled icon will be shown only if the node status has "enabled" flag set to false or true */
+    /** This action will be called when the user clicks on the enabled / disabled icon. The enabled/disabled icon will be shown only if the node status has the "enabled" flag set to false or true */
     ENABLE_DISABLE: 'enable/disable',
 };
 
@@ -418,7 +418,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         }
 
         if (this.props.device.controls?.length) {
-            // place button and show controls dialog
+            // place a button and show a controls dialog
             return (
                 <Fab
                     size="small"
