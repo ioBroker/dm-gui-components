@@ -102,6 +102,7 @@ export type CommunicationState = {
     showConfirmation: InputAction | null;
     showInput: InputAction | null;
     inputValue: string | boolean | number | null;
+    selectedInstance: string; // adapterName.X
 };
 
 /**
@@ -140,6 +141,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             showConfirmation: null,
             showInput: null,
             inputValue: null,
+            selectedInstance: this.props.selectedInstance ?? (window.localStorage.getItem('dmSelectedInstance') || ''),
         } as S;
 
         // eslint-disable-next-line react/no-unused-class-component-methods
@@ -325,12 +327,12 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                             console.log('Refreshing all');
                             this.loadData();
                         } else if (response.result.refresh === 'instance') {
-                            console.log(`Refreshing instance infos: ${this.props.selectedInstance}`);
+                            console.log(`Refreshing instance infos: ${this.state.selectedInstance}`);
                         } else if (response.result.refresh === 'devices') {
                             if (!refresh) {
                                 console.log('No refresh function provided to refresh "devices"');
                             } else {
-                                console.log(`Refreshing device infos: ${this.props.selectedInstance}`);
+                                console.log(`Refreshing device infos: ${this.state.selectedInstance}`);
                                 refresh();
                             }
                         } else {
@@ -384,17 +386,17 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
     // eslint-disable-next-line react/no-unused-class-component-methods
     async loadInstanceInfos(): Promise<InstanceDetails> {
-        if (!this.props.selectedInstance) {
+        if (!this.state.selectedInstance) {
             throw new Error('No instance selected');
         }
-        const details = await this.props.socket.sendTo(this.props.selectedInstance, 'dm:instanceInfo');
-        console.log('Instance details of', this.props.selectedInstance, details);
+        const details = await this.props.socket.sendTo(this.state.selectedInstance, 'dm:instanceInfo');
+        console.log('Instance details of', this.state.selectedInstance, details);
         if (details.apiVersion === 'v1') {
-            this.protocol = new DmProtocolV1(this.props.selectedInstance, this.props.socket);
+            this.protocol = new DmProtocolV1(this.state.selectedInstance, this.props.socket);
         } else if (details.apiVersion === 'v2') {
-            this.protocol = new DmProtocolV2(this.props.selectedInstance, this.props.socket);
+            this.protocol = new DmProtocolV2(this.state.selectedInstance, this.props.socket);
         } else if (details.apiVersion === 'v3') {
-            this.protocol = new DmProtocolV3(this.props.selectedInstance, this.props.socket);
+            this.protocol = new DmProtocolV3(this.state.selectedInstance, this.props.socket);
         } else {
             this.protocol = new UnknownDmProtocol();
         }
@@ -543,7 +545,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         if (!this.state.form?.schema) {
             return null;
         }
-        if (!this.props.selectedInstance) {
+        if (!this.state.selectedInstance) {
             throw new Error('No instance selected');
         }
 
@@ -620,7 +622,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                 ) : null}
                 <DialogContent>
                     <JsonConfig
-                        instanceId={this.props.selectedInstance}
+                        instanceId={this.state.selectedInstance}
                         schema={form.schema as ConfigItemPanel | ConfigItemTabs}
                         data={form.data || {}}
                         socket={this.props.socket as AdminConnection}

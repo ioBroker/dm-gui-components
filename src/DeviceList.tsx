@@ -56,13 +56,12 @@ interface DeviceListState extends CommunicationState {
     devices: DeviceInfo[];
     totalDevices?: number;
     filter: string;
-    instanceInfo: InstanceDetails;
-    loading: boolean;
+    instanceInfo: InstanceDetails | null;
+    loading: boolean | null;
     alive: boolean | null;
     triggerLoad: number;
     groupKey: string;
     dmInstances: { [instanceName: string]: { title: string; instance: number } } | null;
-    selectedInstance: string;
     apiVersionError: boolean;
 }
 
@@ -71,8 +70,6 @@ interface DeviceListState extends CommunicationState {
  */
 export default class DeviceList extends Communication<DeviceListProps, DeviceListState> {
     static i18nInitialized = false;
-
-    private lastPropsFilter: string | undefined;
 
     private lastInstance: string;
 
@@ -102,14 +99,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             });
         }
 
-        let selectedInstance: string;
-        if (this.props.selectedInstance === undefined) {
-            selectedInstance = window.localStorage.getItem('dmSelectedInstance') || '';
-        } else {
-            selectedInstance = this.props.selectedInstance;
-        }
-
-        Object.assign(this.state, {
+        this.state = {
+            ...this.state,
             devices: [],
             filter: '',
             instanceInfo: null,
@@ -117,12 +108,10 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             alive: null,
             groupKey: '',
             dmInstances: null,
-            selectedInstance,
             apiVersionError: false,
-        });
+        };
 
-        this.lastPropsFilter = this.props.filter;
-        this.lastInstance = selectedInstance;
+        this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
         this.filterTimeout = null;
         this.language = I18n.getLanguage();
@@ -135,9 +124,6 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         const res = await this.props.socket.getObjectViewSystem('instance', 'system.adapter.', 'system.adapter.\u9999');
         const dmInstances: { [instanceName: string]: { title: string; instance: number } } = {};
         for (const id in res) {
-            if (!res[id]?.common?.messagebox) {
-                continue;
-            }
             if (!res[id].common.supportedMessages?.deviceManager) {
                 continue;
             }
@@ -165,16 +151,17 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
     async componentDidMount(): Promise<void> {
         let alive = false;
+        // If an instance selector must be shown
         if (this.props.selectedInstance === undefined) {
             // show instance selector
             await this.loadAdapters();
         }
 
-        if (this.state.alive === null) {
+        if (this.state.alive === null && this.state.selectedInstance) {
             try {
                 // check if the instance is alive
                 const stateAlive = await this.props.socket.getState(
-                    `system.adapter.${this.props.selectedInstance}.alive`,
+                    `system.adapter.${this.state.selectedInstance}.alive`,
                 );
                 if (stateAlive?.val) {
                     alive = true;
@@ -184,14 +171,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             }
             this.setState({ alive }, () =>
                 this.props.socket.subscribeState(
-                    `system.adapter.${this.props.selectedInstance}.alive`,
+                    `system.adapter.${this.state.selectedInstance}.alive`,
                     this.aliveHandler,
                 ),
             );
             if (!alive) {
                 return;
             }
-        } else {
+        } else if (this.state.alive !== null) {
             alive = this.state.alive;
         }
 
@@ -209,11 +196,16 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     }
 
     componentWillUnmount(): void {
-        this.props.socket.unsubscribeState(`system.adapter.${this.props.selectedInstance}.alive`, this.aliveHandler);
+        if (this.state.selectedInstance) {
+            this.props.socket.unsubscribeState(
+                `system.adapter.${this.state.selectedInstance}.alive`,
+                this.aliveHandler,
+            );
+        }
     }
 
     aliveHandler: ioBroker.StateChangeHandler = (id: string, state: ioBroker.State | null | undefined): void => {
-        if (id === `system.adapter.${this.props.selectedInstance}.alive`) {
+        if (this.state.selectedInstance && id === `system.adapter.${this.state.selectedInstance}.alive`) {
             const alive = !!state?.val;
             if (alive !== this.state.alive) {
                 this.setState({ alive }, () => {
@@ -230,7 +222,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
      */
     override loadData(): void {
         this.setState({ loading: true }, async () => {
-            console.log(`Loading devices for ${this.props.selectedInstance}...`);
+            console.log(`Loading devices for ${this.state.selectedInstance}...`);
             let devices: DeviceInfo[] = [];
             try {
                 this.setState({ devices, loading: true });
@@ -245,7 +237,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             }
 
             this.setState({ devices, loading: false, totalDevices: devices.length });
-            console.log(`Loaded ${devices.length} devices for ${this.props.selectedInstance}`);
+            console.log(`Loaded ${devices.length} devices for ${this.state.selectedInstance}`);
         });
     }
 
@@ -318,8 +310,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         }
 
         // if instance changed
-        if (this.props.embedded && this.lastInstance !== this.props.selectedInstance && this.props.selectedInstance) {
-            this.lastInstance = this.props.selectedInstance;
+        if (this.props.embedded && this.lastInstance !== this.state.selectedInstance && this.state.selectedInstance) {
+            this.lastInstance = this.state.selectedInstance;
             setTimeout(() => this.loadData(), 50);
         }
         const deviceGroups: { name: string; value: string; count: number; icon?: React.JSX.Element | string | null }[] =
@@ -334,7 +326,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     <span>{getTranslation('instanceNotAlive')}</span>
                 </div>,
             ];
-        } else if (!this.state.devices.length && this.props.selectedInstance && !this.state.loading) {
+        } else if (!this.state.devices.length && this.state.selectedInstance && !this.state.loading) {
             list = [
                 <div
                     style={emptyStyle}
@@ -390,7 +382,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                 }
             }
 
-            if (this.props.selectedInstance) {
+            if (this.state.selectedInstance) {
                 list = filteredDevices.map(device => (
                     <DeviceCard
                         key={JSON.stringify(device.id)}
@@ -400,7 +392,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         id={device.id}
                         identifierLabel={this.state.instanceInfo?.identifierLabel ?? 'ID'}
                         device={device}
-                        instanceId={this.props.selectedInstance!}
+                        instanceId={this.state.selectedInstance}
                         uploadImagesToInstance={this.props.uploadImagesToInstance}
                         deviceHandler={this.deviceHandler}
                         controlHandler={this.controlHandler}
@@ -484,7 +476,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             </Select>
                         </FormControl>
                     ) : null}
-                    {this.props.selectedInstance ? (
+                    {this.state.selectedInstance ? (
                         <Tooltip
                             title={getTranslation('refreshTooltip')}
                             slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}

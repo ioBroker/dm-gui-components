@@ -21,8 +21,8 @@ interface DeviceListState extends CommunicationState {
     devices: DeviceInfo[];
     totalDevices?: number;
     filter: string;
-    instanceInfo: InstanceDetails;
-    loading: boolean;
+    instanceInfo: InstanceDetails | null;
+    loading: boolean | null;
     alive: boolean | null;
     triggerLoad: number;
     groupKey: string;
@@ -32,7 +32,6 @@ interface DeviceListState extends CommunicationState {
             instance: number;
         };
     } | null;
-    selectedInstance: string;
     apiVersionError: boolean;
 }
 /**
@@ -40,7 +39,6 @@ interface DeviceListState extends CommunicationState {
  */
 export default class DeviceList extends Communication<DeviceListProps, DeviceListState> {
     static i18nInitialized: boolean;
-    private lastPropsFilter;
     private lastInstance;
     private lastTriggerLoad;
     private filterTimeout;

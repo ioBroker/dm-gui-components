@@ -46,6 +46,7 @@ export type CommunicationState = {
     showConfirmation: InputAction | null;
     showInput: InputAction | null;
     inputValue: string | boolean | number | null;
+    selectedInstance: string;
 };
 /**
  * Communication Component

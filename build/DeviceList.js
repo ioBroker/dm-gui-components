@@ -22,7 +22,6 @@ import zhCn from './i18n/zh-cn.json';
  */
 export default class DeviceList extends Communication {
     static i18nInitialized = false;
-    lastPropsFilter;
     lastInstance;
     lastTriggerLoad = 0;
     filterTimeout;
@@ -45,14 +44,8 @@ export default class DeviceList extends Communication {
                 'zh-cn': zhCn,
             });
         }
-        let selectedInstance;
-        if (this.props.selectedInstance === undefined) {
-            selectedInstance = window.localStorage.getItem('dmSelectedInstance') || '';
-        }
-        else {
-            selectedInstance = this.props.selectedInstance;
-        }
-        Object.assign(this.state, {
+        this.state = {
+            ...this.state,
             devices: [],
             filter: '',
             instanceInfo: null,
@@ -60,11 +53,9 @@ export default class DeviceList extends Communication {
             alive: null,
             groupKey: '',
             dmInstances: null,
-            selectedInstance,
             apiVersionError: false,
-        });
-        this.lastPropsFilter = this.props.filter;
-        this.lastInstance = selectedInstance;
+        };
+        this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
         this.filterTimeout = null;
         this.language = I18n.getLanguage();
@@ -75,9 +66,6 @@ export default class DeviceList extends Communication {
         const res = await this.props.socket.getObjectViewSystem('instance', 'system.adapter.', 'system.adapter.\u9999');
         const dmInstances = {};
         for (const id in res) {
-            if (!res[id]?.common?.messagebox) {
-                continue;
-            }
             if (!res[id].common.supportedMessages?.deviceManager) {
                 continue;
             }
@@ -102,14 +90,15 @@ export default class DeviceList extends Communication {
     }
     async componentDidMount() {
         let alive = false;
+        // If an instance selector must be shown
         if (this.props.selectedInstance === undefined) {
             // show instance selector
             await this.loadAdapters();
         }
-        if (this.state.alive === null) {
+        if (this.state.alive === null && this.state.selectedInstance) {
             try {
                 // check if the instance is alive
-                const stateAlive = await this.props.socket.getState(`system.adapter.${this.props.selectedInstance}.alive`);
+                const stateAlive = await this.props.socket.getState(`system.adapter.${this.state.selectedInstance}.alive`);
                 if (stateAlive?.val) {
                     alive = true;
                 }
@@ -117,12 +106,12 @@ export default class DeviceList extends Communication {
             catch (error) {
                 console.error(error);
             }
-            this.setState({ alive }, () => this.props.socket.subscribeState(`system.adapter.${this.props.selectedInstance}.alive`, this.aliveHandler));
+            this.setState({ alive }, () => this.props.socket.subscribeState(`system.adapter.${this.state.selectedInstance}.alive`, this.aliveHandler));
             if (!alive) {
                 return;
             }
         }
-        else {
+        else if (this.state.alive !== null) {
             alive = this.state.alive;
         }
         if (!this.props.embedded && alive) {
@@ -139,10 +128,12 @@ export default class DeviceList extends Communication {
         }
     }
     componentWillUnmount() {
-        this.props.socket.unsubscribeState(`system.adapter.${this.props.selectedInstance}.alive`, this.aliveHandler);
+        if (this.state.selectedInstance) {
+            this.props.socket.unsubscribeState(`system.adapter.${this.state.selectedInstance}.alive`, this.aliveHandler);
+        }
     }
     aliveHandler = (id, state) => {
-        if (id === `system.adapter.${this.props.selectedInstance}.alive`) {
+        if (this.state.selectedInstance && id === `system.adapter.${this.state.selectedInstance}.alive`) {
             const alive = !!state?.val;
             if (alive !== this.state.alive) {
                 this.setState({ alive }, () => {
@@ -158,7 +149,7 @@ export default class DeviceList extends Communication {
      */
     loadData() {
         this.setState({ loading: true }, async () => {
-            console.log(`Loading devices for ${this.props.selectedInstance}...`);
+            console.log(`Loading devices for ${this.state.selectedInstance}...`);
             let devices = [];
             try {
                 this.setState({ devices, loading: true });
@@ -173,7 +164,7 @@ export default class DeviceList extends Communication {
                 devices = [];
             }
             this.setState({ devices, loading: false, totalDevices: devices.length });
-            console.log(`Loaded ${devices.length} devices for ${this.props.selectedInstance}`);
+            console.log(`Loaded ${devices.length} devices for ${this.state.selectedInstance}`);
         });
     }
     getText(text) {
@@ -216,8 +207,8 @@ export default class DeviceList extends Communication {
             setTimeout(() => this.loadData(), 50);
         }
         // if instance changed
-        if (this.props.embedded && this.lastInstance !== this.props.selectedInstance && this.props.selectedInstance) {
-            this.lastInstance = this.props.selectedInstance;
+        if (this.props.embedded && this.lastInstance !== this.state.selectedInstance && this.state.selectedInstance) {
+            this.lastInstance = this.state.selectedInstance;
             setTimeout(() => this.loadData(), 50);
         }
         const deviceGroups = [];
@@ -228,7 +219,7 @@ export default class DeviceList extends Communication {
                     React.createElement("span", null, getTranslation('instanceNotAlive'))),
             ];
         }
-        else if (!this.state.devices.length && this.props.selectedInstance && !this.state.loading) {
+        else if (!this.state.devices.length && this.state.selectedInstance && !this.state.loading) {
             list = [
                 React.createElement("div", { style: emptyStyle, key: "notFound" },
                     React.createElement("span", null, getTranslation('noDevicesFoundText'))),
@@ -280,8 +271,8 @@ export default class DeviceList extends Communication {
                     }
                 }
             }
-            if (this.props.selectedInstance) {
-                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.props.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })));
+            if (this.state.selectedInstance) {
+                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })));
                 if (this.state.loading) {
                     const skeletons = (this.state.totalDevices ?? list.length + 1) - list.length;
                     for (let i = 0; i < skeletons; i++) {
@@ -313,7 +304,7 @@ export default class DeviceList extends Communication {
                             window.localStorage.setItem('dmSelectedInstance', event.target.value);
                             this.setState({ selectedInstance: event.target.value });
                         }, displayEmpty: true, variant: "standard", sx: { minWidth: 120 } }, Object.keys(this.state.dmInstances).map(([id]) => (React.createElement(MenuItem, { key: id, value: id }, id)))))) : null,
-                this.props.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+                this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
                         React.createElement(IconButton, { onClick: () => this.loadData(), disabled: !this.state.alive || this.state.apiVersionError, size: "small" },
                             React.createElement(Refresh, null))))) : null,

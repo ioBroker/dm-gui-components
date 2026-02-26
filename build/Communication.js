@@ -34,6 +34,7 @@ export default class Communication extends Component {
             showConfirmation: null,
             showInput: null,
             inputValue: null,
+            selectedInstance: this.props.selectedInstance ?? (window.localStorage.getItem('dmSelectedInstance') || ''),
         };
         // eslint-disable-next-line react/no-unused-class-component-methods
         this.instanceHandler = action => () => {
@@ -178,14 +179,14 @@ export default class Communication extends Component {
                             this.loadData();
                         }
                         else if (response.result.refresh === 'instance') {
-                            console.log(`Refreshing instance infos: ${this.props.selectedInstance}`);
+                            console.log(`Refreshing instance infos: ${this.state.selectedInstance}`);
                         }
                         else if (response.result.refresh === 'devices') {
                             if (!refresh) {
                                 console.log('No refresh function provided to refresh "devices"');
                             }
                             else {
-                                console.log(`Refreshing device infos: ${this.props.selectedInstance}`);
+                                console.log(`Refreshing device infos: ${this.state.selectedInstance}`);
                                 refresh();
                             }
                         }
@@ -234,19 +235,19 @@ export default class Communication extends Component {
     }
     // eslint-disable-next-line react/no-unused-class-component-methods
     async loadInstanceInfos() {
-        if (!this.props.selectedInstance) {
+        if (!this.state.selectedInstance) {
             throw new Error('No instance selected');
         }
-        const details = await this.props.socket.sendTo(this.props.selectedInstance, 'dm:instanceInfo');
-        console.log('Instance details of', this.props.selectedInstance, details);
+        const details = await this.props.socket.sendTo(this.state.selectedInstance, 'dm:instanceInfo');
+        console.log('Instance details of', this.state.selectedInstance, details);
         if (details.apiVersion === 'v1') {
-            this.protocol = new DmProtocolV1(this.props.selectedInstance, this.props.socket);
+            this.protocol = new DmProtocolV1(this.state.selectedInstance, this.props.socket);
         }
         else if (details.apiVersion === 'v2') {
-            this.protocol = new DmProtocolV2(this.props.selectedInstance, this.props.socket);
+            this.protocol = new DmProtocolV2(this.state.selectedInstance, this.props.socket);
         }
         else if (details.apiVersion === 'v3') {
-            this.protocol = new DmProtocolV3(this.props.selectedInstance, this.props.socket);
+            this.protocol = new DmProtocolV3(this.state.selectedInstance, this.props.socket);
         }
         else {
             this.protocol = new UnknownDmProtocol();
@@ -308,7 +309,7 @@ export default class Communication extends Component {
         if (!this.state.form?.schema) {
             return null;
         }
-        if (!this.props.selectedInstance) {
+        if (!this.state.selectedInstance) {
             throw new Error('No instance selected');
         }
         const form = this.state.form;
@@ -364,7 +365,7 @@ export default class Communication extends Component {
             }, maxWidth: form.maxWidth || 'md' },
             form.title ? (React.createElement(DialogTitle, null, getTranslation(form.label || form.title, form.noTranslation))) : null,
             React.createElement(DialogContent, null,
-                React.createElement(JsonConfig, { instanceId: this.props.selectedInstance, schema: form.schema, data: form.data || {}, socket: this.props.socket, onChange: (data) => {
+                React.createElement(JsonConfig, { instanceId: this.state.selectedInstance, schema: form.schema, data: form.data || {}, socket: this.props.socket, onChange: (data) => {
                         console.log('handleFormChange', { data });
                         if (form) {
                             form.data = data;
