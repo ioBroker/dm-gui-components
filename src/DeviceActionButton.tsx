@@ -1,14 +1,13 @@
 import React from 'react';
-
-import type { ActionBase, DeviceAction } from '@iobroker/dm-utils';
+import type { ActionBase, DeviceAction, DeviceId } from './protocol/api';
 import TooltipButton from './TooltipButton';
-import { renderActionIcon, getTranslation } from './Utils';
+import { getTranslation, renderActionIcon } from './Utils';
 
 interface DeviceActionButtonProps {
-    deviceId: string;
+    deviceId: DeviceId;
     action: DeviceAction;
     refresh: () => void;
-    deviceHandler: (deviceId: string, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
     disabled?: boolean;
 }
 
@@ -25,6 +24,7 @@ export default function DeviceActionButton(props: DeviceActionButtonProps): Reac
             disabled={disabled || action.disabled}
             Icon={icon}
             onClick={deviceHandler(deviceId, action, refresh)}
+            url={'url' in action ? getTranslation(action.url) : undefined}
         />
     );
 }

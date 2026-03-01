@@ -1,11 +1,12 @@
 import React, { type ChangeEvent, type ChangeEventHandler } from 'react';
 import type { Connection } from '@iobroker/adapter-react-v5';
+import type { DeviceId } from './protocol/api';
 
 interface DeviceImageUploadProps {
     socket: Connection;
     manufacturer?: string;
     model?: string;
-    deviceId: string;
+    deviceId: DeviceId;
     onImageSelect: (image: string) => void;
     uploadImagesToInstance: string;
 }
@@ -59,7 +60,7 @@ function DeviceImageUpload(params: DeviceImageUploadProps): React.JSX.Element | 
                         const resizedImage = canvas.toDataURL('image/webp');
 
                         // Build the file name from a manufacturer and model, if not available, use device id
-                        const fileName = `${manufacturer ? `${manufacturer}_` : ''}${model || deviceId}.webp`;
+                        const fileName = `${manufacturer ? `${manufacturer}_` : ''}${model || JSON.stringify(deviceId)}.webp`;
                         const base64Data = resizedImage.replace(/^data:image\/webp;base64,/, '');
                         const response = await socket.writeFile64(uploadImagesToInstance, fileName, base64Data);
                         console.log(`saveImage response: ${JSON.stringify(response)}`);

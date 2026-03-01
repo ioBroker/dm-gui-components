@@ -7,10 +7,11 @@ interface TooltipButtonProps {
     disabled?: boolean;
     Icon: React.JSX.Element | null;
     onClick?: () => void;
+    url?: string;
 }
 
 export default function TooltipButton(props: TooltipButtonProps): React.JSX.Element {
-    const { tooltip, label, disabled, Icon, onClick } = props;
+    const { tooltip, label, disabled, Icon, onClick, url } = props;
 
     const text = !!label && (
         <Typography
@@ -21,6 +22,8 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
         </Typography>
     );
 
+    const btnProps = url ? { href: url, disabled, target: '_blank' } : { onClick, disabled };
+
     if (tooltip) {
         return (
             <Tooltip
@@ -29,8 +32,7 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
             >
                 <span>
                     <IconButton
-                        onClick={onClick}
-                        disabled={disabled}
+                        {...btnProps}
                         size="small"
                     >
                         {Icon}
@@ -43,8 +45,7 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
 
     return (
         <IconButton
-            onClick={onClick}
-            disabled={disabled}
+            {...btnProps}
             size="small"
         >
             {Icon}

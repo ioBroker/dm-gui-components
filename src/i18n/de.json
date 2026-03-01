@@ -1,6 +1,6 @@
 {
     "allDevicesFilteredOut": "Alle Geräte herausgefiltert",
-    "apiVersionError": "Das Backend ist neuer als die GUI. Bitte aktualisieren Sie denAdmin.",
+    "apiVersionError": "Das Backend ist neuer als die GUI. Bitte aktualisieren Sie den Admin.",
     "batteryTooltip": "Batterie",
     "cancelButtonText": "Abbrechen",
     "closeButtonText": "Schließen",
@@ -24,6 +24,7 @@
     "pleaseEnterValueText": "Bitte eingeben",
     "refreshInstanceList": "Instanzliste aktualisieren",
     "refreshTooltip": "Aktualisieren",
+    "selectInstanceText": "Bitte eine Instanz auswählen.",
     "toClipboard": "in die Zwischenablage kopiert",
     "yesButtonText": "Ja"
 }

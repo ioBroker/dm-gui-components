@@ -1,5 +1,15 @@
-import React, { Component } from 'react';
-
+import {
+    I18n,
+    Icon,
+    Utils,
+    type AdminConnection,
+    type Connection,
+    type IobTheme,
+    type ThemeName,
+    type ThemeType,
+} from '@iobroker/adapter-react-v5';
+import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
+import { Check, Close, ContentCopy } from '@mui/icons-material';
 import {
     Backdrop,
     Box,
@@ -26,33 +36,23 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
-
-import { Close, Check, ContentCopy } from '@mui/icons-material';
-
-import {
-    type Connection,
-    type AdminConnection,
-    type ThemeName,
-    type ThemeType,
-    type IobTheme,
-    I18n,
-    Icon,
-    Utils,
-} from '@iobroker/adapter-react-v5';
+import React, { Component } from 'react';
+import JsonConfig from './JsonConfig';
 import type {
     ActionBase,
+    ActionButton,
+    CommunicationForm,
     ControlBase,
     ControlState,
-    DeviceInfo,
-    DeviceRefresh,
     InstanceDetails,
-    JsonFormSchema,
-    ActionButton,
-} from '@iobroker/dm-utils';
-import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
-
+    ProgressUpdate,
+} from './protocol/api';
+import type { CommandName, DmProtocolBase, LoadDevicesCallback, Message } from './protocol/DmProtocolBase';
+import { DmProtocolV1 } from './protocol/DmProtocolV1';
+import { DmProtocolV2 } from './protocol/DmProtocolV2';
+import { DmProtocolV3 } from './protocol/DmProtocolV3';
+import { UnknownDmProtocol } from './protocol/UnknownDmProtocol';
 import { getTranslation } from './Utils';
-import JsonConfig from './JsonConfig';
 
 declare module '@mui/material/Button' {
     interface ButtonPropsColorOverrides {
@@ -72,20 +72,6 @@ export type CommunicationProps = {
     isFloatComma: boolean;
     dateFormat: string;
 };
-
-interface CommunicationForm {
-    title?: ioBroker.StringOrTranslated | null | undefined;
-    label?: ioBroker.StringOrTranslated | null | undefined; // same as title
-    noTranslation?: boolean; // Do not translate title/label
-    schema: JsonFormSchema;
-    data?: Record<string, any>;
-    buttons?: (ActionButton | 'apply' | 'cancel' | 'close')[];
-    maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-    /** Minimal width of the dialog */
-    minWidth?: number;
-    /** Always allow the apply button. Even when nothing was changed */
-    ignoreApplyDisabled?: boolean;
-}
 
 interface CommunicationFormInState extends CommunicationForm {
     handleClose?: (data?: Record<string, any>) => void;
@@ -112,77 +98,18 @@ export type CommunicationState = {
         handleClose: (confirmation?: boolean) => void;
     } | null;
     form: CommunicationFormInState | null;
-    progress:
-        | {
-              open: boolean;
-              indeterminate: boolean;
-          }
-        | {
-              open: boolean;
-              progress: number;
-          }
-        | null;
+    progress: ProgressUpdate | null;
     showConfirmation: InputAction | null;
     showInput: InputAction | null;
     inputValue: string | boolean | number | null;
+    selectedInstance: string; // adapterName.X
 };
 
-interface DmResponse {
-    /* Type of message */
-    type: 'message' | 'confirm' | 'progress' | 'result' | 'form';
-    /* Origin */
-    origin: string;
-}
-
-interface DmControlResponse extends DmResponse {
-    result: {
-        error?: {
-            code: number;
-            message: string;
-        };
-        state?: ioBroker.State;
-        deviceId: string;
-        controlId: string;
-    };
-}
-
-interface Message {
-    actionId?: string;
-    deviceId?: string;
-    value?: unknown;
-    origin?: string;
-    confirm?: boolean;
-    data?: any;
-    /** Inform backend, how long the frontend will wait for an answer */
-    timeout?: number;
-}
-
-interface DmActionResponse extends DmResponse {
-    result: {
-        refresh?: DeviceRefresh;
-        error?: {
-            code: number;
-            message: string;
-        };
-    };
-    message?: string;
-    confirm?: string;
-    form?: CommunicationForm;
-    progress?:
-        | {
-              open: boolean;
-              indeterminate: boolean;
-          }
-        | {
-              open: boolean;
-              progress: number;
-          };
-}
-
 /**
- * Device List Component
+ * Communication Component
  */
 export default class Communication<P extends CommunicationProps, S extends CommunicationState> extends Component<P, S> {
+    private protocol: DmProtocolBase = new UnknownDmProtocol();
     private responseTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
@@ -214,6 +141,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             showConfirmation: null,
             showInput: null,
             inputValue: null,
+            selectedInstance: this.props.selectedInstance ?? (window.localStorage.getItem('dmSelectedInstance') || ''),
         } as S;
 
         // eslint-disable-next-line react/no-unused-class-component-methods
@@ -274,39 +202,32 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         console.error('loadData not implemented');
     }
 
-    sendActionToInstance = (command: `dm:${string}`, messageToSend: Message, refresh?: () => void): void => {
+    sendActionToInstance = (command: CommandName, messageToSend: Message, refresh?: () => void): void => {
         const send = async (): Promise<void> => {
             this.setState({ showSpinner: true });
-
-            if (!this.props.selectedInstance) {
-                throw new Error('No instance selected');
-            }
 
             this.responseTimeout = setTimeout(() => {
                 this.setState({ showSpinner: false });
                 window.alert(I18n.t('ra_No response from the backend'));
             }, messageToSend.timeout || 5000);
 
-            const response: DmActionResponse = await this.props.socket.sendTo(
-                this.props.selectedInstance,
-                command,
-                messageToSend,
-            );
+            const response = await this.protocol.sendAction(command, messageToSend);
 
             if (this.responseTimeout) {
                 clearTimeout(this.responseTimeout);
                 this.responseTimeout = null;
             }
 
-            const type: string = response.type;
-            console.log(`Response: ${response.type}`);
-            switch (type) {
-                case 'message':
-                    console.log(`Message received: ${response.message}`);
-                    if (response.message) {
+            const type = response.type;
+            console.log(`Response: ${type}`);
+            switch (response.type) {
+                case 'message': {
+                    const message = getTranslation(response.message);
+                    console.log(`Message received: ${message}`);
+                    if (message) {
                         this.setState({
                             message: {
-                                message: response.message,
+                                message,
                                 handleClose: () =>
                                     this.setState({ message: null }, () =>
                                         this.sendActionToInstance(
@@ -320,13 +241,15 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                         });
                     }
                     break;
+                }
 
-                case 'confirm':
-                    console.log(`Confirm received: ${response.confirm}`);
-                    if (response.confirm) {
+                case 'confirm': {
+                    const message = getTranslation(response.confirm);
+                    console.log(`Confirm received: ${message}`);
+                    if (message) {
                         this.setState({
                             confirm: {
-                                message: response.confirm,
+                                message: message,
                                 handleClose: (confirm?: boolean) =>
                                     this.setState({ confirm: null }, () =>
                                         this.sendActionToInstance(
@@ -343,6 +266,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                         });
                     }
                     break;
+                }
 
                 case 'form':
                     console.log('Form received');
@@ -382,8 +306,11 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                     break;
 
                 case 'progress':
+                    console.log('Progress received', response.progress);
                     if (response.progress) {
-                        if (this.state.progress) {
+                        if (response.progress.open === false) {
+                            this.setState({ progress: null, showSpinner: false });
+                        } else if (this.state.progress) {
                             const progress = { ...this.state.progress, ...response.progress };
                             this.setState({ progress, showSpinner: false });
                         } else {
@@ -395,24 +322,24 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
                 case 'result':
                     console.log('Response content', response.result);
-                    if (response.result.refresh) {
-                        if (response.result.refresh === true) {
+                    if ('refresh' in response.result && response.result.refresh) {
+                        if (response.result.refresh === true || response.result.refresh === 'all') {
                             console.log('Refreshing all');
                             this.loadData();
                         } else if (response.result.refresh === 'instance') {
-                            console.log(`Refreshing instance infos: ${this.props.selectedInstance}`);
-                        } else if (response.result.refresh === 'device') {
+                            console.log(`Refreshing instance infos: ${this.state.selectedInstance}`);
+                        } else if (response.result.refresh === 'devices') {
                             if (!refresh) {
-                                console.log('No refresh function provided to refresh "device"');
+                                console.log('No refresh function provided to refresh "devices"');
                             } else {
-                                console.log(`Refreshing device infos: ${this.props.selectedInstance}`);
+                                console.log(`Refreshing device infos: ${this.state.selectedInstance}`);
                                 refresh();
                             }
                         } else {
                             console.log('Not refreshing anything');
                         }
                     }
-                    if (response.result.error) {
+                    if ('error' in response.result && response.result.error) {
                         console.error(`Error: ${response.result.error.message}`);
                         this.setState({ showToast: response.result.error.message, showSpinner: false });
                     } else {
@@ -431,22 +358,15 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     };
 
     sendControlToInstance = async (
-        command: string,
+        command: CommandName,
         messageToSend: { deviceId: string; controlId: string; state?: ControlState },
     ): Promise<null | ioBroker.State> => {
-        if (!this.props.selectedInstance) {
-            throw new Error('No instance selected');
-        }
-        const response: DmControlResponse = await this.props.socket.sendTo(
-            this.props.selectedInstance,
-            command,
-            messageToSend,
-        );
+        const response = await this.protocol.sendControl(command, messageToSend);
         const type = response.type;
         console.log(`Response: ${response.type}`);
         if (response.type === 'result') {
             console.log('Response content', response.result);
-            if (response.result.error) {
+            if ('error' in response.result) {
                 console.error(`Error: ${response.result.error.message}`);
                 this.setState({ showToast: response.result.error.message });
             } else if (response.result.state !== undefined) {
@@ -460,19 +380,28 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     };
 
     // eslint-disable-next-line react/no-unused-class-component-methods
-    loadDevices(): Promise<DeviceInfo[]> {
-        if (!this.props.selectedInstance) {
-            throw new Error('No instance selected');
-        }
-        return this.props.socket.sendTo(this.props.selectedInstance, 'dm:listDevices');
+    loadDevices(callback: LoadDevicesCallback): Promise<void> {
+        return this.protocol.loadDevices(callback);
     }
 
     // eslint-disable-next-line react/no-unused-class-component-methods
-    loadInstanceInfos(): Promise<InstanceDetails> {
-        if (!this.props.selectedInstance) {
+    async loadInstanceInfos(): Promise<InstanceDetails> {
+        if (!this.state.selectedInstance) {
             throw new Error('No instance selected');
         }
-        return this.props.socket.sendTo(this.props.selectedInstance, 'dm:instanceInfo');
+        const details = await this.props.socket.sendTo(this.state.selectedInstance, 'dm:instanceInfo');
+        console.log('Instance details of', this.state.selectedInstance, details);
+        if (details.apiVersion === 'v1') {
+            this.protocol = new DmProtocolV1(this.state.selectedInstance, this.props.socket);
+        } else if (details.apiVersion === 'v2') {
+            this.protocol = new DmProtocolV2(this.state.selectedInstance, this.props.socket);
+        } else if (details.apiVersion === 'v3') {
+            this.protocol = new DmProtocolV3(this.state.selectedInstance, this.props.socket);
+        } else {
+            this.protocol = new UnknownDmProtocol();
+        }
+
+        return this.protocol.convertInstanceDetails(details);
     }
 
     renderMessageDialog(): React.JSX.Element | null {
@@ -480,20 +409,21 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             return null;
         }
 
+        const message = this.state.message;
         return (
             <Dialog
                 open={!0}
-                onClose={() => this.state.message?.handleClose()}
+                onClose={() => message.handleClose()}
                 hideBackdrop
                 aria-describedby="message-dialog-description"
             >
                 <DialogContent>
-                    <DialogContentText id="message-dialog-description">{this.state.message?.message}</DialogContentText>
+                    <DialogContentText id="message-dialog-description">{message.message}</DialogContentText>
                 </DialogContent>
                 <DialogActions>
                     <Button
                         color="primary"
-                        onClick={() => this.state.message?.handleClose()}
+                        onClick={() => message.handleClose()}
                         variant="contained"
                         autoFocus
                     >
@@ -509,23 +439,24 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             return null;
         }
 
+        const confirm = this.state.confirm;
         return (
             <Dialog
                 open={!0}
-                onClose={() => this.state.confirm?.handleClose()}
+                onClose={() => confirm.handleClose()}
                 hideBackdrop
                 aria-describedby="confirm-dialog-description"
             >
                 <DialogContent>
                     <DialogContentText id="confirm-dialog-description">
-                        {getTranslation(this.state.confirm?.message)}
+                        {getTranslation(confirm.message)}
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
                     <Button
                         variant="contained"
                         color="primary"
-                        onClick={() => this.state.confirm?.handleClose(true)}
+                        onClick={() => confirm.handleClose(true)}
                         autoFocus
                     >
                         {getTranslation('yesButtonText')}
@@ -533,7 +464,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                     <Button
                         variant="contained"
                         color="grey"
-                        onClick={() => this.state.confirm?.handleClose(false)}
+                        onClick={() => confirm.handleClose(false)}
                         autoFocus
                     >
                         {getTranslation('noButtonText')}
@@ -614,13 +545,15 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         if (!this.state.form?.schema) {
             return null;
         }
-        if (!this.props.selectedInstance) {
+        if (!this.state.selectedInstance) {
             throw new Error('No instance selected');
         }
+
+        const form = this.state.form;
         let buttons: React.JSX.Element[];
-        if (this.state.form.buttons) {
+        if (form.buttons) {
             buttons = [];
-            this.state.form.buttons.forEach((button: ActionButton | 'apply' | 'cancel' | 'close'): void => {
+            form.buttons.forEach((button: ActionButton | 'apply' | 'cancel' | 'close'): void => {
                 if (typeof button === 'object' && button.type === 'copyToClipboard') {
                     buttons.push(
                         <Button
@@ -641,16 +574,16 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 ...(button.style || undefined),
                             }}
                             onClick={() => {
-                                if (button.copyToClipboardAttr && this.state.form!.data) {
-                                    const val = this.state.form!.data[button.copyToClipboardAttr];
+                                if (button.copyToClipboardAttr && form.data) {
+                                    const val = form.data[button.copyToClipboardAttr];
                                     if (typeof val === 'string') {
                                         Utils.copyToClipboard(val);
                                     } else {
                                         Utils.copyToClipboard(JSON.stringify(val, null, 2));
                                     }
                                     window.alert(I18n.t('copied'));
-                                } else if (this.state.form?.data) {
-                                    Utils.copyToClipboard(JSON.stringify(this.state.form.data, null, 2));
+                                } else if (form.data) {
+                                    Utils.copyToClipboard(JSON.stringify(form.data, null, 2));
                                     window.alert(I18n.t('copied'));
                                 } else {
                                     window.alert(I18n.t('nothingToCopy'));
@@ -673,36 +606,28 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
         return (
             <Dialog
-                open={!0}
-                onClose={() => this.state.form!.handleClose?.()}
+                onClose={() => form.handleClose?.()}
                 hideBackdrop
                 fullWidth
+                open
                 sx={{
                     '& .MuiDialog-paper': {
-                        minWidth: this.state.form.minWidth || undefined,
+                        minWidth: form.minWidth || undefined,
                     },
                 }}
-                maxWidth={this.state.form.maxWidth || 'md'}
+                maxWidth={form.maxWidth || 'md'}
             >
-                {this.state.form?.title ? (
-                    <DialogTitle>
-                        {getTranslation(
-                            this.state.form?.label || this.state.form?.title,
-                            this.state.form.noTranslation,
-                        )}
-                    </DialogTitle>
+                {form.title ? (
+                    <DialogTitle>{getTranslation(form.label || form.title, form.noTranslation)}</DialogTitle>
                 ) : null}
                 <DialogContent>
                     <JsonConfig
-                        instanceId={this.props.selectedInstance}
-                        schema={this.state.form.schema as ConfigItemPanel | ConfigItemTabs}
-                        data={this.state.form.data || {}}
+                        instanceId={this.state.selectedInstance}
+                        schema={form.schema as ConfigItemPanel | ConfigItemTabs}
+                        data={form.data || {}}
                         socket={this.props.socket as AdminConnection}
                         onChange={(data: Record<string, any>) => {
                             console.log('handleFormChange', { data });
-                            const form: CommunicationFormInState = {
-                                ...(this.state.form as CommunicationFormInState),
-                            };
                             if (form) {
                                 form.data = data;
                                 form.changed = JSON.stringify(data) !== form.originalData;
@@ -722,35 +647,25 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     }
 
     renderProgressDialog(): React.JSX.Element | null {
-        if (!this.state.progress?.open) {
+        if (!this.state.progress) {
             return null;
         }
         return (
             <Dialog
-                open={!0}
                 onClose={() => {}}
                 hideBackdrop
+                open
             >
-                {(
-                    this.state.progress as {
-                        open: boolean;
-                        indeterminate: boolean;
-                    }
-                ).indeterminate ? (
-                    <LinearProgress variant="indeterminate" />
-                ) : (
+                {this.state.progress.title && <DialogTitle>{getTranslation(this.state.progress.title)}</DialogTitle>}
+                <DialogContent>
+                    {this.state.progress.label && (
+                        <DialogContentText>{getTranslation(this.state.progress.label)}</DialogContentText>
+                    )}
                     <LinearProgress
-                        variant="determinate"
-                        value={
-                            (
-                                this.state.progress as {
-                                    open: boolean;
-                                    progress: number;
-                                }
-                            ).progress || 0
-                        }
+                        variant={this.state.progress.indeterminate ? 'indeterminate' : 'determinate'}
+                        value={this.state.progress.value}
                     />
-                )}
+                </DialogContent>
             </Dialog>
         );
     }
@@ -767,7 +682,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         return (
             <Backdrop
                 style={{ zIndex: 1000 }}
-                open={!0}
+                open
             >
                 <CircularProgress />
             </Backdrop>
@@ -780,8 +695,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         }
         return (
             <Dialog
-                open={!0}
                 onClose={() => this.setState({ showConfirmation: null })}
+                open
             >
                 <DialogTitle>
                     {getTranslation(
@@ -896,8 +811,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
         return (
             <Dialog
-                open={!0}
                 onClose={() => this.setState({ showInput: null })}
+                open
             >
                 <DialogTitle>{getTranslation('pleaseEnterValueText')}</DialogTitle>
                 <DialogContent>

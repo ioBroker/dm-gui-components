@@ -1,32 +1,31 @@
-import React, { type CSSProperties, type MouseEvent } from 'react';
-import { IconButton, Tooltip } from '@mui/material';
-
+import type { Connection, IobTheme, ThemeType } from '@iobroker/adapter-react-v5';
 import {
-    Link as LinkIcon,
-    LinkOff as LinkOffIcon,
-    NetworkCheck as NetworkCheckIcon,
     Battery20 as Battery20Icon,
     Battery30 as Battery30Icon,
     Battery50 as Battery50Icon,
     Battery60 as Battery60Icon,
     Battery80 as Battery80Icon,
     Battery90 as Battery90Icon,
-    BatteryFull as BatteryFullIcon,
     BatteryAlert as BatteryAlertIcon,
-    Warning as WarningIcon,
     BatteryCharging50 as BatteryCharging50Icon,
-    Cable as IconConnectionLan,
-    Wifi as IconConnectionWifi,
-    WifiOff as IconConnectionNoWifi,
+    BatteryFull as BatteryFullIcon,
     Bluetooth as IconConnectionBluetooth,
+    Cable as IconConnectionLan,
     BluetoothDisabled as IconConnectionNoBluetooth,
+    WifiOff as IconConnectionNoWifi,
+    Wifi as IconConnectionWifi,
+    Link as LinkIcon,
+    LinkOff as LinkOffIcon,
+    NetworkCheck as NetworkCheckIcon,
+    Warning as WarningIcon,
 } from '@mui/icons-material';
-
-import type { DeviceStatus, DeviceAction, ActionBase, ConfigConnectionType } from '@iobroker/dm-utils';
-import type { IobTheme, ThemeType } from '@iobroker/adapter-react-v5';
-
-import { getTranslation } from './Utils';
+import { IconButton, Tooltip } from '@mui/material';
+import React, { useMemo, type CSSProperties, type MouseEvent } from 'react';
+import { useStateOrObject } from './hooks';
+import type { ActionBase, ConfigConnectionType, DeviceAction, DeviceId, DeviceStatus } from './protocol/api';
 import Switch from './Switch';
+import { getTranslation } from './Utils';
+import type { StateOrObjectHandler } from './StateOrObjectHandler';
 
 export const ACTIONS = {
     STATUS: 'status',
@@ -121,15 +120,17 @@ function ZigBeeIcon(props: IconProps): React.JSX.Element {
 }
 
 interface DeviceStatusProps {
+    socket: Connection;
     status: DeviceStatus | null;
-    deviceId: string;
+    deviceId: DeviceId;
     connectionType?: ConfigConnectionType;
     statusAction?: DeviceAction;
     enabled?: boolean;
     disableEnableAction?: DeviceAction;
-    deviceHandler: (deviceId: string, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
     refresh: () => void;
     theme: IobTheme;
+    stateOrObjectHandler: StateOrObjectHandler;
 }
 
 function rssiColor(signal: number, themeType: ThemeType): string {
@@ -200,13 +201,10 @@ function getBatteryIcon(battery: number): React.ReactNode {
  * @param props.status - Status object, e.g. { connection: 'connected', battery: 100, rssi: -50 }
  */
 export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Element | null {
-    if (!props.status) {
-        return null;
-    }
-
     let status: DeviceStatus;
-
-    if (typeof props.status === 'string') {
+    if (!props.status) {
+        status = {};
+    } else if (typeof props.status === 'string') {
         status = {
             connection: props.status,
         };
@@ -214,10 +212,17 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
         status = props.status;
     }
 
-    let batteryIconTooltip: React.ReactNode = null;
-    if (typeof status.battery === 'number') {
-        batteryIconTooltip = getBatteryIcon(status.battery);
-    }
+    const connection = useStateOrObject(status.connection, props.stateOrObjectHandler);
+    const rssi = useStateOrObject(status.rssi, props.stateOrObjectHandler);
+    const battery = useStateOrObject(status.battery, props.stateOrObjectHandler);
+    const warning = useStateOrObject(status.warning, props.stateOrObjectHandler);
+
+    const batteryIconTooltip = useMemo<React.ReactNode>(() => {
+        if (typeof battery === 'number') {
+            return getBatteryIcon(battery);
+        }
+        return null;
+    }, [battery]);
 
     const disability =
         typeof props.enabled === 'boolean' ? (
@@ -249,72 +254,72 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
     let connectionSymbol: React.JSX.Element | null;
     if (props.connectionType === 'wifi') {
         connectionSymbol =
-            status.connection === 'connected' ? (
+            connection === 'connected' ? (
                 <IconConnectionWifi style={iconStyleOK} />
-            ) : status.connection === 'disconnected' ? (
+            ) : connection === 'disconnected' ? (
                 <IconConnectionNoWifi style={iconStyleNotOK} />
             ) : (
                 <IconConnectionWifi style={iconStyleUnknown} />
             );
     } else if (props.connectionType === 'bluetooth') {
         connectionSymbol =
-            status.connection === 'connected' ? (
+            connection === 'connected' ? (
                 <IconConnectionBluetooth style={iconStyleOK} />
-            ) : status.connection === 'disconnected' ? (
+            ) : connection === 'disconnected' ? (
                 <IconConnectionNoBluetooth style={iconStyleNotOK} />
             ) : (
                 <IconConnectionBluetooth style={iconStyleUnknown} />
             );
     } else if (props.connectionType === 'lan') {
         connectionSymbol =
-            status.connection === 'connected' ? (
+            connection === 'connected' ? (
                 <IconConnectionLan style={iconStyleOK} />
-            ) : status.connection === 'disconnected' ? (
+            ) : connection === 'disconnected' ? (
                 <IconConnectionLan style={iconStyleNotOK} />
             ) : (
                 <IconConnectionLan style={iconStyleUnknown} />
             );
     } else if (props.connectionType === 'thread') {
         connectionSymbol =
-            status.connection === 'connected' ? (
+            connection === 'connected' ? (
                 <ThreadIcon style={iconStyleOK} />
-            ) : status.connection === 'disconnected' ? (
+            ) : connection === 'disconnected' ? (
                 <ThreadIcon style={iconStyleNotOK} />
             ) : (
                 <ThreadIcon style={iconStyleUnknown} />
             );
     } else if (props.connectionType === 'z-wave') {
         connectionSymbol =
-            status.connection === 'connected' ? (
+            connection === 'connected' ? (
                 <ZWaveIcon style={iconStyleOK} />
-            ) : status.connection === 'disconnected' ? (
+            ) : connection === 'disconnected' ? (
                 <ZWaveIcon style={iconStyleNotOK} />
             ) : (
                 <ZWaveIcon style={iconStyleUnknown} />
             );
     } else if (props.connectionType === 'zigbee') {
         connectionSymbol =
-            status.connection === 'connected' ? (
+            connection === 'connected' ? (
                 <ZigBeeIcon style={iconStyleOK} />
-            ) : status.connection === 'disconnected' ? (
+            ) : connection === 'disconnected' ? (
                 <ZigBeeIcon style={iconStyleNotOK} />
             ) : (
                 <ZigBeeIcon style={iconStyleUnknown} />
             );
     } else {
         connectionSymbol =
-            status.connection === 'connected' ? (
+            connection === 'connected' ? (
                 <LinkIcon style={iconStyleOK} />
-            ) : status.connection === 'disconnected' ? (
+            ) : connection === 'disconnected' ? (
                 <LinkOffIcon style={iconStyleNotOK} />
             ) : null;
     }
 
     const connectionIcon =
-        status.connection === 'connected' || status.connection === 'disconnected' ? (
+        connection === 'connected' || connection === 'disconnected' ? (
             <Tooltip
                 title={
-                    (status.connection === 'connected'
+                    (connection === 'connected'
                         ? getTranslation('connectedIconTooltip')
                         : getTranslation('disconnectedIconTooltip')) +
                     (props.statusAction
@@ -357,43 +362,43 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
         >
             {connectionIcon}
 
-            {status.rssi && (
+            {rssi && (
                 <Tooltip
                     title="RSSI"
                     slotProps={{ popper: { sx: styles.tooltip } }}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <NetworkCheckIcon style={{ color: rssiColor(status.rssi, props.theme.palette.mode) }} />
-                        <p style={{ fontSize: 'small', margin: 0 }}>{status.rssi}</p>
+                        <NetworkCheckIcon style={{ color: rssiColor(rssi, props.theme.palette.mode) }} />
+                        <p style={{ fontSize: 'small', margin: 0 }}>{rssi}</p>
                     </div>
                 </Tooltip>
             )}
 
-            {typeof status.battery === 'number' && (
+            {typeof battery === 'number' && (
                 <Tooltip
                     title={getTranslation('batteryTooltip')}
                     slotProps={{ popper: { sx: styles.tooltip } }}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         {batteryIconTooltip}
-                        <p style={{ fontSize: 'small', margin: 0 }}>{status.battery}%</p>
+                        <p style={{ fontSize: 'small', margin: 0 }}>{battery}%</p>
                     </div>
                 </Tooltip>
             )}
 
-            {typeof status.battery === 'string' && (
+            {typeof battery === 'string' && (
                 <Tooltip
                     title={getTranslation('batteryTooltip')}
                     slotProps={{ popper: { sx: styles.tooltip } }}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        {status.battery === 'charging' ? <BatteryCharging50Icon /> : <BatteryFullIcon />}
-                        {status.battery !== 'charging' ? (
-                            status.battery.includes('V') || status.battery.includes('mV') ? (
-                                <p style={{ fontSize: 'small', margin: 0 }}>{status.battery}</p>
+                        {battery === 'charging' ? <BatteryCharging50Icon /> : <BatteryFullIcon />}
+                        {battery !== 'charging' ? (
+                            battery.includes('V') || battery.includes('mV') ? (
+                                <p style={{ fontSize: 'small', margin: 0 }}>{battery}</p>
                             ) : (
                                 <p style={{ fontSize: 'small', margin: 0 }}>
-                                    <span style={{ marginRight: 4 }}>{status.battery}</span>
+                                    <span style={{ marginRight: 4 }}>{battery}</span>
                                     mV
                                 </p>
                             )
@@ -402,13 +407,13 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
                 </Tooltip>
             )}
 
-            {typeof status.battery === 'boolean' && (
+            {typeof battery === 'boolean' && (
                 <Tooltip
                     title={getTranslation('batteryTooltip')}
                     slotProps={{ popper: { sx: styles.tooltip } }}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        {status.battery ? (
+                        {battery ? (
                             <BatteryFullIcon style={iconStyleOK} />
                         ) : (
                             <BatteryAlertIcon style={iconStyleNotOK} />
@@ -417,10 +422,10 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
                 </Tooltip>
             )}
 
-            {status.warning ? (
-                typeof status.warning === 'string' || typeof status.warning === 'object' ? (
+            {warning ? (
+                typeof warning === 'string' || typeof warning === 'object' ? (
                     <Tooltip
-                        title={getTranslation(status.warning)}
+                        title={getTranslation(warning)}
                         slotProps={{ popper: { sx: styles.tooltip } }}
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
