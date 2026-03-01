@@ -1,6 +1,7 @@
 import type { Connection, IobTheme } from '@iobroker/adapter-react-v5';
 import React, { type CSSProperties, type MouseEvent } from 'react';
 import type { ActionBase, ConfigConnectionType, DeviceAction, DeviceId, DeviceStatus } from './protocol/api';
+import type { StateOrObjectHandler } from './StateOrObjectHandler';
 export declare const ACTIONS: {
     STATUS: string;
     DISABLE: string;
@@ -31,6 +32,7 @@ interface DeviceStatusProps {
     deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
     refresh: () => void;
     theme: IobTheme;
+    stateOrObjectHandler: StateOrObjectHandler;
 }
 /**
  * Device Status component

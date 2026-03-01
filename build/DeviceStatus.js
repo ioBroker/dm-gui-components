@@ -103,10 +103,10 @@ export default function DeviceStatus(props) {
     else {
         status = props.status;
     }
-    const connection = useStateOrObject(status.connection, props.socket);
-    const rssi = useStateOrObject(status.rssi, props.socket);
-    const battery = useStateOrObject(status.battery, props.socket);
-    const warning = useStateOrObject(status.warning, props.socket);
+    const connection = useStateOrObject(status.connection, props.stateOrObjectHandler);
+    const rssi = useStateOrObject(status.rssi, props.stateOrObjectHandler);
+    const battery = useStateOrObject(status.battery, props.stateOrObjectHandler);
+    const warning = useStateOrObject(status.warning, props.stateOrObjectHandler);
     const batteryIconTooltip = useMemo(() => {
         if (typeof battery === 'number') {
             return getBatteryIcon(battery);

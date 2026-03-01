@@ -40,6 +40,7 @@ interface DeviceListState extends CommunicationState {
 export default class DeviceList extends Communication<DeviceListProps, DeviceListState> {
     static i18nInitialized: boolean;
     private lastInstance;
+    private lastAliveSubscribe;
     private lastTriggerLoad;
     private filterTimeout;
     private readonly language;

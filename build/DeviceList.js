@@ -23,9 +23,10 @@ import zhCn from './i18n/zh-cn.json';
 export default class DeviceList extends Communication {
     static i18nInitialized = false;
     lastInstance;
+    lastAliveSubscribe = '';
     lastTriggerLoad = 0;
-    filterTimeout;
-    language;
+    filterTimeout = null;
+    language = I18n.getLanguage();
     constructor(props) {
         super(props);
         if (!DeviceList.i18nInitialized) {
@@ -57,8 +58,6 @@ export default class DeviceList extends Communication {
         };
         this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
-        this.filterTimeout = null;
-        this.language = I18n.getLanguage();
     }
     async loadAdapters() {
         await this.props.socket.waitForFirstConnection();
@@ -106,10 +105,8 @@ export default class DeviceList extends Communication {
             catch (error) {
                 console.error(error);
             }
+            this.lastAliveSubscribe = this.state.selectedInstance;
             this.setState({ alive }, () => this.props.socket.subscribeState(`system.adapter.${this.state.selectedInstance}.alive`, this.aliveHandler));
-            if (!alive) {
-                return;
-            }
         }
         else if (this.state.alive !== null) {
             alive = this.state.alive;
@@ -150,14 +147,40 @@ export default class DeviceList extends Communication {
     loadData() {
         this.setState({ loading: true }, async () => {
             console.log(`Loading devices for ${this.state.selectedInstance}...`);
+            let alive = this.state.alive;
+            if (this.state.selectedInstance !== this.lastAliveSubscribe) {
+                if (this.lastAliveSubscribe) {
+                    // unsubscribe from the old instance
+                    this.props.socket.unsubscribeState(`system.adapter.${this.lastAliveSubscribe}.alive`, this.aliveHandler);
+                }
+                this.lastAliveSubscribe = this.state.selectedInstance;
+                if (this.state.selectedInstance) {
+                    try {
+                        // check if the instance is alive
+                        const stateAlive = await this.props.socket.getState(`system.adapter.${this.state.selectedInstance}.alive`);
+                        if (stateAlive?.val) {
+                            alive = true;
+                        }
+                    }
+                    catch (error) {
+                        console.error(error);
+                    }
+                    await this.props.socket.subscribeState(`system.adapter.${this.state.selectedInstance}.alive`, this.aliveHandler);
+                }
+                else {
+                    alive = false;
+                }
+            }
             let devices = [];
             try {
-                this.setState({ devices, loading: true });
-                await this.loadDevices((batch, total) => {
-                    devices = devices.concat(batch);
-                    this.setState({ devices, loading: true, totalDevices: total });
-                    console.log(`Loaded ${devices.length} of ${total} devices...`);
-                });
+                this.setState({ devices, loading: !!alive, alive });
+                if (alive) {
+                    await this.loadDevices((batch, total) => {
+                        devices = devices.concat(batch);
+                        this.setState({ devices, loading: true, totalDevices: total });
+                        console.log(`Loaded ${devices.length} of ${total} devices...`);
+                    });
+                }
             }
             catch (error) {
                 console.error(error);
@@ -207,9 +230,12 @@ export default class DeviceList extends Communication {
             setTimeout(() => this.loadData(), 50);
         }
         // if instance changed
-        if (this.props.embedded && this.lastInstance !== this.state.selectedInstance && this.state.selectedInstance) {
+        if (this.lastInstance !== this.state.selectedInstance) {
             this.lastInstance = this.state.selectedInstance;
             setTimeout(() => this.loadData(), 50);
+        }
+        if (this.props.selectedInstance && this.props.selectedInstance !== this.state.selectedInstance) {
+            setTimeout(() => this.setState({ selectedInstance: this.props.selectedInstance }), 50);
         }
         const deviceGroups = [];
         let list;
@@ -289,6 +315,12 @@ export default class DeviceList extends Communication {
                         React.createElement("span", null, getTranslation('allDevicesFilteredOut'))));
                 }
             }
+            else {
+                list = [
+                    React.createElement("div", { style: emptyStyle, key: "selectInstance" },
+                        React.createElement("span", null, getTranslation('selectInstanceText'))),
+                ];
+            }
         }
         if (this.props.embedded) {
             return (React.createElement(React.Fragment, null,
@@ -298,12 +330,12 @@ export default class DeviceList extends Communication {
         return (React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden' } },
             React.createElement(Toolbar, { variant: "dense", style: { backgroundColor: '#777', display: 'flex' } },
                 this.props.title,
-                this.props.selectedInstance === null && this.state.dmInstances ? (React.createElement(FormControl, null,
-                    React.createElement(InputLabel, { id: "instance-select-label" }, getTranslation('instanceLabelText')),
-                    React.createElement(Select, { labelId: "instance-select-label", id: "instance-select", value: this.state.selectedInstance, onChange: event => {
+                this.props.selectedInstance === undefined && this.state.dmInstances ? (React.createElement(FormControl, null,
+                    React.createElement(InputLabel, { id: "instance-select-label", style: { transform: 'translate(0, -9px) scale(0.75)' } }, getTranslation('instanceLabelText')),
+                    React.createElement(Select, { style: { marginTop: 0, minWidth: 120 }, labelId: "instance-select-label", id: "instance-select", value: this.state.selectedInstance, onChange: event => {
                             window.localStorage.setItem('dmSelectedInstance', event.target.value);
                             this.setState({ selectedInstance: event.target.value });
-                        }, displayEmpty: true, variant: "standard", sx: { minWidth: 120 } }, Object.keys(this.state.dmInstances).map(([id]) => (React.createElement(MenuItem, { key: id, value: id }, id)))))) : null,
+                        }, displayEmpty: true, variant: "standard" }, Object.keys(this.state.dmInstances).map(id => (React.createElement(MenuItem, { key: id, value: id }, id)))))) : null,
                 this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
                         React.createElement(IconButton, { onClick: () => this.loadData(), disabled: !this.state.alive || this.state.apiVersionError, size: "small" },

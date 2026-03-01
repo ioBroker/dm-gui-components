@@ -23,6 +23,9 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@UncleSamSwiss) Implemented v3 protocol: added support to use states and objects as values
+
 ### 8.0.9 (2026-01-28)
 - (@GermanBluefox) Analyze API version and do not show anything if version is higher than supported
 

@@ -1,6 +1,7 @@
 export class StateOrObjectHandler {
     socket;
-    unsubscribes = [];
+    objectSubs = new Map();
+    stateSubs = new Map();
     constructor(socket) {
         this.socket = socket;
     }
@@ -35,11 +36,38 @@ export class StateOrObjectHandler {
                     }
                     callback(current);
                 };
+                const existing = this.objectSubs.get(item.objectId);
+                if (existing) {
+                    existing.notifiers.push(notifyValue);
+                    if (existing.loaded) {
+                        // Already have the value — notify immediately without re-fetching
+                        notifyValue(existing.cached);
+                    }
+                    // If still loading, notifyValue will be called once the load completes
+                    return;
+                }
+                const sub = {
+                    notifiers: [notifyValue],
+                    handler: null,
+                    loaded: false,
+                    cached: undefined,
+                };
+                this.objectSubs.set(item.objectId, sub);
+                const handler = (_id, obj) => {
+                    sub.cached = obj;
+                    for (const n of sub.notifiers) {
+                        n(obj);
+                    }
+                };
+                sub.handler = handler;
                 const obj = await this.socket.getObject(item.objectId);
-                notifyValue(obj);
-                const handler = (_id, obj) => notifyValue(obj);
+                sub.cached = obj;
+                sub.loaded = true;
+                // Notify all notifiers (including any added while the fetch was in progress)
+                for (const n of sub.notifiers) {
+                    n(obj);
+                }
                 await this.socket.subscribeObject(item.objectId, handler);
-                this.unsubscribes.push(() => this.socket.unsubscribeObject(item.objectId, handler));
                 return;
             }
             if ('stateId' in item) {
@@ -59,11 +87,38 @@ export class StateOrObjectHandler {
                         callback(val);
                     }
                 };
+                const existing = this.stateSubs.get(item.stateId);
+                if (existing) {
+                    existing.notifiers.push(notifyValue);
+                    if (existing.loaded) {
+                        // Already have the value — notify immediately without re-fetching
+                        notifyValue(existing.cached);
+                    }
+                    // If still loading, notifyValue will be called once the load completes
+                    return;
+                }
+                const sub = {
+                    notifiers: [notifyValue],
+                    handler: null,
+                    loaded: false,
+                    cached: undefined,
+                };
+                this.stateSubs.set(item.stateId, sub);
+                const handler = (_id, state) => {
+                    sub.cached = state;
+                    for (const n of sub.notifiers) {
+                        n(state);
+                    }
+                };
+                sub.handler = handler;
                 const state = await this.socket.getState(item.stateId);
-                notifyValue(state);
-                const handler = (_id, state) => notifyValue(state);
+                sub.cached = state;
+                sub.loaded = true;
+                // Notify all notifiers (including any added while the fetch was in progress)
+                for (const n of sub.notifiers) {
+                    n(state);
+                }
                 await this.socket.subscribeState(item.stateId, handler);
-                this.unsubscribes.push(() => this.socket.unsubscribeState(item.stateId, handler));
                 return;
             }
         }
@@ -73,10 +128,14 @@ export class StateOrObjectHandler {
         callback(undefined);
     }
     async unsubscribe() {
-        for (const unsubscribe of this.unsubscribes) {
-            await unsubscribe();
+        for (const [id, sub] of this.objectSubs) {
+            await this.socket.unsubscribeObject(id, sub.handler);
         }
-        this.unsubscribes.length = 0;
+        this.objectSubs.clear();
+        for (const [id, sub] of this.stateSubs) {
+            this.socket.unsubscribeState(id, sub.handler);
+        }
+        this.stateSubs.clear();
     }
 }
 //# sourceMappingURL=StateOrObjectHandler.js.map

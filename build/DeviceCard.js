@@ -15,9 +15,9 @@ const smallCardStyle = {
 };
 /** Reserved action names (this is copied from https://github.com/ioBroker/dm-utils/blob/main/src/types/base.ts as we can only have type references to dm-utils) */
 const ACTIONS = {
-    /** This action will be called when user clicks on connection icon */
+    /** This action will be called when the user clicks on the connection icon */
     STATUS: 'status',
-    /** This action will be called when the user clicks on enabled/disabled icon. The enabled/disabled icon will be shown only if the node status has "enabled" flag set to false or true */
+    /** This action will be called when the user clicks on the enabled / disabled icon. The enabled/disabled icon will be shown only if the node status has the "enabled" flag set to false or true */
     ENABLE_DISABLE: 'enable/disable',
 };
 const styles = {
@@ -234,7 +234,7 @@ export default class DeviceCard extends Component {
             return (React.createElement(DeviceControlComponent, { disabled: !this.props.alive, control: firstControl, colors: colors, socket: this.props.socket, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }));
         }
         if (this.props.device.controls?.length) {
-            // place button and show controls dialog
+            // place a button and show a controls dialog
             return (React.createElement(Fab, { size: "small", disabled: !this.props.alive, onClick: () => this.setState({ showControlDialog: true }) },
                 React.createElement(ControlIcon, null)));
         }
@@ -282,7 +282,7 @@ export default class DeviceCard extends Component {
                         padding: '0 8px',
                         borderRadius: 5,
                         width: 'calc(100% - 46px)',
-                    } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, status: s, connectionType: this.state.connectionType, enabled: this.state.enabled, deviceId: this.props.device.id, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, refresh: this.refresh, theme: this.props.theme }))))) : null,
+                    } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, status: s, connectionType: this.state.connectionType, enabled: this.state.enabled, deviceId: this.props.device.id, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, refresh: this.refresh, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler }))))) : null,
                 React.createElement("div", null,
                     React.createElement(Typography, { variant: "body1" },
                         this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
@@ -368,7 +368,7 @@ export default class DeviceCard extends Component {
                         }
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, refresh: this.refresh, theme: this.props.theme })))),
+            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, refresh: this.refresh, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body1", style: styles.deviceInfoStyle },
                     this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard },
