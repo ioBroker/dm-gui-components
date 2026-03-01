@@ -45,6 +45,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     private filterTimeout;
     private readonly language;
     constructor(props: DeviceListProps);
+    setStateAsync(state: Partial<DeviceListState>): Promise<void>;
     private loadAdapters;
     componentDidMount(): Promise<void>;
     componentWillUnmount(): void;

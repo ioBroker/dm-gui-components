@@ -59,6 +59,9 @@ export default class DeviceList extends Communication {
         this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
     }
+    setStateAsync(state) {
+        return new Promise(resolve => this.setState(state, resolve));
+    }
     async loadAdapters() {
         await this.props.socket.waitForFirstConnection();
         console.log('Loading adapters...');
@@ -85,7 +88,12 @@ export default class DeviceList extends Communication {
                 console.error(error);
             }
         }
-        this.setState({ dmInstances });
+        if (Object.keys(dmInstances).length === 1) {
+            await this.setStateAsync({ dmInstances, selectedInstance: Object.keys(dmInstances)[0] });
+        }
+        else {
+            await this.setStateAsync({ dmInstances });
+        }
     }
     async componentDidMount() {
         let alive = false;
@@ -111,17 +119,14 @@ export default class DeviceList extends Communication {
         else if (this.state.alive !== null) {
             alive = this.state.alive;
         }
-        if (!this.props.embedded && alive) {
+        if (alive) {
             try {
                 const instanceInfo = await this.loadInstanceInfos();
-                this.setState({ instanceInfo, apiVersionError: !['v1', 'v2', 'v3'].includes(instanceInfo.apiVersion) });
+                this.setState({ instanceInfo, apiVersionError: !['v1', 'v2', 'v3'].includes(instanceInfo.apiVersion) }, () => this.loadData());
             }
             catch (error) {
                 console.error(error);
             }
-        }
-        if (alive) {
-            this.loadData();
         }
     }
     componentWillUnmount() {
@@ -232,7 +237,20 @@ export default class DeviceList extends Communication {
         // if instance changed
         if (this.lastInstance !== this.state.selectedInstance) {
             this.lastInstance = this.state.selectedInstance;
-            setTimeout(() => this.loadData(), 50);
+            setTimeout(async () => {
+                if (this.state.selectedInstance) {
+                    try {
+                        const instanceInfo = await this.loadInstanceInfos();
+                        this.setState({ instanceInfo, apiVersionError: !['v1', 'v2', 'v3'].includes(instanceInfo.apiVersion) }, () => this.loadData());
+                    }
+                    catch (error) {
+                        console.error(error);
+                    }
+                }
+                else {
+                    this.loadData();
+                }
+            }, 50);
         }
         if (this.props.selectedInstance && this.props.selectedInstance !== this.state.selectedInstance) {
             setTimeout(() => this.setState({ selectedInstance: this.props.selectedInstance }), 50);
@@ -325,7 +343,7 @@ export default class DeviceList extends Communication {
         if (this.props.embedded) {
             return (React.createElement(React.Fragment, null,
                 this.state.loading ? React.createElement(LinearProgress, { style: { width: '100%' } }) : null,
-                list));
+                this.state.apiVersionError ? React.createElement("div", null, I18n.t('apiVersionError')) : list));
         }
         return (React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden' } },
             React.createElement(Toolbar, { variant: "dense", style: { backgroundColor: '#777', display: 'flex' } },
