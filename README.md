@@ -23,7 +23,7 @@ render() {
 -->
 
 ## Changelog
-### 9.0.0 (2026-03-01)
+### **WORK IN PROGRESS**
 - (@UncleSamSwiss) Implemented v3 protocol: added support to use states and objects as values
 
 ### 8.0.9 (2026-01-28)
