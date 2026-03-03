@@ -195,6 +195,14 @@ export default class DeviceList extends Communication {
             console.log(`Loaded ${devices.length} devices for ${this.state.selectedInstance}`);
         });
     }
+    updateDevice(update) {
+        const updateId = JSON.stringify(update.id);
+        this.setState({ devices: this.state.devices.map(d => (JSON.stringify(d.id) === updateId ? update : d)) });
+    }
+    deleteDevice(deviceId) {
+        const deleteId = JSON.stringify(deviceId);
+        this.setState({ devices: this.state.devices.filter(d => JSON.stringify(d.id) !== deleteId) });
+    }
     getText(text) {
         if (typeof text === 'object') {
             return text[this.language] || text.en;

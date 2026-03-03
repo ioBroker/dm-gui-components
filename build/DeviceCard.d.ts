@@ -41,9 +41,12 @@ interface DeviceCardState {
  */
 export default class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
     private readonly stateOrObjectHandler;
+    private readonly subscriptions;
     constructor(props: DeviceCardProps);
     fetchIcon(): Promise<void>;
     componentDidMount(): Promise<void>;
+    private addStateOrObjectListener;
+    componentDidUpdate(prevProps: DeviceCardProps): Promise<void>;
     componentWillUnmount(): Promise<void>;
     /**
      * Load the device details

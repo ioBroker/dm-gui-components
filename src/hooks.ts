@@ -1,6 +1,6 @@
 import type { ValueOrStateOrObject } from '@iobroker/dm-utils';
 import { useEffect, useState } from 'react';
-import type { StateOrObjectHandler } from './StateOrObjectHandler';
+import type { StateOrObjectHandler, StateOrObjectSubscription } from './StateOrObjectHandler';
 
 export function useStateOrObject<T extends ioBroker.StringOrTranslated | number | boolean>(
     item: ValueOrStateOrObject<T> | undefined,
@@ -9,8 +9,9 @@ export function useStateOrObject<T extends ioBroker.StringOrTranslated | number 
     const [value, setValue] = useState<T>();
 
     useEffect(() => {
-        void stateOrObjectHandler.addListener(item, value => setValue(value));
-        return () => void stateOrObjectHandler.unsubscribe();
+        let subscription: StateOrObjectSubscription | undefined = undefined;
+        void stateOrObjectHandler.addListener(item, value => setValue(value)).then(sub => (subscription = sub));
+        return () => void subscription?.unsubscribe();
     }, [stateOrObjectHandler, item]);
 
     return value;

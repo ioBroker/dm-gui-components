@@ -44,8 +44,10 @@ import type {
     CommunicationForm,
     ControlBase,
     ControlState,
+    DeviceId,
     InstanceDetails,
     ProgressUpdate,
+    DeviceInfo,
 } from './protocol/api';
 import type { CommandName, DmProtocolBase, LoadDevicesCallback, Message } from './protocol/DmProtocolBase';
 import { DmProtocolV1 } from './protocol/DmProtocolV1';
@@ -202,6 +204,16 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         console.error('loadData not implemented');
     }
 
+    // eslint-disable-next-line class-methods-use-this
+    updateDevice(_update: DeviceInfo): void {
+        console.error('updateDevice not implemented');
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    deleteDevice(_deviceId: DeviceId): void {
+        console.error('deleteDevice not implemented');
+    }
+
     sendActionToInstance = (command: CommandName, messageToSend: Message, refresh?: () => void): void => {
         const send = async (): Promise<void> => {
             this.setState({ showSpinner: true });
@@ -338,7 +350,14 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                         } else {
                             console.log('Not refreshing anything');
                         }
+                    } else if ('update' in response.result && response.result.update) {
+                        console.log('Update received', response.result.update);
+                        this.updateDevice(response.result.update);
+                    } else if ('delete' in response.result && response.result.delete) {
+                        console.log('Delete received', response.result.delete);
+                        this.deleteDevice(response.result.delete);
                     }
+
                     if ('error' in response.result && response.result.error) {
                         console.error(`Error: ${response.result.error.message}`);
                         this.setState({ showToast: response.result.error.message, showSpinner: false });

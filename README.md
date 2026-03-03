@@ -23,47 +23,59 @@ render() {
 -->
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+
+- (@UncleSamSwiss) Fix handling of "result" response from action handler (update, delete device)
+
 ### 9.0.2 (2026-03-03)
+
 - (@UncleSamSwiss) Implemented v3 protocol: added support to use states and objects as values
 
 ### 8.0.9 (2026-01-28)
+
 - (@GermanBluefox) Analyze API version and do not show anything if version is higher than supported
 
 ### 8.0.8 (2026-01-27)
+
 - (@GermanBluefox) Added support of instance selection if not provided
 
 ### 8.0.7 (2026-01-02)
+
 - (@GermanBluefox) Added `ignoreApplyDisabled` flag
 
 ### 8.0.6 (2025-12-30)
+
 - (@GermanBluefox) Added update icon for device actions
 - (@GermanBluefox) Added indeterminate progress
 
 ### 8.0.4 (2025-10-25)
+
 - (@GermanBluefox) Updated packages
 
 ### 8.0.2 (2025-10-23)
+
 - (@GermanBluefox) Renamed gui-components to adapter-react-v5
 
 ### 8.0.1 (2025-10-23)
 
--   (@GermanBluefox) Make package independent
+- (@GermanBluefox) Make package independent
 
 ### 0.0.10 (2023-12-14)
 
--   (bluefox) Changed layout of the device list
+- (bluefox) Changed layout of the device list
 
 ### 0.0.7 (2023-12-14)
 
--   (bluefox) Added alive flag
+- (bluefox) Added alive flag
 
 ### 0.0.4 (2023-12-12)
 
--   (bluefox) return the style of big cards
+- (bluefox) return the style of big cards
 
 ### 0.0.3 (2023-12-12)
 
--   (bluefox) initial commit
+- (bluefox) initial commit
 
 ## License
 

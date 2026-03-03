@@ -79,6 +79,14 @@ export default class Communication extends Component {
     loadData() {
         console.error('loadData not implemented');
     }
+    // eslint-disable-next-line class-methods-use-this
+    updateDevice(_update) {
+        console.error('updateDevice not implemented');
+    }
+    // eslint-disable-next-line class-methods-use-this
+    deleteDevice(_deviceId) {
+        console.error('deleteDevice not implemented');
+    }
     sendActionToInstance = (command, messageToSend, refresh) => {
         const send = async () => {
             this.setState({ showSpinner: true });
@@ -193,6 +201,14 @@ export default class Communication extends Component {
                         else {
                             console.log('Not refreshing anything');
                         }
+                    }
+                    else if ('update' in response.result && response.result.update) {
+                        console.log('Update received', response.result.update);
+                        this.updateDevice(response.result.update);
+                    }
+                    else if ('delete' in response.result && response.result.delete) {
+                        console.log('Delete received', response.result.delete);
+                        this.deleteDevice(response.result.delete);
                     }
                     if ('error' in response.result && response.result.error) {
                         console.error(`Error: ${response.result.error.message}`);

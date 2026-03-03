@@ -1,6 +1,6 @@
 import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/adapter-react-v5';
 import React, { Component } from 'react';
-import type { ActionBase, ActionButton, CommunicationForm, ControlBase, ControlState, InstanceDetails, ProgressUpdate } from './protocol/api';
+import type { ActionBase, ActionButton, CommunicationForm, ControlBase, ControlState, DeviceId, InstanceDetails, ProgressUpdate, DeviceInfo } from './protocol/api';
 import type { CommandName, LoadDevicesCallback, Message } from './protocol/DmProtocolBase';
 declare module '@mui/material/Button' {
     interface ButtonPropsColorOverrides {
@@ -61,6 +61,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     constructor(props: P);
     componentWillUnmount(): void;
     loadData(): void;
+    updateDevice(_update: DeviceInfo): void;
+    deleteDevice(_deviceId: DeviceId): void;
     sendActionToInstance: (command: CommandName, messageToSend: Message, refresh?: () => void) => void;
     sendControlToInstance: (command: CommandName, messageToSend: {
         deviceId: string;

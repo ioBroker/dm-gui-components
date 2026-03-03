@@ -16,7 +16,7 @@ import {
 import { Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
 
 import { I18n, DeviceTypeIcon } from '@iobroker/adapter-react-v5';
-import type { DeviceInfo, InstanceDetails } from './protocol/api';
+import type { DeviceId, DeviceInfo, InstanceDetails } from './protocol/api';
 
 import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
 import { getTranslation } from './Utils';
@@ -281,6 +281,16 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             this.setState({ devices, loading: false, totalDevices: devices.length });
             console.log(`Loaded ${devices.length} devices for ${this.state.selectedInstance}`);
         });
+    }
+
+    override updateDevice(update: DeviceInfo): void {
+        const updateId = JSON.stringify(update.id);
+        this.setState({ devices: this.state.devices.map(d => (JSON.stringify(d.id) === updateId ? update : d)) });
+    }
+
+    override deleteDevice(deviceId: DeviceId): void {
+        const deleteId = JSON.stringify(deviceId);
+        this.setState({ devices: this.state.devices.filter(d => JSON.stringify(d.id) !== deleteId) });
     }
 
     getText(text: ioBroker.StringOrTranslated): string {

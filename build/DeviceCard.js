@@ -90,6 +90,7 @@ function getText(text) {
  */
 export default class DeviceCard extends Component {
     stateOrObjectHandler;
+    subscriptions = new Map();
     constructor(props) {
         super(props);
         this.state = {
@@ -134,40 +135,39 @@ export default class DeviceCard extends Component {
         }
     }
     async componentDidMount() {
-        await this.stateOrObjectHandler.addListener(this.props.device.name, value => {
-            this.setState({ name: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.identifier, value => {
-            this.setState({ identifier: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.hasDetails, value => {
-            this.setState({ hasDetails: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.icon, value => {
-            this.setState({ icon: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.backgroundColor, value => {
-            this.setState({ backgroundColor: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.color, value => {
-            this.setState({ color: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.manufacturer, value => {
-            this.setState({ manufacturer: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.model, value => {
-            this.setState({ model: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.connectionType, value => {
-            this.setState({ connectionType: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.enabled, value => {
-            this.setState({ enabled: value });
-        });
+        await this.addStateOrObjectListener('name', getText);
+        await this.addStateOrObjectListener('identifier');
+        await this.addStateOrObjectListener('hasDetails');
+        await this.addStateOrObjectListener('icon');
+        await this.addStateOrObjectListener('backgroundColor');
+        await this.addStateOrObjectListener('color');
+        await this.addStateOrObjectListener('manufacturer', getText);
+        await this.addStateOrObjectListener('model', getText);
+        await this.addStateOrObjectListener('connectionType');
+        await this.addStateOrObjectListener('enabled');
         await this.fetchIcon().catch(e => console.error(e));
     }
+    async addStateOrObjectListener(key, transform) {
+        const sub = await this.stateOrObjectHandler.addListener(this.props.device[key], value => this.setState({ [key]: transform ? transform(value) : value }));
+        this.subscriptions.set(key, { subscription: sub, transform });
+    }
+    async componentDidUpdate(prevProps) {
+        for (const [key, { subscription, transform }] of [...this.subscriptions]) {
+            const newItem = this.props.device[key];
+            const prevItem = prevProps.device[key];
+            if (newItem !== prevItem) {
+                console.log(`${key} of device ${JSON.stringify(this.props.device.id)} updated`, prevItem, newItem);
+                this.subscriptions.delete(key);
+                await this.addStateOrObjectListener(key, transform);
+                await subscription.unsubscribe();
+            }
+        }
+    }
     async componentWillUnmount() {
-        await this.stateOrObjectHandler.unsubscribe();
+        for (const [, { subscription }] of this.subscriptions) {
+            await subscription.unsubscribe();
+        }
+        this.subscriptions.clear();
     }
     /**
      * Load the device details
