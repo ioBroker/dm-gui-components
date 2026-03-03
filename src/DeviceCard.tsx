@@ -140,7 +140,7 @@ interface DeviceCardProps {
     socket: Connection;
     /* Instance, where the images should be uploaded to */
     uploadImagesToInstance?: string;
-    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     controlHandler: (
         deviceId: DeviceId,
         control: ControlBase,
@@ -305,14 +305,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     }
 
     /**
-     * Refresh the device details
-     */
-    refresh = (): void => {
-        this.setState({ details: null });
-        this.loadDetails().catch(console.error);
-    };
-
-    /**
      * Copy the device ID to the clipboard
      */
     copyToClipboard = (): void => {
@@ -457,7 +449,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                       deviceId={this.props.device.id}
                       action={a}
                       deviceHandler={this.props.deviceHandler}
-                      refresh={this.refresh}
                   />
               ))
             : null;
@@ -549,7 +540,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                                         a => a.id === ACTIONS.ENABLE_DISABLE,
                                     )}
                                     deviceHandler={this.props.deviceHandler}
-                                    refresh={this.refresh}
                                     theme={this.props.theme}
                                     stateOrObjectHandler={this.stateOrObjectHandler}
                                 />
@@ -708,7 +698,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
                             disableEnableAction={this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE)}
                             deviceHandler={this.props.deviceHandler}
-                            refresh={this.refresh}
                             theme={this.props.theme}
                             stateOrObjectHandler={this.stateOrObjectHandler}
                         />

@@ -27,8 +27,6 @@ interface CommunicationFormInState extends CommunicationForm {
 interface InputAction extends ActionBase {
     /** If it is a device action */
     deviceId?: string;
-    /** Optional refresh function to execute */
-    refresh?: () => void;
 }
 export type CommunicationState = {
     showSpinner: boolean;
@@ -55,7 +53,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     private protocol;
     private responseTimeout;
     instanceHandler: (action: ActionBase) => () => void;
-    deviceHandler: (deviceId: string, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: string, action: ActionBase) => () => void;
     controlHandler: (deviceId: string, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
     controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
     constructor(props: P);
@@ -64,7 +62,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     loadDeviceList(): void;
     updateDevice(_update: DeviceInfo): void;
     deleteDevice(_deviceId: DeviceId): void;
-    sendActionToInstance: (command: CommandName, messageToSend: Message, refresh?: () => void) => void;
+    sendActionToInstance: (command: CommandName, messageToSend: Message) => void;
     sendControlToInstance: (command: CommandName, messageToSend: {
         deviceId: string;
         controlId: string;

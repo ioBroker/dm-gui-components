@@ -118,7 +118,7 @@ export default function DeviceStatus(props) {
         React.createElement(Tooltip, { title: props.enabled ? getTranslation('disableIconTooltip') : getTranslation('enableIconTooltip'), slotProps: { popper: { sx: styles.tooltip } } },
             React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
                 React.createElement(Switch, { size: "small", checked: props.enabled, disabled: !props.disableEnableAction, onChange: () => props.disableEnableAction &&
-                        props.deviceHandler(props.deviceId, props.disableEnableAction, props.refresh)(), theme: props.theme }))))) : null;
+                        props.deviceHandler(props.deviceId, props.disableEnableAction)(), theme: props.theme }))))) : null;
     let connectionSymbol;
     if (props.connectionType === 'wifi') {
         connectionSymbol =
@@ -156,7 +156,7 @@ export default function DeviceStatus(props) {
                 : ''), slotProps: { popper: { sx: styles.tooltip } } }, props.statusAction ? (React.createElement(IconButton, { onClick: e => {
             if (props.statusAction) {
                 e.stopPropagation();
-                props.deviceHandler(props.deviceId, props.statusAction, props.refresh)();
+                props.deviceHandler(props.deviceId, props.statusAction)();
             }
         } },
         connectionSymbol,

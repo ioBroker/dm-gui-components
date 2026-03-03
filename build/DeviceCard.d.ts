@@ -9,7 +9,7 @@ interface DeviceCardProps {
     instanceId: string;
     socket: Connection;
     uploadImagesToInstance?: string;
-    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     controlHandler: (deviceId: DeviceId, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
     controlStateHandler: (deviceId: DeviceId, control: ControlBase) => () => Promise<ioBroker.State | null>;
     smallCards?: boolean;
@@ -52,10 +52,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
      * Load the device details
      */
     loadDetails(): Promise<void>;
-    /**
-     * Refresh the device details
-     */
-    refresh: () => void;
     /**
      * Copy the device ID to the clipboard
      */

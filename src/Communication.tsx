@@ -84,8 +84,6 @@ interface CommunicationFormInState extends CommunicationForm {
 interface InputAction extends ActionBase {
     /** If it is a device action */
     deviceId?: string;
-    /** Optional refresh function to execute */
-    refresh?: () => void;
 }
 
 export type CommunicationState = {
@@ -118,7 +116,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     instanceHandler: (action: ActionBase) => () => void;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
-    deviceHandler: (deviceId: string, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: string, action: ActionBase) => () => void;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
     controlHandler: (
@@ -161,24 +159,20 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         };
 
         // eslint-disable-next-line react/no-unused-class-component-methods
-        this.deviceHandler = (deviceId, action, refresh) => () => {
+        this.deviceHandler = (deviceId, action) => () => {
             if (action.confirmation) {
-                this.setState({ showConfirmation: { ...action, deviceId, refresh } });
+                this.setState({ showConfirmation: { ...action, deviceId } });
                 return;
             }
             if (action.inputBefore) {
                 this.setState({
-                    showInput: { ...action, deviceId, refresh },
+                    showInput: { ...action, deviceId },
                     inputValue: action.inputBefore.defaultValue || '',
                 });
                 return;
             }
 
-            this.sendActionToInstance(
-                'dm:deviceAction',
-                { deviceId, actionId: action.id, timeout: action.timeout },
-                refresh,
-            );
+            this.sendActionToInstance('dm:deviceAction', { deviceId, actionId: action.id, timeout: action.timeout });
         };
 
         // eslint-disable-next-line react/no-unused-class-component-methods
@@ -220,7 +214,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         console.error('deleteDevice not implemented');
     }
 
-    sendActionToInstance = (command: CommandName, messageToSend: Message, refresh?: () => void): void => {
+    sendActionToInstance = (command: CommandName, messageToSend: Message): void => {
         const send = async (): Promise<void> => {
             this.setState({ showSpinner: true });
 
@@ -248,11 +242,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 message,
                                 handleClose: () =>
                                     this.setState({ message: null }, () =>
-                                        this.sendActionToInstance(
-                                            'dm:actionProgress',
-                                            { origin: response.origin },
-                                            refresh,
-                                        ),
+                                        this.sendActionToInstance('dm:actionProgress', { origin: response.origin }),
                                     ),
                             },
                             showSpinner: false,
@@ -270,14 +260,10 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 message: message,
                                 handleClose: (confirm?: boolean) =>
                                     this.setState({ confirm: null }, () =>
-                                        this.sendActionToInstance(
-                                            'dm:actionProgress',
-                                            {
-                                                origin: response.origin,
-                                                confirm,
-                                            },
-                                            refresh,
-                                        ),
+                                        this.sendActionToInstance('dm:actionProgress', {
+                                            origin: response.origin,
+                                            confirm,
+                                        }),
                                     ),
                             },
                             showSpinner: false,
@@ -308,14 +294,10 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 handleClose: (data: any) =>
                                     this.setState({ form: null }, () => {
                                         console.log(`Form ${JSON.stringify(data)}`);
-                                        this.sendActionToInstance(
-                                            'dm:actionProgress',
-                                            {
-                                                origin: response.origin,
-                                                data,
-                                            },
-                                            refresh,
-                                        );
+                                        this.sendActionToInstance('dm:actionProgress', {
+                                            origin: response.origin,
+                                            data,
+                                        });
                                     }),
                             },
                             showSpinner: false,
@@ -335,7 +317,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                             this.setState({ progress: response.progress, showSpinner: false });
                         }
                     }
-                    this.sendActionToInstance('dm:actionProgress', { origin: response.origin }, refresh);
+                    this.sendActionToInstance('dm:actionProgress', { origin: response.origin });
                     break;
 
                 case 'result':
@@ -350,14 +332,6 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                         } else if (response.result.refresh === 'devices') {
                             console.log('Refreshing devices');
                             this.loadDeviceList();
-
-                            // TODO: figure out what to do with the "refresh" as it currently doesn't make sense
-                            if (!refresh) {
-                                console.log('No refresh function provided to refresh "devices"');
-                            } else {
-                                console.log(`Refreshing device infos: ${this.state.selectedInstance}`);
-                                refresh();
-                            }
                         } else {
                             console.log('Not refreshing anything');
                         }
@@ -747,15 +721,11 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                             const showConfirmation = this.state.showConfirmation;
                             this.setState({ showConfirmation: null }, () => {
                                 if (showConfirmation.deviceId) {
-                                    this.sendActionToInstance(
-                                        'dm:deviceAction',
-                                        {
-                                            actionId: showConfirmation.id,
-                                            deviceId: showConfirmation.deviceId,
-                                            timeout: showConfirmation.timeout,
-                                        },
-                                        showConfirmation.refresh,
-                                    );
+                                    this.sendActionToInstance('dm:deviceAction', {
+                                        actionId: showConfirmation.id,
+                                        deviceId: showConfirmation.deviceId,
+                                        timeout: showConfirmation.timeout,
+                                    });
                                 } else {
                                     this.sendActionToInstance('dm:instanceAction', {
                                         actionId: showConfirmation.id,
@@ -790,21 +760,17 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         const showInput = this.state.showInput;
         this.setState({ showInput: null }, () => {
             if (showInput.deviceId) {
-                this.sendActionToInstance(
-                    'dm:deviceAction',
-                    {
-                        actionId: showInput.id,
-                        deviceId: showInput.deviceId,
-                        timeout: showInput.timeout,
-                        value:
-                            showInput.inputBefore?.type === 'checkbox'
-                                ? !!this.state.inputValue
-                                : showInput.inputBefore?.type === 'number'
-                                  ? parseFloat(this.state.inputValue as string) || 0
-                                  : this.state.inputValue,
-                    },
-                    showInput.refresh,
-                );
+                this.sendActionToInstance('dm:deviceAction', {
+                    actionId: showInput.id,
+                    deviceId: showInput.deviceId,
+                    timeout: showInput.timeout,
+                    value:
+                        showInput.inputBefore?.type === 'checkbox'
+                            ? !!this.state.inputValue
+                            : showInput.inputBefore?.type === 'number'
+                              ? parseFloat(this.state.inputValue as string) || 0
+                              : this.state.inputValue,
+                });
             } else {
                 this.sendActionToInstance('dm:instanceAction', {
                     actionId: showInput.id,

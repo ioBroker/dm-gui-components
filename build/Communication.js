@@ -49,19 +49,19 @@ export default class Communication extends Component {
             this.sendActionToInstance('dm:instanceAction', { actionId: action.id, timeout: action.timeout });
         };
         // eslint-disable-next-line react/no-unused-class-component-methods
-        this.deviceHandler = (deviceId, action, refresh) => () => {
+        this.deviceHandler = (deviceId, action) => () => {
             if (action.confirmation) {
-                this.setState({ showConfirmation: { ...action, deviceId, refresh } });
+                this.setState({ showConfirmation: { ...action, deviceId } });
                 return;
             }
             if (action.inputBefore) {
                 this.setState({
-                    showInput: { ...action, deviceId, refresh },
+                    showInput: { ...action, deviceId },
                     inputValue: action.inputBefore.defaultValue || '',
                 });
                 return;
             }
-            this.sendActionToInstance('dm:deviceAction', { deviceId, actionId: action.id, timeout: action.timeout }, refresh);
+            this.sendActionToInstance('dm:deviceAction', { deviceId, actionId: action.id, timeout: action.timeout });
         };
         // eslint-disable-next-line react/no-unused-class-component-methods
         this.controlHandler = (deviceId, control, state) => () => this.sendControlToInstance('dm:deviceControl', { deviceId, controlId: control.id, state });
@@ -92,7 +92,7 @@ export default class Communication extends Component {
     deleteDevice(_deviceId) {
         console.error('deleteDevice not implemented');
     }
-    sendActionToInstance = (command, messageToSend, refresh) => {
+    sendActionToInstance = (command, messageToSend) => {
         const send = async () => {
             this.setState({ showSpinner: true });
             this.responseTimeout = setTimeout(() => {
@@ -114,7 +114,7 @@ export default class Communication extends Component {
                         this.setState({
                             message: {
                                 message,
-                                handleClose: () => this.setState({ message: null }, () => this.sendActionToInstance('dm:actionProgress', { origin: response.origin }, refresh)),
+                                handleClose: () => this.setState({ message: null }, () => this.sendActionToInstance('dm:actionProgress', { origin: response.origin })),
                             },
                             showSpinner: false,
                         });
@@ -131,7 +131,7 @@ export default class Communication extends Component {
                                 handleClose: (confirm) => this.setState({ confirm: null }, () => this.sendActionToInstance('dm:actionProgress', {
                                     origin: response.origin,
                                     confirm,
-                                }, refresh)),
+                                })),
                             },
                             showSpinner: false,
                         });
@@ -161,7 +161,7 @@ export default class Communication extends Component {
                                     this.sendActionToInstance('dm:actionProgress', {
                                         origin: response.origin,
                                         data,
-                                    }, refresh);
+                                    });
                                 }),
                             },
                             showSpinner: false,
@@ -182,7 +182,7 @@ export default class Communication extends Component {
                             this.setState({ progress: response.progress, showSpinner: false });
                         }
                     }
-                    this.sendActionToInstance('dm:actionProgress', { origin: response.origin }, refresh);
+                    this.sendActionToInstance('dm:actionProgress', { origin: response.origin });
                     break;
                 case 'result':
                     console.log('Response content', response.result);
@@ -198,14 +198,6 @@ export default class Communication extends Component {
                         else if (response.result.refresh === 'devices') {
                             console.log('Refreshing devices');
                             this.loadDeviceList();
-                            // TODO: figure out what to do with the "refresh" as it currently doesn't make sense
-                            if (!refresh) {
-                                console.log('No refresh function provided to refresh "devices"');
-                            }
-                            else {
-                                console.log(`Refreshing device infos: ${this.state.selectedInstance}`);
-                                refresh();
-                            }
                         }
                         else {
                             console.log('Not refreshing anything');
@@ -441,7 +433,7 @@ export default class Communication extends Component {
                                     actionId: showConfirmation.id,
                                     deviceId: showConfirmation.deviceId,
                                     timeout: showConfirmation.timeout,
-                                }, showConfirmation.refresh);
+                                });
                             }
                             else {
                                 this.sendActionToInstance('dm:instanceAction', {
@@ -469,7 +461,7 @@ export default class Communication extends Component {
                         : showInput.inputBefore?.type === 'number'
                             ? parseFloat(this.state.inputValue) || 0
                             : this.state.inputValue,
-                }, showInput.refresh);
+                });
             }
             else {
                 this.sendActionToInstance('dm:instanceAction', {
