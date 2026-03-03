@@ -208,7 +208,11 @@ export default class DeviceList extends Communication {
     }
     deleteDevice(deviceId) {
         const deleteId = JSON.stringify(deviceId);
-        this.setState({ devices: this.state.devices.filter(d => JSON.stringify(d.id) !== deleteId) });
+        const devices = this.state.devices.filter(d => JSON.stringify(d.id) !== deleteId);
+        const totalDevices = this.state.totalDevices && devices.length < this.state.devices.length
+            ? this.state.totalDevices - 1
+            : undefined;
+        this.setState({ devices, totalDevices });
     }
     getText(text) {
         if (typeof text === 'object') {
