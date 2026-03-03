@@ -12,11 +12,75 @@ export class DmProtocolV1 extends DmProtocolBase {
         const devices = await this.send('dm:listDevices');
         await callback(devices.map(d => ({ ...d, identifier: d.id })));
     }
-    sendAction(command, messageToSend) {
-        return this.send(command, messageToSend);
+    async sendAction(command, messageToSend) {
+        const response = await this.send(command, messageToSend);
+        switch (response.type) {
+            case 'message':
+                return {
+                    type: 'message',
+                    message: response.message || '',
+                    origin: response.origin, // origin was accidentally set to string in V1
+                };
+            case 'confirm':
+                return {
+                    type: 'confirm',
+                    confirm: response.confirm || '',
+                    origin: response.origin, // origin was accidentally set to string in V1
+                };
+            case 'progress':
+                return {
+                    type: 'progress',
+                    progress: response.progress || { open: false, indeterminate: true },
+                    origin: response.origin, // origin was accidentally set to string in V1
+                };
+            case 'form':
+                return {
+                    type: 'form',
+                    form: response.form || { title: '', schema: { type: 'panel', items: {} } },
+                    origin: response.origin, // origin was accidentally set to string in V1
+                };
+            case 'result':
+                if (response.result.error) {
+                    return {
+                        type: 'result',
+                        result: { error: response.result.error },
+                        origin: response.origin, // origin was accidentally set to string in V1
+                    };
+                }
+                switch (response.result.refresh) {
+                    case true:
+                        return {
+                            type: 'result',
+                            result: { refresh: true },
+                            origin: response.origin, // origin was accidentally set to string in V1
+                        };
+                    case 'device':
+                        return {
+                            type: 'result',
+                            result: { refresh: 'devices' },
+                            origin: response.origin, // origin was accidentally set to string in V1
+                        };
+                    case 'instance':
+                        return {
+                            type: 'result',
+                            result: { refresh: 'instance' },
+                            origin: response.origin, // origin was accidentally set to string in V1
+                        };
+                    default:
+                        return {
+                            type: 'result',
+                            result: { refresh: false },
+                            origin: response.origin, // origin was accidentally set to string in V1
+                        };
+                }
+            default:
+                throw new Error(`Unknown response type: ${response.type}`);
+        }
     }
-    sendControl(command, messageToSend) {
-        return this.send(command, messageToSend);
+    async sendControl(command, messageToSend) {
+        const response = await this.send(command, messageToSend);
+        // contents matches, types unfortunately don't, so we need to cast here
+        return response;
     }
 }
 //# sourceMappingURL=DmProtocolV1.js.map
