@@ -60,7 +60,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
     constructor(props: P);
     componentWillUnmount(): void;
-    loadData(): void;
+    loadAllData(): Promise<void>;
+    loadDeviceList(): void;
     updateDevice(_update: DeviceInfo): void;
     deleteDevice(_deviceId: DeviceId): void;
     sendActionToInstance: (command: CommandName, messageToSend: Message, refresh?: () => void) => void;

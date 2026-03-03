@@ -121,8 +121,7 @@ export default class DeviceList extends Communication {
         }
         if (alive) {
             try {
-                const instanceInfo = await this.loadInstanceInfos();
-                this.setState({ instanceInfo, apiVersionError: !['v1', 'v2', 'v3'].includes(instanceInfo.apiVersion) }, () => this.loadData());
+                await this.loadAllData();
             }
             catch (error) {
                 console.error(error);
@@ -146,10 +145,18 @@ export default class DeviceList extends Communication {
             }
         }
     };
+    async loadAllData() {
+        await this.loadInstanceInfos();
+        this.loadDeviceList();
+    }
+    async loadInstanceInfos() {
+        const instanceInfo = await super.loadInstanceInfos();
+        return new Promise(resolve => this.setState({ instanceInfo, apiVersionError: !['v1', 'v2', 'v3'].includes(instanceInfo.apiVersion) }, () => resolve(instanceInfo)));
+    }
     /**
      * Load devices
      */
-    loadData() {
+    loadDeviceList() {
         this.setState({ loading: true }, async () => {
             console.log(`Loading devices for ${this.state.selectedInstance}...`);
             let alive = this.state.alive;
@@ -240,7 +247,7 @@ export default class DeviceList extends Communication {
         };
         if ((this.props.triggerLoad || 0) !== this.lastTriggerLoad) {
             this.lastTriggerLoad = this.props.triggerLoad || 0;
-            setTimeout(() => this.loadData(), 50);
+            setTimeout(() => this.loadDeviceList(), 50);
         }
         // if instance changed
         if (this.lastInstance !== this.state.selectedInstance) {
@@ -248,15 +255,14 @@ export default class DeviceList extends Communication {
             setTimeout(async () => {
                 if (this.state.selectedInstance) {
                     try {
-                        const instanceInfo = await this.loadInstanceInfos();
-                        this.setState({ instanceInfo, apiVersionError: !['v1', 'v2', 'v3'].includes(instanceInfo.apiVersion) }, () => this.loadData());
+                        await this.loadAllData();
                     }
                     catch (error) {
                         console.error(error);
                     }
                 }
                 else {
-                    this.loadData();
+                    this.loadDeviceList();
                 }
             }, 50);
         }
@@ -364,7 +370,7 @@ export default class DeviceList extends Communication {
                         }, displayEmpty: true, variant: "standard" }, Object.keys(this.state.dmInstances).map(id => (React.createElement(MenuItem, { key: id, value: id }, id)))))) : null,
                 this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
-                        React.createElement(IconButton, { onClick: () => this.loadData(), disabled: !this.state.alive || this.state.apiVersionError, size: "small" },
+                        React.createElement(IconButton, { onClick: () => this.loadAllData(), disabled: !this.state.alive || this.state.apiVersionError, size: "small" },
                             React.createElement(Refresh, null))))) : null,
                 !this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.actions?.length ? (React.createElement("div", { style: { marginLeft: 20 } }, this.state.instanceInfo.actions.map(action => (React.createElement(InstanceActionButton, { key: action.id, action: action, instanceHandler: this.instanceHandler }))))) : null,
                 React.createElement("div", { style: { flexGrow: 1 } }),

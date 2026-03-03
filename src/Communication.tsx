@@ -189,7 +189,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         this.controlStateHandler = (deviceId, control) => () =>
             this.sendControlToInstance('dm:deviceControlState', { deviceId, controlId: control.id });
 
-        this.props.registerHandler?.(() => this.loadData());
+        this.props.registerHandler?.(() => this.loadDeviceList());
     }
 
     componentWillUnmount(): void {
@@ -200,8 +200,14 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     }
 
     // eslint-disable-next-line class-methods-use-this
-    loadData(): void {
-        console.error('loadData not implemented');
+    loadAllData(): Promise<void> {
+        console.error('loadAllData not implemented');
+        return Promise.resolve();
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    loadDeviceList(): void {
+        console.error('loadDeviceList not implemented');
     }
 
     // eslint-disable-next-line class-methods-use-this
@@ -337,10 +343,15 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                     if ('refresh' in response.result && response.result.refresh) {
                         if (response.result.refresh === true || response.result.refresh === 'all') {
                             console.log('Refreshing all');
-                            this.loadData();
+                            await this.loadAllData();
                         } else if (response.result.refresh === 'instance') {
                             console.log(`Refreshing instance infos: ${this.state.selectedInstance}`);
+                            await this.loadInstanceInfos();
                         } else if (response.result.refresh === 'devices') {
+                            console.log('Refreshing devices');
+                            this.loadDeviceList();
+
+                            // TODO: figure out what to do with the "refresh" as it currently doesn't make sense
                             if (!refresh) {
                                 console.log('No refresh function provided to refresh "devices"');
                             } else {

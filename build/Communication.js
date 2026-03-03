@@ -67,7 +67,7 @@ export default class Communication extends Component {
         this.controlHandler = (deviceId, control, state) => () => this.sendControlToInstance('dm:deviceControl', { deviceId, controlId: control.id, state });
         // eslint-disable-next-line react/no-unused-class-component-methods
         this.controlStateHandler = (deviceId, control) => () => this.sendControlToInstance('dm:deviceControlState', { deviceId, controlId: control.id });
-        this.props.registerHandler?.(() => this.loadData());
+        this.props.registerHandler?.(() => this.loadDeviceList());
     }
     componentWillUnmount() {
         if (this.responseTimeout) {
@@ -76,8 +76,13 @@ export default class Communication extends Component {
         }
     }
     // eslint-disable-next-line class-methods-use-this
-    loadData() {
-        console.error('loadData not implemented');
+    loadAllData() {
+        console.error('loadAllData not implemented');
+        return Promise.resolve();
+    }
+    // eslint-disable-next-line class-methods-use-this
+    loadDeviceList() {
+        console.error('loadDeviceList not implemented');
     }
     // eslint-disable-next-line class-methods-use-this
     updateDevice(_update) {
@@ -184,12 +189,16 @@ export default class Communication extends Component {
                     if ('refresh' in response.result && response.result.refresh) {
                         if (response.result.refresh === true || response.result.refresh === 'all') {
                             console.log('Refreshing all');
-                            this.loadData();
+                            await this.loadAllData();
                         }
                         else if (response.result.refresh === 'instance') {
                             console.log(`Refreshing instance infos: ${this.state.selectedInstance}`);
+                            await this.loadInstanceInfos();
                         }
                         else if (response.result.refresh === 'devices') {
+                            console.log('Refreshing devices');
+                            this.loadDeviceList();
+                            // TODO: figure out what to do with the "refresh" as it currently doesn't make sense
                             if (!refresh) {
                                 console.log('No refresh function provided to refresh "devices"');
                             }

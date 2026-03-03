@@ -27,6 +27,8 @@ render() {
 ### **WORK IN PROGRESS**
 
 - (@UncleSamSwiss) Fix handling of "result" response from action handler (update, delete device)
+- (@UncleSamSwiss) Fix handling of V1 protocol action responses
+- (@UncleSamSwiss) Fix handling of "refresh" response from instance actions
 
 ### 9.0.2 (2026-03-03)
 
