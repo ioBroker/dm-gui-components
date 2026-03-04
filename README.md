@@ -23,8 +23,7 @@ render() {
 -->
 
 ## Changelog
-
-### **WORK IN PROGRESS**
+### 9.0.3 (2026-03-04)
 
 - (@UncleSamSwiss) Fix handling of "result" response from action handler (update, delete device)
 - (@UncleSamSwiss) Fix handling of V1 protocol action responses
