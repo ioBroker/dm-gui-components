@@ -1,10 +1,14 @@
 import type { Connection } from '@iobroker/adapter-react-v5';
 import type { ValueOrStateOrObject } from '@iobroker/dm-utils';
+export interface StateOrObjectSubscription {
+    unsubscribe: () => Promise<void> | void;
+}
 export declare class StateOrObjectHandler {
     private readonly socket;
     private readonly objectSubs;
     private readonly stateSubs;
     constructor(socket: Connection);
-    addListener<T extends ioBroker.StringOrTranslated | number | boolean>(item: ValueOrStateOrObject<T> | undefined, callback: (value: T | undefined) => void): Promise<void>;
-    unsubscribe(): Promise<void>;
+    addListener<T extends ioBroker.StringOrTranslated | number | boolean>(item: ValueOrStateOrObject<T> | undefined, callback: (value: T | undefined) => void): Promise<StateOrObjectSubscription>;
+    private addObjectListener;
+    private addStateListener;
 }

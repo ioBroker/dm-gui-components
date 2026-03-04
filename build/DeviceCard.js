@@ -90,6 +90,7 @@ function getText(text) {
  */
 export default class DeviceCard extends Component {
     stateOrObjectHandler;
+    subscriptions = new Map();
     constructor(props) {
         super(props);
         this.state = {
@@ -134,40 +135,39 @@ export default class DeviceCard extends Component {
         }
     }
     async componentDidMount() {
-        await this.stateOrObjectHandler.addListener(this.props.device.name, value => {
-            this.setState({ name: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.identifier, value => {
-            this.setState({ identifier: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.hasDetails, value => {
-            this.setState({ hasDetails: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.icon, value => {
-            this.setState({ icon: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.backgroundColor, value => {
-            this.setState({ backgroundColor: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.color, value => {
-            this.setState({ color: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.manufacturer, value => {
-            this.setState({ manufacturer: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.model, value => {
-            this.setState({ model: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.connectionType, value => {
-            this.setState({ connectionType: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.enabled, value => {
-            this.setState({ enabled: value });
-        });
+        await this.addStateOrObjectListener('name', getText);
+        await this.addStateOrObjectListener('identifier');
+        await this.addStateOrObjectListener('hasDetails');
+        await this.addStateOrObjectListener('icon');
+        await this.addStateOrObjectListener('backgroundColor');
+        await this.addStateOrObjectListener('color');
+        await this.addStateOrObjectListener('manufacturer', getText);
+        await this.addStateOrObjectListener('model', getText);
+        await this.addStateOrObjectListener('connectionType');
+        await this.addStateOrObjectListener('enabled');
         await this.fetchIcon().catch(e => console.error(e));
     }
+    async addStateOrObjectListener(key, transform) {
+        const sub = await this.stateOrObjectHandler.addListener(this.props.device[key], value => this.setState({ [key]: transform ? transform(value) : value }));
+        this.subscriptions.set(key, { subscription: sub, transform });
+    }
+    async componentDidUpdate(prevProps) {
+        for (const [key, { subscription, transform }] of [...this.subscriptions]) {
+            const newItem = this.props.device[key];
+            const prevItem = prevProps.device[key];
+            if (newItem !== prevItem) {
+                console.log(`${key} of device ${JSON.stringify(this.props.device.id)} updated`, prevItem, newItem);
+                this.subscriptions.delete(key);
+                await this.addStateOrObjectListener(key, transform);
+                await subscription.unsubscribe();
+            }
+        }
+    }
     async componentWillUnmount() {
-        await this.stateOrObjectHandler.unsubscribe();
+        for (const [, { subscription }] of this.subscriptions) {
+            await subscription.unsubscribe();
+        }
+        this.subscriptions.clear();
     }
     /**
      * Load the device details
@@ -178,13 +178,6 @@ export default class DeviceCard extends Component {
         console.log(`Got device details for`, this.props.device.id, details);
         this.setState({ details, data: details?.data || {} });
     }
-    /**
-     * Refresh the device details
-     */
-    refresh = () => {
-        this.setState({ details: null });
-        this.loadDetails().catch(console.error);
-    };
     /**
      * Copy the device ID to the clipboard
      */
@@ -243,7 +236,7 @@ export default class DeviceCard extends Component {
     renderActions() {
         const actions = this.props.device.actions?.filter(a => a.id !== ACTIONS.STATUS && a.id !== ACTIONS.ENABLE_DISABLE);
         return actions?.length
-            ? actions.map(a => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: a.id, deviceId: this.props.device.id, action: a, deviceHandler: this.props.deviceHandler, refresh: this.refresh })))
+            ? actions.map(a => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: a.id, deviceId: this.props.device.id, action: a, deviceHandler: this.props.deviceHandler })))
             : null;
     }
     renderSmall() {
@@ -282,7 +275,7 @@ export default class DeviceCard extends Component {
                         padding: '0 8px',
                         borderRadius: 5,
                         width: 'calc(100% - 46px)',
-                    } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, status: s, connectionType: this.state.connectionType, enabled: this.state.enabled, deviceId: this.props.device.id, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, refresh: this.refresh, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler }))))) : null,
+                    } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, status: s, connectionType: this.state.connectionType, enabled: this.state.enabled, deviceId: this.props.device.id, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler }))))) : null,
                 React.createElement("div", null,
                     React.createElement(Typography, { variant: "body1" },
                         this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
@@ -368,7 +361,7 @@ export default class DeviceCard extends Component {
                         }
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, refresh: this.refresh, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
+            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body1", style: styles.deviceInfoStyle },
                     this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard },

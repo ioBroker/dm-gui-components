@@ -1,6 +1,6 @@
 import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/adapter-react-v5';
 import React, { Component } from 'react';
-import type { ActionBase, ActionButton, CommunicationForm, ControlBase, ControlState, InstanceDetails, ProgressUpdate } from './protocol/api';
+import type { ActionBase, ActionButton, CommunicationForm, ControlBase, ControlState, DeviceId, InstanceDetails, ProgressUpdate, DeviceInfo } from './protocol/api';
 import type { CommandName, LoadDevicesCallback, Message } from './protocol/DmProtocolBase';
 declare module '@mui/material/Button' {
     interface ButtonPropsColorOverrides {
@@ -27,8 +27,6 @@ interface CommunicationFormInState extends CommunicationForm {
 interface InputAction extends ActionBase {
     /** If it is a device action */
     deviceId?: string;
-    /** Optional refresh function to execute */
-    refresh?: () => void;
 }
 export type CommunicationState = {
     showSpinner: boolean;
@@ -55,13 +53,16 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     private protocol;
     private responseTimeout;
     instanceHandler: (action: ActionBase) => () => void;
-    deviceHandler: (deviceId: string, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: string, action: ActionBase) => () => void;
     controlHandler: (deviceId: string, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
     controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
     constructor(props: P);
     componentWillUnmount(): void;
-    loadData(): void;
-    sendActionToInstance: (command: CommandName, messageToSend: Message, refresh?: () => void) => void;
+    loadAllData(): Promise<void>;
+    loadDeviceList(): void;
+    updateDevice(_update: DeviceInfo): void;
+    deleteDevice(_deviceId: DeviceId): void;
+    sendActionToInstance: (command: CommandName, messageToSend: Message) => void;
     sendControlToInstance: (command: CommandName, messageToSend: {
         deviceId: string;
         controlId: string;

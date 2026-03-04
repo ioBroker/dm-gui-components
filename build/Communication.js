@@ -49,25 +49,25 @@ export default class Communication extends Component {
             this.sendActionToInstance('dm:instanceAction', { actionId: action.id, timeout: action.timeout });
         };
         // eslint-disable-next-line react/no-unused-class-component-methods
-        this.deviceHandler = (deviceId, action, refresh) => () => {
+        this.deviceHandler = (deviceId, action) => () => {
             if (action.confirmation) {
-                this.setState({ showConfirmation: { ...action, deviceId, refresh } });
+                this.setState({ showConfirmation: { ...action, deviceId } });
                 return;
             }
             if (action.inputBefore) {
                 this.setState({
-                    showInput: { ...action, deviceId, refresh },
+                    showInput: { ...action, deviceId },
                     inputValue: action.inputBefore.defaultValue || '',
                 });
                 return;
             }
-            this.sendActionToInstance('dm:deviceAction', { deviceId, actionId: action.id, timeout: action.timeout }, refresh);
+            this.sendActionToInstance('dm:deviceAction', { deviceId, actionId: action.id, timeout: action.timeout });
         };
         // eslint-disable-next-line react/no-unused-class-component-methods
         this.controlHandler = (deviceId, control, state) => () => this.sendControlToInstance('dm:deviceControl', { deviceId, controlId: control.id, state });
         // eslint-disable-next-line react/no-unused-class-component-methods
         this.controlStateHandler = (deviceId, control) => () => this.sendControlToInstance('dm:deviceControlState', { deviceId, controlId: control.id });
-        this.props.registerHandler?.(() => this.loadData());
+        this.props.registerHandler?.(() => this.loadDeviceList());
     }
     componentWillUnmount() {
         if (this.responseTimeout) {
@@ -76,10 +76,23 @@ export default class Communication extends Component {
         }
     }
     // eslint-disable-next-line class-methods-use-this
-    loadData() {
-        console.error('loadData not implemented');
+    loadAllData() {
+        console.error('loadAllData not implemented');
+        return Promise.resolve();
     }
-    sendActionToInstance = (command, messageToSend, refresh) => {
+    // eslint-disable-next-line class-methods-use-this
+    loadDeviceList() {
+        console.error('loadDeviceList not implemented');
+    }
+    // eslint-disable-next-line class-methods-use-this
+    updateDevice(_update) {
+        console.error('updateDevice not implemented');
+    }
+    // eslint-disable-next-line class-methods-use-this
+    deleteDevice(_deviceId) {
+        console.error('deleteDevice not implemented');
+    }
+    sendActionToInstance = (command, messageToSend) => {
         const send = async () => {
             this.setState({ showSpinner: true });
             this.responseTimeout = setTimeout(() => {
@@ -101,7 +114,7 @@ export default class Communication extends Component {
                         this.setState({
                             message: {
                                 message,
-                                handleClose: () => this.setState({ message: null }, () => this.sendActionToInstance('dm:actionProgress', { origin: response.origin }, refresh)),
+                                handleClose: () => this.setState({ message: null }, () => this.sendActionToInstance('dm:actionProgress', { origin: response.origin })),
                             },
                             showSpinner: false,
                         });
@@ -118,7 +131,7 @@ export default class Communication extends Component {
                                 handleClose: (confirm) => this.setState({ confirm: null }, () => this.sendActionToInstance('dm:actionProgress', {
                                     origin: response.origin,
                                     confirm,
-                                }, refresh)),
+                                })),
                             },
                             showSpinner: false,
                         });
@@ -148,7 +161,7 @@ export default class Communication extends Component {
                                     this.sendActionToInstance('dm:actionProgress', {
                                         origin: response.origin,
                                         data,
-                                    }, refresh);
+                                    });
                                 }),
                             },
                             showSpinner: false,
@@ -169,30 +182,34 @@ export default class Communication extends Component {
                             this.setState({ progress: response.progress, showSpinner: false });
                         }
                     }
-                    this.sendActionToInstance('dm:actionProgress', { origin: response.origin }, refresh);
+                    this.sendActionToInstance('dm:actionProgress', { origin: response.origin });
                     break;
                 case 'result':
                     console.log('Response content', response.result);
                     if ('refresh' in response.result && response.result.refresh) {
                         if (response.result.refresh === true || response.result.refresh === 'all') {
                             console.log('Refreshing all');
-                            this.loadData();
+                            await this.loadAllData();
                         }
                         else if (response.result.refresh === 'instance') {
                             console.log(`Refreshing instance infos: ${this.state.selectedInstance}`);
+                            await this.loadInstanceInfos();
                         }
                         else if (response.result.refresh === 'devices') {
-                            if (!refresh) {
-                                console.log('No refresh function provided to refresh "devices"');
-                            }
-                            else {
-                                console.log(`Refreshing device infos: ${this.state.selectedInstance}`);
-                                refresh();
-                            }
+                            console.log('Refreshing devices');
+                            this.loadDeviceList();
                         }
                         else {
                             console.log('Not refreshing anything');
                         }
+                    }
+                    else if ('update' in response.result && response.result.update) {
+                        console.log('Update received', response.result.update);
+                        this.updateDevice(response.result.update);
+                    }
+                    else if ('delete' in response.result && response.result.delete) {
+                        console.log('Delete received', response.result.delete);
+                        this.deleteDevice(response.result.delete);
                     }
                     if ('error' in response.result && response.result.error) {
                         console.error(`Error: ${response.result.error.message}`);
@@ -416,7 +433,7 @@ export default class Communication extends Component {
                                     actionId: showConfirmation.id,
                                     deviceId: showConfirmation.deviceId,
                                     timeout: showConfirmation.timeout,
-                                }, showConfirmation.refresh);
+                                });
                             }
                             else {
                                 this.sendActionToInstance('dm:instanceAction', {
@@ -444,7 +461,7 @@ export default class Communication extends Component {
                         : showInput.inputBefore?.type === 'number'
                             ? parseFloat(this.state.inputValue) || 0
                             : this.state.inputValue,
-                }, showInput.refresh);
+                });
             }
             else {
                 this.sendActionToInstance('dm:instanceAction', {

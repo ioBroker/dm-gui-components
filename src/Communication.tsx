@@ -44,8 +44,10 @@ import type {
     CommunicationForm,
     ControlBase,
     ControlState,
+    DeviceId,
     InstanceDetails,
     ProgressUpdate,
+    DeviceInfo,
 } from './protocol/api';
 import type { CommandName, DmProtocolBase, LoadDevicesCallback, Message } from './protocol/DmProtocolBase';
 import { DmProtocolV1 } from './protocol/DmProtocolV1';
@@ -82,8 +84,6 @@ interface CommunicationFormInState extends CommunicationForm {
 interface InputAction extends ActionBase {
     /** If it is a device action */
     deviceId?: string;
-    /** Optional refresh function to execute */
-    refresh?: () => void;
 }
 
 export type CommunicationState = {
@@ -116,7 +116,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     instanceHandler: (action: ActionBase) => () => void;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
-    deviceHandler: (deviceId: string, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: string, action: ActionBase) => () => void;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
     controlHandler: (
@@ -159,24 +159,20 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         };
 
         // eslint-disable-next-line react/no-unused-class-component-methods
-        this.deviceHandler = (deviceId, action, refresh) => () => {
+        this.deviceHandler = (deviceId, action) => () => {
             if (action.confirmation) {
-                this.setState({ showConfirmation: { ...action, deviceId, refresh } });
+                this.setState({ showConfirmation: { ...action, deviceId } });
                 return;
             }
             if (action.inputBefore) {
                 this.setState({
-                    showInput: { ...action, deviceId, refresh },
+                    showInput: { ...action, deviceId },
                     inputValue: action.inputBefore.defaultValue || '',
                 });
                 return;
             }
 
-            this.sendActionToInstance(
-                'dm:deviceAction',
-                { deviceId, actionId: action.id, timeout: action.timeout },
-                refresh,
-            );
+            this.sendActionToInstance('dm:deviceAction', { deviceId, actionId: action.id, timeout: action.timeout });
         };
 
         // eslint-disable-next-line react/no-unused-class-component-methods
@@ -187,7 +183,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         this.controlStateHandler = (deviceId, control) => () =>
             this.sendControlToInstance('dm:deviceControlState', { deviceId, controlId: control.id });
 
-        this.props.registerHandler?.(() => this.loadData());
+        this.props.registerHandler?.(() => this.loadDeviceList());
     }
 
     componentWillUnmount(): void {
@@ -198,11 +194,27 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     }
 
     // eslint-disable-next-line class-methods-use-this
-    loadData(): void {
-        console.error('loadData not implemented');
+    loadAllData(): Promise<void> {
+        console.error('loadAllData not implemented');
+        return Promise.resolve();
     }
 
-    sendActionToInstance = (command: CommandName, messageToSend: Message, refresh?: () => void): void => {
+    // eslint-disable-next-line class-methods-use-this
+    loadDeviceList(): void {
+        console.error('loadDeviceList not implemented');
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    updateDevice(_update: DeviceInfo): void {
+        console.error('updateDevice not implemented');
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    deleteDevice(_deviceId: DeviceId): void {
+        console.error('deleteDevice not implemented');
+    }
+
+    sendActionToInstance = (command: CommandName, messageToSend: Message): void => {
         const send = async (): Promise<void> => {
             this.setState({ showSpinner: true });
 
@@ -230,11 +242,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 message,
                                 handleClose: () =>
                                     this.setState({ message: null }, () =>
-                                        this.sendActionToInstance(
-                                            'dm:actionProgress',
-                                            { origin: response.origin },
-                                            refresh,
-                                        ),
+                                        this.sendActionToInstance('dm:actionProgress', { origin: response.origin }),
                                     ),
                             },
                             showSpinner: false,
@@ -252,14 +260,10 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 message: message,
                                 handleClose: (confirm?: boolean) =>
                                     this.setState({ confirm: null }, () =>
-                                        this.sendActionToInstance(
-                                            'dm:actionProgress',
-                                            {
-                                                origin: response.origin,
-                                                confirm,
-                                            },
-                                            refresh,
-                                        ),
+                                        this.sendActionToInstance('dm:actionProgress', {
+                                            origin: response.origin,
+                                            confirm,
+                                        }),
                                     ),
                             },
                             showSpinner: false,
@@ -290,14 +294,10 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 handleClose: (data: any) =>
                                     this.setState({ form: null }, () => {
                                         console.log(`Form ${JSON.stringify(data)}`);
-                                        this.sendActionToInstance(
-                                            'dm:actionProgress',
-                                            {
-                                                origin: response.origin,
-                                                data,
-                                            },
-                                            refresh,
-                                        );
+                                        this.sendActionToInstance('dm:actionProgress', {
+                                            origin: response.origin,
+                                            data,
+                                        });
                                     }),
                             },
                             showSpinner: false,
@@ -317,7 +317,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                             this.setState({ progress: response.progress, showSpinner: false });
                         }
                     }
-                    this.sendActionToInstance('dm:actionProgress', { origin: response.origin }, refresh);
+                    this.sendActionToInstance('dm:actionProgress', { origin: response.origin });
                     break;
 
                 case 'result':
@@ -325,20 +325,24 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                     if ('refresh' in response.result && response.result.refresh) {
                         if (response.result.refresh === true || response.result.refresh === 'all') {
                             console.log('Refreshing all');
-                            this.loadData();
+                            await this.loadAllData();
                         } else if (response.result.refresh === 'instance') {
                             console.log(`Refreshing instance infos: ${this.state.selectedInstance}`);
+                            await this.loadInstanceInfos();
                         } else if (response.result.refresh === 'devices') {
-                            if (!refresh) {
-                                console.log('No refresh function provided to refresh "devices"');
-                            } else {
-                                console.log(`Refreshing device infos: ${this.state.selectedInstance}`);
-                                refresh();
-                            }
+                            console.log('Refreshing devices');
+                            this.loadDeviceList();
                         } else {
                             console.log('Not refreshing anything');
                         }
+                    } else if ('update' in response.result && response.result.update) {
+                        console.log('Update received', response.result.update);
+                        this.updateDevice(response.result.update);
+                    } else if ('delete' in response.result && response.result.delete) {
+                        console.log('Delete received', response.result.delete);
+                        this.deleteDevice(response.result.delete);
                     }
+
                     if ('error' in response.result && response.result.error) {
                         console.error(`Error: ${response.result.error.message}`);
                         this.setState({ showToast: response.result.error.message, showSpinner: false });
@@ -717,15 +721,11 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                             const showConfirmation = this.state.showConfirmation;
                             this.setState({ showConfirmation: null }, () => {
                                 if (showConfirmation.deviceId) {
-                                    this.sendActionToInstance(
-                                        'dm:deviceAction',
-                                        {
-                                            actionId: showConfirmation.id,
-                                            deviceId: showConfirmation.deviceId,
-                                            timeout: showConfirmation.timeout,
-                                        },
-                                        showConfirmation.refresh,
-                                    );
+                                    this.sendActionToInstance('dm:deviceAction', {
+                                        actionId: showConfirmation.id,
+                                        deviceId: showConfirmation.deviceId,
+                                        timeout: showConfirmation.timeout,
+                                    });
                                 } else {
                                     this.sendActionToInstance('dm:instanceAction', {
                                         actionId: showConfirmation.id,
@@ -760,21 +760,17 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         const showInput = this.state.showInput;
         this.setState({ showInput: null }, () => {
             if (showInput.deviceId) {
-                this.sendActionToInstance(
-                    'dm:deviceAction',
-                    {
-                        actionId: showInput.id,
-                        deviceId: showInput.deviceId,
-                        timeout: showInput.timeout,
-                        value:
-                            showInput.inputBefore?.type === 'checkbox'
-                                ? !!this.state.inputValue
-                                : showInput.inputBefore?.type === 'number'
-                                  ? parseFloat(this.state.inputValue as string) || 0
-                                  : this.state.inputValue,
-                    },
-                    showInput.refresh,
-                );
+                this.sendActionToInstance('dm:deviceAction', {
+                    actionId: showInput.id,
+                    deviceId: showInput.deviceId,
+                    timeout: showInput.timeout,
+                    value:
+                        showInput.inputBefore?.type === 'checkbox'
+                            ? !!this.state.inputValue
+                            : showInput.inputBefore?.type === 'number'
+                              ? parseFloat(this.state.inputValue as string) || 0
+                              : this.state.inputValue,
+                });
             } else {
                 this.sendActionToInstance('dm:instanceAction', {
                     actionId: showInput.id,

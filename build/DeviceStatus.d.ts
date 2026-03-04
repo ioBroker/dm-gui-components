@@ -29,8 +29,7 @@ interface DeviceStatusProps {
     statusAction?: DeviceAction;
     enabled?: boolean;
     disableEnableAction?: DeviceAction;
-    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
-    refresh: () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     theme: IobTheme;
     stateOrObjectHandler: StateOrObjectHandler;
 }

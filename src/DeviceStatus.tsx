@@ -127,8 +127,7 @@ interface DeviceStatusProps {
     statusAction?: DeviceAction;
     enabled?: boolean;
     disableEnableAction?: DeviceAction;
-    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
-    refresh: () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     theme: IobTheme;
     stateOrObjectHandler: StateOrObjectHandler;
 }
@@ -242,7 +241,7 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
                                 disabled={!props.disableEnableAction}
                                 onChange={() =>
                                     props.disableEnableAction &&
-                                    props.deviceHandler(props.deviceId, props.disableEnableAction, props.refresh)()
+                                    props.deviceHandler(props.deviceId, props.disableEnableAction)()
                                 }
                                 theme={props.theme}
                             />
@@ -333,7 +332,7 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
                         onClick={e => {
                             if (props.statusAction) {
                                 e.stopPropagation();
-                                props.deviceHandler(props.deviceId, props.statusAction, props.refresh)();
+                                props.deviceHandler(props.deviceId, props.statusAction)();
                             }
                         }}
                     >

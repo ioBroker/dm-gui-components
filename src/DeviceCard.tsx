@@ -42,7 +42,7 @@ import type {
     ConfigConnectionType,
 } from './protocol/api';
 import { getTranslation } from './Utils';
-import { StateOrObjectHandler } from './StateOrObjectHandler';
+import { StateOrObjectHandler, type StateOrObjectSubscription } from './StateOrObjectHandler';
 
 const smallCardStyle = {
     maxWidth: 345,
@@ -140,7 +140,7 @@ interface DeviceCardProps {
     socket: Connection;
     /* Instance, where the images should be uploaded to */
     uploadImagesToInstance?: string;
-    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     controlHandler: (
         deviceId: DeviceId,
         control: ControlBase,
@@ -188,6 +188,10 @@ interface DeviceCardState {
  */
 export default class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
     private readonly stateOrObjectHandler: StateOrObjectHandler;
+    private readonly subscriptions: Map<
+        keyof DeviceInfo & keyof DeviceCardState,
+        { subscription: StateOrObjectSubscription; transform?: (value: any) => any }
+    > = new Map();
 
     constructor(props: DeviceCardProps) {
         super(props);
@@ -241,41 +245,49 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     }
 
     async componentDidMount(): Promise<void> {
-        await this.stateOrObjectHandler.addListener(this.props.device.name, value => {
-            this.setState({ name: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.identifier, value => {
-            this.setState({ identifier: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.hasDetails, value => {
-            this.setState({ hasDetails: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.icon, value => {
-            this.setState({ icon: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.backgroundColor, value => {
-            this.setState({ backgroundColor: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.color, value => {
-            this.setState({ color: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.manufacturer, value => {
-            this.setState({ manufacturer: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.model, value => {
-            this.setState({ model: getText(value) });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.connectionType, value => {
-            this.setState({ connectionType: value });
-        });
-        await this.stateOrObjectHandler.addListener(this.props.device.enabled, value => {
-            this.setState({ enabled: value });
-        });
+        await this.addStateOrObjectListener('name', getText);
+        await this.addStateOrObjectListener('identifier');
+        await this.addStateOrObjectListener('hasDetails');
+        await this.addStateOrObjectListener('icon');
+        await this.addStateOrObjectListener('backgroundColor');
+        await this.addStateOrObjectListener('color');
+        await this.addStateOrObjectListener('manufacturer', getText);
+        await this.addStateOrObjectListener('model', getText);
+        await this.addStateOrObjectListener('connectionType');
+        await this.addStateOrObjectListener('enabled');
+
         await this.fetchIcon().catch(e => console.error(e));
     }
 
+    private async addStateOrObjectListener(
+        key: keyof DeviceInfo & keyof DeviceCardState,
+        transform?: (value: any) => any,
+    ): Promise<void> {
+        const sub = await this.stateOrObjectHandler.addListener(this.props.device[key], value =>
+            this.setState<typeof key>({ [key]: transform ? transform(value) : value }),
+        );
+        this.subscriptions.set(key, { subscription: sub, transform });
+    }
+
+    async componentDidUpdate(prevProps: DeviceCardProps): Promise<void> {
+        for (const [key, { subscription, transform }] of [...this.subscriptions]) {
+            const newItem = this.props.device[key];
+            const prevItem = prevProps.device[key];
+
+            if (newItem !== prevItem) {
+                console.log(`${key} of device ${JSON.stringify(this.props.device.id)} updated`, prevItem, newItem);
+                this.subscriptions.delete(key);
+                await this.addStateOrObjectListener(key, transform);
+                await subscription.unsubscribe();
+            }
+        }
+    }
+
     async componentWillUnmount(): Promise<void> {
-        await this.stateOrObjectHandler.unsubscribe();
+        for (const [, { subscription }] of this.subscriptions) {
+            await subscription.unsubscribe();
+        }
+        this.subscriptions.clear();
     }
 
     /**
@@ -291,14 +303,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         console.log(`Got device details for`, this.props.device.id, details);
         this.setState({ details, data: details?.data || {} });
     }
-
-    /**
-     * Refresh the device details
-     */
-    refresh = (): void => {
-        this.setState({ details: null });
-        this.loadDetails().catch(console.error);
-    };
 
     /**
      * Copy the device ID to the clipboard
@@ -445,7 +449,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                       deviceId={this.props.device.id}
                       action={a}
                       deviceHandler={this.props.deviceHandler}
-                      refresh={this.refresh}
                   />
               ))
             : null;
@@ -537,7 +540,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                                         a => a.id === ACTIONS.ENABLE_DISABLE,
                                     )}
                                     deviceHandler={this.props.deviceHandler}
-                                    refresh={this.refresh}
                                     theme={this.props.theme}
                                     stateOrObjectHandler={this.stateOrObjectHandler}
                                 />
@@ -696,7 +698,6 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
                             disableEnableAction={this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE)}
                             deviceHandler={this.props.deviceHandler}
-                            refresh={this.refresh}
                             theme={this.props.theme}
                             stateOrObjectHandler={this.stateOrObjectHandler}
                         />

@@ -6,13 +6,12 @@ import { getTranslation, renderActionIcon } from './Utils';
 interface DeviceActionButtonProps {
     deviceId: DeviceId;
     action: DeviceAction;
-    refresh: () => void;
-    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     disabled?: boolean;
 }
 
 export default function DeviceActionButton(props: DeviceActionButtonProps): React.JSX.Element {
-    const { deviceId, action, refresh, deviceHandler, disabled } = props;
+    const { deviceId, action, deviceHandler, disabled } = props;
 
     const icon = renderActionIcon(action);
 
@@ -23,7 +22,7 @@ export default function DeviceActionButton(props: DeviceActionButtonProps): Reac
             tooltip={tooltip || undefined}
             disabled={disabled || action.disabled}
             Icon={icon}
-            onClick={deviceHandler(deviceId, action, refresh)}
+            onClick={deviceHandler(deviceId, action)}
             url={'url' in action ? getTranslation(action.url) : undefined}
         />
     );

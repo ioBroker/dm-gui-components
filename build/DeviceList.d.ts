@@ -1,5 +1,5 @@
 import React, { type JSX } from 'react';
-import type { DeviceInfo, InstanceDetails } from './protocol/api';
+import type { DeviceId, DeviceInfo, InstanceDetails } from './protocol/api';
 import Communication, { type CommunicationProps, type CommunicationState } from './Communication';
 interface DeviceListProps extends CommunicationProps {
     /** Instance to upload images to, like `adapterName.X` */
@@ -50,10 +50,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     componentDidMount(): Promise<void>;
     componentWillUnmount(): void;
     aliveHandler: ioBroker.StateChangeHandler;
+    loadAllData(): Promise<void>;
+    loadInstanceInfos(): Promise<InstanceDetails>;
     /**
      * Load devices
      */
-    loadData(): void;
+    loadDeviceList(): void;
+    updateDevice(update: DeviceInfo): void;
+    deleteDevice(deviceId: DeviceId): void;
     getText(text: ioBroker.StringOrTranslated): string;
     handleFilterChange(filter: string): void;
     renderGroups(groups: {

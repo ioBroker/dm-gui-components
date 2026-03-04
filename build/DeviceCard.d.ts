@@ -9,7 +9,7 @@ interface DeviceCardProps {
     instanceId: string;
     socket: Connection;
     uploadImagesToInstance?: string;
-    deviceHandler: (deviceId: DeviceId, action: ActionBase, refresh: () => void) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     controlHandler: (deviceId: DeviceId, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
     controlStateHandler: (deviceId: DeviceId, control: ControlBase) => () => Promise<ioBroker.State | null>;
     smallCards?: boolean;
@@ -41,18 +41,17 @@ interface DeviceCardState {
  */
 export default class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
     private readonly stateOrObjectHandler;
+    private readonly subscriptions;
     constructor(props: DeviceCardProps);
     fetchIcon(): Promise<void>;
     componentDidMount(): Promise<void>;
+    private addStateOrObjectListener;
+    componentDidUpdate(prevProps: DeviceCardProps): Promise<void>;
     componentWillUnmount(): Promise<void>;
     /**
      * Load the device details
      */
     loadDetails(): Promise<void>;
-    /**
-     * Refresh the device details
-     */
-    refresh: () => void;
     /**
      * Copy the device ID to the clipboard
      */
