@@ -23,9 +23,13 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+
+- (@GermanBluefox) Small layout optimizations for controls
+
 ### 9.0.3 (2026-03-04)
 
-- (@UncleSamSwiss) Fix handling of "result" response from action handler (update, delete device)
+- (@UncleSamSwiss) Fix handling of "result" response from action handler (update, delete a device)
 - (@UncleSamSwiss) Fix handling of V1 protocol action responses
 - (@UncleSamSwiss) Fix handling of "refresh" response from instance actions
 
@@ -35,7 +39,7 @@ render() {
 
 ### 8.0.9 (2026-01-28)
 
-- (@GermanBluefox) Analyze API version and do not show anything if version is higher than supported
+- (@GermanBluefox) Analyze an API version and do not show anything if a version is higher than supported
 
 ### 8.0.8 (2026-01-27)
 

@@ -104,8 +104,8 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                         }
                     });
                 } else {
-                    const min = this.props.control.min === undefined ? 0 : this.props.control.min;
-                    const max = this.props.control.max === undefined ? 100 : this.props.control.max;
+                    const min = this.props.control.min ?? 0;
+                    const max = this.props.control.max ?? 100;
 
                     this.setState({
                         min,
@@ -313,42 +313,46 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
             return <div style={{ width: '100%' }}>...</div>;
         }
         return (
-            <Stack
-                spacing={2}
-                direction="row"
-                sx={{ alignItems: 'center', mb: 1, width: '100%' }}
-            >
+            <div style={{ width: '100%', minWidth: 300, paddingTop: 24, marginBottom: 8, overflow: 'visible' }}>
                 {this.props.control.label ? (
-                    <InputLabel style={{ color: this.props.control.color }}>
+                    <InputLabel style={{ color: this.props.control.color, marginBottom: 4 }}>
                         {getTranslation(this.props.control.label)}
                     </InputLabel>
                 ) : null}
-                {this.props.control.icon ? (
-                    <Icon
-                        style={{ color: this.props.control.color }}
-                        src={this.props.control.icon}
+                <Stack
+                    spacing={2}
+                    direction="row"
+                    sx={{ alignItems: 'center', width: '100%' }}
+                >
+                    {this.props.control.icon ? (
+                        <Icon
+                            style={{ color: this.props.control.color }}
+                            src={this.props.control.icon}
+                        />
+                    ) : null}
+                    <Slider
+                        value={parseFloat((this.state.value as string) || '0')}
+                        min={this.state.min}
+                        max={this.state.max}
+                        step={this.state.step}
+                        valueLabelDisplay="auto"
+                        onChange={(_e, value) =>
+                            this.sendControl(this.props.deviceId, this.props.control, value as number)
+                        }
                     />
-                ) : null}
-                <Slider
-                    value={parseFloat((this.state.value as string) || '0')}
-                    min={this.state.min}
-                    max={this.state.max}
-                    step={this.state.step}
-                    valueLabelDisplay="auto"
-                    onChange={(_e, value) => this.sendControl(this.props.deviceId, this.props.control, value as number)}
-                />
-                {this.props.control.iconOn ? (
-                    <Icon
-                        style={{ color: this.props.control.colorOn }}
-                        src={this.props.control.iconOn}
-                    />
-                ) : null}
-                {this.props.control.labelOn ? (
-                    <InputLabel style={{ color: this.props.control.colorOn }}>
-                        {getTranslation(this.props.control.labelOn)}
-                    </InputLabel>
-                ) : null}
-            </Stack>
+                    {this.props.control.iconOn ? (
+                        <Icon
+                            style={{ color: this.props.control.colorOn }}
+                            src={this.props.control.iconOn}
+                        />
+                    ) : null}
+                    {this.props.control.labelOn ? (
+                        <InputLabel style={{ color: this.props.control.colorOn }}>
+                            {getTranslation(this.props.control.labelOn)}
+                        </InputLabel>
+                    ) : null}
+                </Stack>
+            </div>
         );
     }
 

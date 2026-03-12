@@ -380,7 +380,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         <CloseIcon />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent style={{ display: 'flex', flexDirection: 'column' }}>
+                <DialogContent style={{ display: 'flex', flexDirection: 'column', overflow: 'visible' }}>
                     {this.props.device.controls?.map(control => (
                         <DeviceControlComponent
                             disabled={false}
@@ -426,6 +426,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
             return (
                 <Fab
                     size="small"
+                    style={{ width: 32, height: 32, minHeight: 32 }}
                     disabled={!this.props.alive}
                     onClick={() => this.setState({ showControlDialog: true })}
                 >
@@ -727,7 +728,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             </div>
                         ) : null}
                     </Typography>
-                    {!!this.props.device.actions?.length && (
+                    {!!(this.props.device.actions?.length || this.props.device.controls?.length) && (
                         <div
                             style={{
                                 flex: 1,

@@ -214,7 +214,7 @@ export default class DeviceCard extends Component {
                         zIndex: 10,
                     }, onClick: () => this.setState({ showControlDialog: false }) },
                     React.createElement(CloseIcon, null))),
-            React.createElement(DialogContent, { style: { display: 'flex', flexDirection: 'column' } }, this.props.device.controls?.map(control => (React.createElement(DeviceControlComponent, { disabled: false, key: control.id, control: control, socket: this.props.socket, colors: colors, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }))))));
+            React.createElement(DialogContent, { style: { display: 'flex', flexDirection: 'column', overflow: 'visible' } }, this.props.device.controls?.map(control => (React.createElement(DeviceControlComponent, { disabled: false, key: control.id, control: control, socket: this.props.socket, colors: colors, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }))))));
     }
     renderControls() {
         const colors = { primary: '#111', secondary: '#888' };
@@ -228,7 +228,7 @@ export default class DeviceCard extends Component {
         }
         if (this.props.device.controls?.length) {
             // place a button and show a controls dialog
-            return (React.createElement(Fab, { size: "small", disabled: !this.props.alive, onClick: () => this.setState({ showControlDialog: true }) },
+            return (React.createElement(Fab, { size: "small", style: { width: 32, height: 32, minHeight: 32 }, disabled: !this.props.alive, onClick: () => this.setState({ showControlDialog: true }) },
                 React.createElement(ControlIcon, null)));
         }
         return null;
@@ -379,7 +379,7 @@ export default class DeviceCard extends Component {
                             getTranslation('model'),
                             ":"),
                         this.state.model)) : null),
-                !!this.props.device.actions?.length && (React.createElement("div", { style: {
+                !!(this.props.device.actions?.length || this.props.device.controls?.length) && (React.createElement("div", { style: {
                         flex: 1,
                         position: 'relative',
                         display: 'flex',
