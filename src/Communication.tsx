@@ -351,14 +351,6 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                     }
                     break;
 
-                case 'url':
-                    console.log('Open URL', response.data?.url, response.data?.target);
-                    if ('url' in response.data) {
-                        const target = response.data.target || '_blank';
-                        window.open(response.data.url, target);
-                    }
-                    break;
-
                 default:
                     console.log(`Unknown response type: ${type}`);
                     this.setState({ showSpinner: false });

@@ -1,6 +1,6 @@
 # ReactJS component for ioBroker device manager
 
-This component requires the [dm-utils](https://github.com/ioBroker/dm-utils) in adapter.
+This component requires the [dm-utils](https://github.com/ioBroker/dm-utils) in an adapter.
 
 ## Usage
 
@@ -23,11 +23,7 @@ render() {
 -->
 
 ## Changelog
-### 9.0.5 (2026-03-26)
-
-- (@GermanBluefox) Allowed to open URL by action button
-
-### 9.0.4 (2026-03-12)
+### **WORK IN PROGRESS**
 
 - (@GermanBluefox) Small layout optimizations for controls
 
