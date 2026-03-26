@@ -23,7 +23,7 @@ render() {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 9.0.6 (2026-03-26)
 
 - (@GermanBluefox) Small layout optimizations for controls
 
