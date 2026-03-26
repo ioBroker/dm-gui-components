@@ -23,6 +23,10 @@ render() {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+
+- (@GermanBluefox) Allowed to open URL by action button
+
 ### 9.0.4 (2026-03-12)
 
 - (@GermanBluefox) Small layout optimizations for controls
