@@ -86,6 +86,9 @@ Font Awesome names can be prefixed with `fa-solid` (it is stripped automatically
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Layout improved
+
 ### 9.0.7 (2026-03-27)
 - (@GermanBluefox) Added possibility to show custom information on Card
 
