@@ -1,6 +1,6 @@
 import { DeviceTypeIcon, I18n, Utils, } from '@iobroker/adapter-react-v5';
 import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon } from '@mui/icons-material';
-import { Box, Button, Card, CardActions, CardContent, CardHeader, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, Paper, Skeleton, Typography, } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, Paper, Skeleton, Typography, } from '@mui/material';
 import React, { Component } from 'react';
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
@@ -9,10 +9,6 @@ import DeviceStatusComponent from './DeviceStatus';
 import JsonConfig from './JsonConfig';
 import { getTranslation } from './Utils';
 import { StateOrObjectHandler } from './StateOrObjectHandler';
-const smallCardStyle = {
-    maxWidth: 345,
-    minWidth: 200,
-};
 /** Reserved action names (this is copied from https://github.com/ioBroker/dm-utils/blob/main/src/types/base.ts as we can only have type references to dm-utils) */
 const ACTIONS = {
     /** This action will be called when the user clicks on the connection icon */
@@ -242,67 +238,65 @@ export default class DeviceCard extends Component {
             : null;
     }
     renderSmall() {
-        const hasDetails = this.state.hasDetails;
         const status = !this.props.device.status
             ? []
             : Array.isArray(this.props.device.status)
                 ? this.props.device.status
                 : [this.props.device.status];
-        const icon = this.state.icon ? React.createElement(DeviceTypeIcon, { src: this.state.icon }) : React.createElement(NoImageIcon, null);
-        const headerStyle = this.getCardHeaderStyle(this.props.theme, 345);
-        return (React.createElement(Card, { sx: { ...smallCardStyle, display: 'flex', flexDirection: 'column' } },
-            React.createElement(CardHeader, { style: headerStyle, avatar: React.createElement("div", null,
+        const icon = this.state.icon ? (React.createElement(DeviceTypeIcon, { src: this.state.icon, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
+        const headerStyle = this.getCardHeaderStyle(this.props.theme);
+        const title = this.state.details?.data?.name || this.props.device.name || '';
+        return (React.createElement(Paper, { style: { ...styles.cardStyle, width: 200, minHeight: 200, margin: 5 }, key: JSON.stringify(this.props.id) },
+            React.createElement(Box, { sx: headerStyle, style: { ...styles.headerStyle, minHeight: 48 } },
+                React.createElement("div", { style: { ...styles.imgAreaStyle, height: 32, width: 32 } },
                     this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.state.manufacturer, model: this.state.model, onImageSelect: (imageData) => {
                             if (imageData) {
                                 this.setState({ icon: imageData });
                             }
                         }, socket: this.props.socket })) : null,
-                    icon), action: hasDetails ? (React.createElement(IconButton, { "aria-label": "settings", onClick: () => {
+                    icon),
+                React.createElement(Box, { style: { ...styles.titleStyle, fontSize: 14 }, title: title.length > 15 ? title : undefined, sx: theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText }) }, this.state.details?.data?.name || this.state.name),
+                this.state.hasDetails ? (React.createElement(Fab, { disabled: !this.props.alive, size: "small", style: styles.detailsButtonStyle, onClick: () => {
                         if (!this.state.open) {
                             this.loadDetails().catch(console.error);
                             this.setState({ open: true });
                         }
-                    } },
-                    React.createElement(MoreVertIcon, null))) : null, title: this.state.name, subheader: this.state.manufacturer ? (React.createElement("span", null,
-                    React.createElement("b", { style: { marginRight: 4 } },
-                        getTranslation('manufacturer'),
-                        ":"),
-                    this.state.manufacturer)) : null }),
-            React.createElement(CardContent, { style: { position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' } },
-                status?.length ? (React.createElement("div", { style: {
-                        display: 'flex',
-                        position: 'absolute',
-                        top: -11,
-                        background: '#88888880',
-                        padding: '0 8px',
-                        borderRadius: 5,
-                        width: 'calc(100% - 46px)',
-                    } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, status: s, connectionType: this.state.connectionType, enabled: this.state.enabled, deviceId: this.props.device.id, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler }))))) : null,
-                React.createElement("div", null,
-                    React.createElement(Typography, { variant: "body1" },
-                        this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
-                            React.createElement("b", null,
-                                getText(this.props.identifierLabel),
-                                ":"),
-                            React.createElement("span", { style: { marginLeft: 4 } }, this.state.identifier))) : null,
-                        this.state.manufacturer ? (React.createElement("div", null,
-                            React.createElement("b", { style: { marginRight: 4 } },
-                                getTranslation('manufacturer'),
-                                ":"),
-                            this.state.manufacturer)) : null,
-                        this.state.model ? (React.createElement("div", null,
-                            React.createElement("b", { style: { marginRight: 4 } },
-                                getTranslation('model'),
-                                ":"),
-                            this.state.model)) : null)),
-                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 16px' } },
+                    }, color: "primary" },
+                    React.createElement(MoreVertIcon, null))) : null),
+            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
+            React.createElement("div", { style: styles.bodyStyle },
+                React.createElement(Typography, { variant: "body2", style: { ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' } },
+                    this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
+                        React.createElement("b", null,
+                            getText(this.props.identifierLabel),
+                            ":"),
+                        React.createElement("span", { style: { marginLeft: 4 } }, this.state.identifier))) : null,
+                    this.state.manufacturer ? (React.createElement("div", null,
+                        React.createElement("b", { style: { marginRight: 4 } },
+                            getTranslation('manufacturer'),
+                            ":"),
+                        this.state.manufacturer)) : null,
+                    this.state.model ? (React.createElement("div", null,
+                        React.createElement("b", { style: { marginRight: 4 } },
+                            getTranslation('model'),
+                            ":"),
+                        this.state.model)) : null),
+                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 10px' } },
                     React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
                             /* ignore */
-                        }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null),
-            React.createElement(CardActions, { disableSpacing: true },
-                this.renderActions(),
-                React.createElement("div", { style: { flexGrow: 1 } }),
-                this.renderControls()),
+                        }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,
+                !!(this.props.device.actions?.length || this.props.device.controls?.length) && (React.createElement("div", { style: {
+                        marginTop: 'auto',
+                        display: 'flex',
+                        gap: 4,
+                        paddingBottom: 5,
+                        minHeight: 34,
+                        paddingLeft: 8,
+                        paddingRight: 8,
+                    } },
+                    this.renderActions(),
+                    React.createElement("div", { style: { flexGrow: 1 } }),
+                    this.renderControls()))),
             this.renderDialog(),
             this.renderControlDialog()));
     }
@@ -423,19 +417,24 @@ export class DeviceCardSkeleton extends Component {
         return this.renderBig();
     }
     renderSmall() {
-        const headerStyle = this.getCardHeaderStyle(this.props.theme, 345);
-        return (React.createElement(Card, { sx: smallCardStyle },
-            React.createElement(CardHeader, { style: headerStyle, avatar: React.createElement("div", null,
-                    React.createElement(Skeleton, { variant: "rounded", width: 24, height: 24 })), title: React.createElement(Skeleton, null), subheader: React.createElement(Skeleton, null) }),
-            React.createElement(CardContent, { style: { position: 'relative' } },
-                React.createElement("div", null,
-                    React.createElement(Typography, { variant: "body1" },
-                        React.createElement("div", null,
-                            React.createElement(Skeleton, null)),
-                        React.createElement("div", null,
-                            React.createElement(Skeleton, null)),
-                        React.createElement("div", null,
-                            React.createElement(Skeleton, null)))))));
+        const headerStyle = this.getCardHeaderStyle(this.props.theme);
+        return (React.createElement(Paper, { style: { ...styles.cardStyle, width: 200, minHeight: 200, margin: 5 } },
+            React.createElement(Box, { sx: headerStyle, style: { ...styles.headerStyle, minHeight: 48 } },
+                React.createElement("div", { style: { ...styles.imgAreaStyle, height: 32, width: 32 } },
+                    React.createElement(Skeleton, { variant: "rounded", width: 24, height: 24 })),
+                React.createElement(Box, { style: { ...styles.titleStyle, fontSize: 14, minWidth: '50%' }, sx: theme => ({
+                        color: headerStyle.color || theme.palette.secondary.contrastText,
+                    }) },
+                    React.createElement(Skeleton, null))),
+            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } }),
+            React.createElement("div", { style: styles.bodyStyle },
+                React.createElement(Typography, { variant: "body2", style: { ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' } },
+                    React.createElement("div", null,
+                        React.createElement(Skeleton, null)),
+                    React.createElement("div", null,
+                        React.createElement(Skeleton, null)),
+                    React.createElement("div", null,
+                        React.createElement(Skeleton, null))))));
     }
     renderBig() {
         const headerStyle = this.getCardHeaderStyle(this.props.theme);

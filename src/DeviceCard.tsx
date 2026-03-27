@@ -12,10 +12,6 @@ import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVert
 import {
     Box,
     Button,
-    Card,
-    CardActions,
-    CardContent,
-    CardHeader,
     Dialog,
     DialogActions,
     DialogContent,
@@ -43,11 +39,6 @@ import type {
 } from './protocol/api';
 import { getTranslation } from './Utils';
 import { StateOrObjectHandler, type StateOrObjectSubscription } from './StateOrObjectHandler';
-
-const smallCardStyle = {
-    maxWidth: 345,
-    minWidth: 200,
-} as const;
 
 /** Reserved action names (this is copied from https://github.com/ioBroker/dm-utils/blob/main/src/types/base.ts as we can only have type references to dm-utils) */
 const ACTIONS = {
@@ -458,124 +449,123 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     }
 
     renderSmall(): JSX.Element {
-        const hasDetails = this.state.hasDetails;
         const status = !this.props.device.status
             ? []
             : Array.isArray(this.props.device.status)
               ? this.props.device.status
               : [this.props.device.status];
 
-        const icon = this.state.icon ? <DeviceTypeIcon src={this.state.icon} /> : <NoImageIcon />;
+        const icon = this.state.icon ? (
+            <DeviceTypeIcon
+                src={this.state.icon}
+                style={styles.imgStyle}
+            />
+        ) : (
+            <NoImageIcon style={styles.imgStyle} />
+        );
+        const headerStyle = this.getCardHeaderStyle(this.props.theme);
 
-        const headerStyle = this.getCardHeaderStyle(this.props.theme, 345);
+        const title: string = this.state.details?.data?.name || this.props.device.name || '';
 
         return (
-            <Card sx={{ ...smallCardStyle, display: 'flex', flexDirection: 'column' }}>
-                <CardHeader
-                    style={headerStyle}
-                    avatar={
-                        <div>
-                            {this.props.uploadImagesToInstance ? (
-                                <DeviceImageUpload
-                                    uploadImagesToInstance={this.props.uploadImagesToInstance}
-                                    deviceId={this.props.device.id}
-                                    manufacturer={this.state.manufacturer}
-                                    model={this.state.model}
-                                    onImageSelect={(imageData: string): void => {
-                                        if (imageData) {
-                                            this.setState({ icon: imageData });
-                                        }
-                                    }}
-                                    socket={this.props.socket}
-                                />
-                            ) : null}
-                            {icon}
-                        </div>
-                    }
-                    action={
-                        hasDetails ? (
-                            <IconButton
-                                aria-label="settings"
-                                onClick={() => {
-                                    if (!this.state.open) {
-                                        this.loadDetails().catch(console.error);
-                                        this.setState({ open: true });
+            <Paper
+                style={{ ...styles.cardStyle, width: 200, minHeight: 200, margin: 5 }}
+                key={JSON.stringify(this.props.id)}
+            >
+                {/* Header */}
+                <Box
+                    sx={headerStyle}
+                    style={{ ...styles.headerStyle, minHeight: 48 }}
+                >
+                    <div style={{ ...styles.imgAreaStyle, height: 32, width: 32 }}>
+                        {this.props.uploadImagesToInstance ? (
+                            <DeviceImageUpload
+                                uploadImagesToInstance={this.props.uploadImagesToInstance}
+                                deviceId={this.props.device.id}
+                                manufacturer={this.state.manufacturer}
+                                model={this.state.model}
+                                onImageSelect={(imageData: string): void => {
+                                    if (imageData) {
+                                        this.setState({ icon: imageData });
                                     }
                                 }}
+                                socket={this.props.socket}
+                            />
+                        ) : null}
+                        {icon}
+                    </div>
+                    <Box
+                        style={{ ...styles.titleStyle, fontSize: 14 }}
+                        title={title.length > 15 ? title : undefined}
+                        sx={theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText })}
+                    >
+                        {this.state.details?.data?.name || this.state.name}
+                    </Box>
+                    {this.state.hasDetails ? (
+                        <Fab
+                            disabled={!this.props.alive}
+                            size="small"
+                            style={styles.detailsButtonStyle}
+                            onClick={() => {
+                                if (!this.state.open) {
+                                    this.loadDetails().catch(console.error);
+                                    this.setState({ open: true });
+                                }
+                            }}
+                            color="primary"
+                        >
+                            <MoreVertIcon />
+                        </Fab>
+                    ) : null}
+                </Box>
+                {/* Status */}
+                <div style={{ ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' }}>
+                    {status.map((s, i) => (
+                        <DeviceStatusComponent
+                            key={i}
+                            socket={this.props.socket}
+                            deviceId={this.props.device.id}
+                            connectionType={this.state.connectionType}
+                            status={s}
+                            enabled={this.state.enabled}
+                            statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
+                            disableEnableAction={this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE)}
+                            deviceHandler={this.props.deviceHandler}
+                            theme={this.props.theme}
+                            stateOrObjectHandler={this.stateOrObjectHandler}
+                        />
+                    ))}
+                </div>
+                {/* Body */}
+                <div style={styles.bodyStyle}>
+                    <Typography
+                        variant="body2"
+                        style={{ ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' }}
+                    >
+                        {this.state.identifier ? (
+                            <div
+                                onClick={this.copyToClipboard}
+                                style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}
                             >
-                                <MoreVertIcon />
-                            </IconButton>
-                        ) : null
-                    }
-                    title={this.state.name}
-                    subheader={
-                        this.state.manufacturer ? (
-                            <span>
+                                <b>{getText(this.props.identifierLabel)}:</b>
+                                <span style={{ marginLeft: 4 }}>{this.state.identifier}</span>
+                            </div>
+                        ) : null}
+                        {this.state.manufacturer ? (
+                            <div>
                                 <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
                                 {this.state.manufacturer}
-                            </span>
-                        ) : null
-                    }
-                />
-                <CardContent style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    {status?.length ? (
-                        <div
-                            style={{
-                                display: 'flex',
-                                position: 'absolute',
-                                top: -11,
-                                background: '#88888880',
-                                padding: '0 8px',
-                                borderRadius: 5,
-                                width: 'calc(100% - 46px)',
-                            }}
-                        >
-                            {status.map((s, i) => (
-                                <DeviceStatusComponent
-                                    key={i}
-                                    socket={this.props.socket}
-                                    status={s}
-                                    connectionType={this.state.connectionType}
-                                    enabled={this.state.enabled}
-                                    deviceId={this.props.device.id}
-                                    statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
-                                    disableEnableAction={this.props.device.actions?.find(
-                                        a => a.id === ACTIONS.ENABLE_DISABLE,
-                                    )}
-                                    deviceHandler={this.props.deviceHandler}
-                                    theme={this.props.theme}
-                                    stateOrObjectHandler={this.stateOrObjectHandler}
-                                />
-                            ))}
-                        </div>
-                    ) : null}
-                    <div>
-                        <Typography variant="body1">
-                            {this.state.identifier ? (
-                                <div
-                                    onClick={this.copyToClipboard}
-                                    style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}
-                                >
-                                    <b>{getText(this.props.identifierLabel)}:</b>
-                                    <span style={{ marginLeft: 4 }}>{this.state.identifier}</span>
-                                </div>
-                            ) : null}
-                            {this.state.manufacturer ? (
-                                <div>
-                                    <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
-                                    {this.state.manufacturer}
-                                </div>
-                            ) : null}
-                            {this.state.model ? (
-                                <div>
-                                    <b style={{ marginRight: 4 }}>{getTranslation('model')}:</b>
-                                    {this.state.model}
-                                </div>
-                            ) : null}
-                        </Typography>
-                    </div>
+                            </div>
+                        ) : null}
+                        {this.state.model ? (
+                            <div>
+                                <b style={{ marginRight: 4 }}>{getTranslation('model')}:</b>
+                                {this.state.model}
+                            </div>
+                        ) : null}
+                    </Typography>
                     {this.props.device.customInfo ? (
-                        <div style={{ padding: '0 16px' }}>
+                        <div style={{ padding: '0 10px' }}>
                             <JsonConfig
                                 instanceId={this.props.instanceId}
                                 socket={this.props.socket}
@@ -592,15 +582,28 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             />
                         </div>
                     ) : null}
-                </CardContent>
-                <CardActions disableSpacing>
-                    {this.renderActions()}
-                    <div style={{ flexGrow: 1 }} />
-                    {this.renderControls()}
-                </CardActions>
+                    {/* Footer */}
+                    {!!(this.props.device.actions?.length || this.props.device.controls?.length) && (
+                        <div
+                            style={{
+                                marginTop: 'auto',
+                                display: 'flex',
+                                gap: 4,
+                                paddingBottom: 5,
+                                minHeight: 34,
+                                paddingLeft: 8,
+                                paddingRight: 8,
+                            }}
+                        >
+                            {this.renderActions()}
+                            <div style={{ flexGrow: 1 }} />
+                            {this.renderControls()}
+                        </div>
+                    )}
+                </div>
                 {this.renderDialog()}
                 {this.renderControlDialog()}
-            </Card>
+            </Paper>
         );
     }
 
@@ -819,40 +822,48 @@ export class DeviceCardSkeleton extends Component<DeviceCardSkeletonProps> {
     }
 
     renderSmall(): JSX.Element {
-        const headerStyle = this.getCardHeaderStyle(this.props.theme, 345);
+        const headerStyle = this.getCardHeaderStyle(this.props.theme);
 
         return (
-            <Card sx={smallCardStyle}>
-                <CardHeader
-                    style={headerStyle}
-                    avatar={
-                        <div>
-                            <Skeleton
-                                variant="rounded"
-                                width={24}
-                                height={24}
-                            />
-                        </div>
-                    }
-                    title={<Skeleton />}
-                    subheader={<Skeleton />}
-                />
-                <CardContent style={{ position: 'relative' }}>
-                    <div>
-                        <Typography variant="body1">
-                            <div>
-                                <Skeleton />
-                            </div>
-                            <div>
-                                <Skeleton />
-                            </div>
-                            <div>
-                                <Skeleton />
-                            </div>
-                        </Typography>
+            <Paper style={{ ...styles.cardStyle, width: 200, minHeight: 200, margin: 5 }}>
+                <Box
+                    sx={headerStyle}
+                    style={{ ...styles.headerStyle, minHeight: 48 }}
+                >
+                    <div style={{ ...styles.imgAreaStyle, height: 32, width: 32 }}>
+                        <Skeleton
+                            variant="rounded"
+                            width={24}
+                            height={24}
+                        />
                     </div>
-                </CardContent>
-            </Card>
+                    <Box
+                        style={{ ...styles.titleStyle, fontSize: 14, minWidth: '50%' }}
+                        sx={theme => ({
+                            color: headerStyle.color || theme.palette.secondary.contrastText,
+                        })}
+                    >
+                        <Skeleton />
+                    </Box>
+                </Box>
+                <div style={{ ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' }} />
+                <div style={styles.bodyStyle}>
+                    <Typography
+                        variant="body2"
+                        style={{ ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' }}
+                    >
+                        <div>
+                            <Skeleton />
+                        </div>
+                        <div>
+                            <Skeleton />
+                        </div>
+                        <div>
+                            <Skeleton />
+                        </div>
+                    </Typography>
+                </div>
+            </Paper>
         );
     }
 
