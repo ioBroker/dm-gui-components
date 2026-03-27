@@ -63,7 +63,8 @@ const styles: Record<string, React.CSSProperties> = {
         minHeight: 280,
         margin: 10,
         overflow: 'hidden',
-        display: 'inline-block',
+        display: 'inline-flex',
+        flexDirection: 'column',
     },
     headerStyle: {
         display: 'flex',
@@ -101,11 +102,12 @@ const styles: Record<string, React.CSSProperties> = {
         position: 'absolute',
     },
     bodyStyle: {
-        height: 'calc(100% - 116px)',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
     },
     deviceInfoStyle: {
         padding: '20px 16px 0 16px',
-        height: 133,
     },
     statusStyle: {
         padding: '15px 25px 0 15px',
@@ -468,7 +470,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         const headerStyle = this.getCardHeaderStyle(this.props.theme, 345);
 
         return (
-            <Card sx={smallCardStyle}>
+            <Card sx={{ ...smallCardStyle, display: 'flex', flexDirection: 'column' }}>
                 <CardHeader
                     style={headerStyle}
                     avatar={
@@ -515,7 +517,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         ) : null
                     }
                 />
-                <CardContent style={{ position: 'relative' }}>
+                <CardContent style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     {status?.length ? (
                         <div
                             style={{
@@ -572,6 +574,24 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             ) : null}
                         </Typography>
                     </div>
+                    {this.props.device.customInfo ? (
+                        <div style={{ padding: '0 16px' }}>
+                            <JsonConfig
+                                instanceId={this.props.instanceId}
+                                socket={this.props.socket}
+                                schema={this.props.device.customInfo.schema as ConfigItemPanel | ConfigItemTabs}
+                                data={this.props.device.customInfo.data || {}}
+                                onChange={(_data: Record<string, any>) => {
+                                    /* ignore */
+                                }}
+                                themeName={this.props.themeName}
+                                themeType={this.props.themeType}
+                                theme={this.props.theme}
+                                isFloatComma={this.props.isFloatComma}
+                                dateFormat={this.props.dateFormat}
+                            />
+                        </div>
+                    ) : null}
                 </CardContent>
                 <CardActions disableSpacing>
                     {this.renderActions()}
@@ -731,31 +751,32 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         ) : null}
                     </Typography>
                     {this.props.device.customInfo ? (
-                        <JsonConfig
-                            instanceId={this.props.instanceId}
-                            socket={this.props.socket}
-                            schema={this.props.device.customInfo.schema as ConfigItemPanel | ConfigItemTabs}
-                            data={this.props.device.customInfo.data || {}}
-                            onChange={(_data: Record<string, any>) => {
-                                /* ignore */
-                            }}
-                            themeName={this.props.themeName}
-                            themeType={this.props.themeType}
-                            theme={this.props.theme}
-                            isFloatComma={this.props.isFloatComma}
-                            dateFormat={this.props.dateFormat}
-                        />
+                        <div style={{ padding: '0 16px' }}>
+                            <JsonConfig
+                                instanceId={this.props.instanceId}
+                                socket={this.props.socket}
+                                schema={this.props.device.customInfo.schema as ConfigItemPanel | ConfigItemTabs}
+                                data={this.props.device.customInfo.data || {}}
+                                onChange={(_data: Record<string, any>) => {
+                                    /* ignore */
+                                }}
+                                themeName={this.props.themeName}
+                                themeType={this.props.themeType}
+                                theme={this.props.theme}
+                                isFloatComma={this.props.isFloatComma}
+                                dateFormat={this.props.dateFormat}
+                            />
+                        </div>
                     ) : null}
                     {/* Footer */}
                     {!!(this.props.device.actions?.length || this.props.device.controls?.length) && (
                         <div
                             style={{
-                                flex: 1,
-                                position: 'relative',
+                                marginTop: 'auto',
                                 display: 'flex',
                                 gap: 8,
                                 paddingBottom: 5,
-                                height: 34,
+                                minHeight: 34,
                                 paddingLeft: 10,
                                 paddingRight: 10,
                             }}

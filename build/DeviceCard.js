@@ -26,7 +26,8 @@ const styles = {
         minHeight: 280,
         margin: 10,
         overflow: 'hidden',
-        display: 'inline-block',
+        display: 'inline-flex',
+        flexDirection: 'column',
     },
     headerStyle: {
         display: 'flex',
@@ -64,11 +65,12 @@ const styles = {
         position: 'absolute',
     },
     bodyStyle: {
-        height: 'calc(100% - 116px)',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
     },
     deviceInfoStyle: {
         padding: '20px 16px 0 16px',
-        height: 133,
     },
     statusStyle: {
         padding: '15px 25px 0 15px',
@@ -248,7 +250,7 @@ export default class DeviceCard extends Component {
                 : [this.props.device.status];
         const icon = this.state.icon ? React.createElement(DeviceTypeIcon, { src: this.state.icon }) : React.createElement(NoImageIcon, null);
         const headerStyle = this.getCardHeaderStyle(this.props.theme, 345);
-        return (React.createElement(Card, { sx: smallCardStyle },
+        return (React.createElement(Card, { sx: { ...smallCardStyle, display: 'flex', flexDirection: 'column' } },
             React.createElement(CardHeader, { style: headerStyle, avatar: React.createElement("div", null,
                     this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.state.manufacturer, model: this.state.model, onImageSelect: (imageData) => {
                             if (imageData) {
@@ -266,7 +268,7 @@ export default class DeviceCard extends Component {
                         getTranslation('manufacturer'),
                         ":"),
                     this.state.manufacturer)) : null }),
-            React.createElement(CardContent, { style: { position: 'relative' } },
+            React.createElement(CardContent, { style: { position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' } },
                 status?.length ? (React.createElement("div", { style: {
                         display: 'flex',
                         position: 'absolute',
@@ -292,7 +294,11 @@ export default class DeviceCard extends Component {
                             React.createElement("b", { style: { marginRight: 4 } },
                                 getTranslation('model'),
                                 ":"),
-                            this.state.model)) : null))),
+                            this.state.model)) : null)),
+                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 16px' } },
+                    React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
+                            /* ignore */
+                        }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null),
             React.createElement(CardActions, { disableSpacing: true },
                 this.renderActions(),
                 React.createElement("div", { style: { flexGrow: 1 } }),
@@ -379,16 +385,16 @@ export default class DeviceCard extends Component {
                             getTranslation('model'),
                             ":"),
                         this.state.model)) : null),
-                this.props.device.customInfo ? (React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
-                        /* ignore */
-                    }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })) : null,
+                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 16px' } },
+                    React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
+                            /* ignore */
+                        }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,
                 !!(this.props.device.actions?.length || this.props.device.controls?.length) && (React.createElement("div", { style: {
-                        flex: 1,
-                        position: 'relative',
+                        marginTop: 'auto',
                         display: 'flex',
                         gap: 8,
                         paddingBottom: 5,
-                        height: 34,
+                        minHeight: 34,
                         paddingLeft: 10,
                         paddingRight: 10,
                     } },
