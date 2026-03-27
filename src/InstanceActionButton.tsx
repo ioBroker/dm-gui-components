@@ -14,7 +14,7 @@ export default function InstanceActionButton(params: InstanceActionButtonProps):
     const { action, instanceHandler } = params;
 
     const tooltip = getTranslation(action?.description ? action.description : '');
-    const title = getTranslation(action?.title ? action.title : '');
+    const title = getTranslation(action?.title || '');
 
     const icon = renderActionIcon(action);
 
