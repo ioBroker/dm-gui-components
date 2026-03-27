@@ -32,6 +32,7 @@ import {
     WbIncandescent,
     Wifi,
     WifiOff,
+    Launch,
 } from '@mui/icons-material';
 
 import { I18n, Icon } from '@iobroker/adapter-react-v5';
@@ -231,6 +232,9 @@ function getIconByName(name: string, altName?: string, color?: string): React.JS
     }
     if (name === 'lines' || altName === 'lines') {
         return <Article style={{ color }} />;
+    }
+    if (name === 'web' || altName === 'web') {
+        return <Launch style={{ color }} />;
     }
     return <QuestionMark style={{ color }} />;
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Add, Article, Bluetooth, BluetoothDisabled, Delete, Edit, FastForward, FastRewind, Fluorescent, Group, Info, Lightbulb, Link as LinkIcon, LinkOff, NotListedLocation, Pause, Person, PlayArrow, Power, QrCode, QuestionMark, Refresh, Search, Settings, Stop, Visibility, Upgrade, WbIncandescent, Wifi, WifiOff, } from '@mui/icons-material';
+import { Add, Article, Bluetooth, BluetoothDisabled, Delete, Edit, FastForward, FastRewind, Fluorescent, Group, Info, Lightbulb, Link as LinkIcon, LinkOff, NotListedLocation, Pause, Person, PlayArrow, Power, QrCode, QuestionMark, Refresh, Search, Settings, Stop, Visibility, Upgrade, WbIncandescent, Wifi, WifiOff, Launch, } from '@mui/icons-material';
 import { I18n, Icon } from '@iobroker/adapter-react-v5';
 /**
  * Get Icon by font-awesome name. Do not use these names, use names from getIconByName
@@ -192,6 +192,9 @@ function getIconByName(name, altName, color) {
     }
     if (name === 'lines' || altName === 'lines') {
         return React.createElement(Article, { style: { color } });
+    }
+    if (name === 'web' || altName === 'web') {
+        return React.createElement(Launch, { style: { color } });
     }
     return React.createElement(QuestionMark, { style: { color } });
 }

@@ -642,6 +642,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                 style={styles.cardStyle}
                 key={JSON.stringify(this.props.id)}
             >
+                {/* Header */}
                 <Box
                     sx={headerStyle}
                     style={styles.headerStyle}
@@ -687,6 +688,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         </Fab>
                     ) : null}
                 </Box>
+                {/* Body */}
                 <div style={styles.statusStyle}>
                     {status.map((s, i) => (
                         <DeviceStatusComponent
@@ -728,6 +730,23 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             </div>
                         ) : null}
                     </Typography>
+                    {this.props.device.customInfo ? (
+                        <JsonConfig
+                            instanceId={this.props.instanceId}
+                            socket={this.props.socket}
+                            schema={this.props.device.customInfo.schema as ConfigItemPanel | ConfigItemTabs}
+                            data={this.props.device.customInfo.data || {}}
+                            onChange={(_data: Record<string, any>) => {
+                                /* ignore */
+                            }}
+                            themeName={this.props.themeName}
+                            themeType={this.props.themeType}
+                            theme={this.props.theme}
+                            isFloatComma={this.props.isFloatComma}
+                            dateFormat={this.props.dateFormat}
+                        />
+                    ) : null}
+                    {/* Footer */}
                     {!!(this.props.device.actions?.length || this.props.device.controls?.length) && (
                         <div
                             style={{

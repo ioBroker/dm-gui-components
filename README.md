@@ -17,12 +17,78 @@ render() {
 }
 ```
 
+## Icon names
+
+You can use the following icon names for actions and controls.
+Icons are resolved by the action/control `id` or by the `icon` property. You can also provide a `data:image/...` base64 string for custom icons.
+
+### Action and control icons (by name)
+
+| Name(s)                    | MUI Icon           | Description                          |
+|----------------------------|--------------------|--------------------------------------|
+| `edit`, `rename`           | Edit               | Edit or rename an item               |
+| `delete`                   | Delete             | Delete an item                       |
+| `refresh`                  | Refresh            | Refresh / reload                     |
+| `newDevice`, `new`, `add`  | Add                | Add or create a new item             |
+| `discover`, `search`       | Search             | Discover or search for devices       |
+| `unpairDevice`, `unpair`   | LinkOff            | Unpair / unlink a device             |
+| `pairDevice`, `pair`       | Link               | Pair / link a device                 |
+| `identify`                 | NotListedLocation  | Identify / locate a device           |
+| `play`                     | PlayArrow          | Start playback                       |
+| `stop`                     | Stop               | Stop playback                        |
+| `pause`                    | Pause              | Pause playback                       |
+| `forward`, `next`          | FastForward        | Skip forward / next track            |
+| `rewind`, `previous`       | FastRewind         | Skip backward / previous track       |
+| `lamp`, `light`            | Lightbulb          | Light / lamp control                 |
+| `backlight`                | Fluorescent        | Backlight control                    |
+| `dimmer`                   | WbIncandescent     | Dimmer control                       |
+| `socket`                   | Power              | Power socket control                 |
+| `settings`                 | Settings           | Settings / configuration             |
+| `users`, `group`           | Group              | User group                           |
+| `user`                     | Person             | Single user                          |
+| `update`                   | Upgrade            | Update / upgrade                     |
+| `qrcode`                   | QrCode             | QR code                              |
+| `info`                     | Info               | Information                          |
+| `lines`                    | Article            | Text lines / log                     |
+| `web`                      | Launch             | Open web link                        |
+
+Any unrecognized name renders a **QuestionMark** icon as fallback.
+
+### Legacy Font Awesome icons
+
+These names are supported for backward compatibility. Prefer the names from the table above.
+
+| Name(s)                        | MUI Icon           | Description                    |
+|--------------------------------|--------------------|--------------------------------|
+| `fa-trash-can`, `fa-trash`     | Delete             | Delete                         |
+| `fa-pen`                       | Edit               | Edit                           |
+| `fa-redo-alt`                  | Refresh            | Refresh / redo                 |
+| `fa-plus`                      | Add                | Add                            |
+| `fa-qrcode`, `qrcode`          | QrCode             | QR code                        |
+| `fa-wifi`                      | Wifi               | Wi-Fi enabled                  |
+| `fa-wifi-slash`                | WifiOff            | Wi-Fi disabled                 |
+| `fa-bluetooth`                 | Bluetooth          | Bluetooth enabled              |
+| `fa-bluetooth-slash`           | BluetoothDisabled  | Bluetooth disabled             |
+| `fa-eye`                       | Visibility         | View / visible                 |
+| `fa-search`                    | Search             | Search                         |
+| `fa-unlink`                    | LinkOff            | Unlink                         |
+| `fa-link`                      | Link               | Link                           |
+| `fa-search-location`           | NotListedLocation  | Search location / identify     |
+| `fa-play`                      | PlayArrow          | Play                           |
+| `fa-stop`                      | Stop               | Stop                           |
+| `fa-pause`                     | Pause              | Pause                          |
+
+Font Awesome names can be prefixed with `fa-solid` (it is stripped automatically). Unrecognized FA names render a **QuestionMark** icon.
+
 <!--
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Added possibility to show custom information on Card
+
 ### 9.0.6 (2026-03-26)
 
 - (@GermanBluefox) Small layout optimizations for controls

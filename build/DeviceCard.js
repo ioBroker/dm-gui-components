@@ -379,6 +379,9 @@ export default class DeviceCard extends Component {
                             getTranslation('model'),
                             ":"),
                         this.state.model)) : null),
+                this.props.device.customInfo ? (React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
+                        /* ignore */
+                    }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })) : null,
                 !!(this.props.device.actions?.length || this.props.device.controls?.length) && (React.createElement("div", { style: {
                         flex: 1,
                         position: 'relative',
