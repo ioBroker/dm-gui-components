@@ -86,7 +86,7 @@ Font Awesome names can be prefixed with `fa-solid` (it is stripped automatically
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 9.0.12 (2026-03-28)
 - (@GermanBluefox) Layout improved
 
 ### 9.0.7 (2026-03-27)
