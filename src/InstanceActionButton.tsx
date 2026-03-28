@@ -20,6 +20,8 @@ export default function InstanceActionButton(params: InstanceActionButtonProps):
 
     return (
         <TooltipButton
+            style={action.style}
+            variant={action.variant}
             tooltip={tooltip}
             label={title}
             disabled={action.disabled}

@@ -6,6 +6,6 @@ export default function InstanceActionButton(params) {
     const tooltip = getTranslation(action?.description ? action.description : '');
     const title = getTranslation(action?.title || '');
     const icon = renderActionIcon(action);
-    return (React.createElement(TooltipButton, { tooltip: tooltip, label: title, disabled: action.disabled, Icon: icon, onClick: instanceHandler(action) }));
+    return (React.createElement(TooltipButton, { style: action.style, variant: action.variant, tooltip: tooltip, label: title, disabled: action.disabled, Icon: icon, onClick: instanceHandler(action) }));
 }
 //# sourceMappingURL=InstanceActionButton.js.map

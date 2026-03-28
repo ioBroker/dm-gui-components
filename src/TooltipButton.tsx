@@ -8,6 +8,8 @@ interface TooltipButtonProps {
     Icon: React.JSX.Element | null;
     onClick?: () => void;
     url?: string;
+    variant?: 'text' | 'outlined' | 'contained';
+    style?: Record<string, any>;
 }
 
 export default function TooltipButton(props: TooltipButtonProps): React.JSX.Element {
@@ -16,6 +18,7 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
     const text = label ? (
         <Typography
             variant="button"
+            sx={props.style}
             style={{ marginLeft: 4 }}
         >
             {label}
@@ -34,6 +37,8 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
                     {text ? (
                         <Button
                             {...btnProps}
+                            sx={props.style}
+                            variant={props.variant}
                             startIcon={Icon}
                         >
                             {text}
@@ -41,6 +46,7 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
                     ) : (
                         <IconButton
                             {...btnProps}
+                            sx={props.style}
                             size="small"
                         >
                             {Icon}
@@ -54,6 +60,8 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
     return text ? (
         <Button
             {...btnProps}
+            sx={props.style}
+            variant={props.variant}
             startIcon={Icon}
         >
             {text}
@@ -61,6 +69,7 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
     ) : (
         <IconButton
             {...btnProps}
+            sx={props.style}
             size="small"
         >
             {Icon}

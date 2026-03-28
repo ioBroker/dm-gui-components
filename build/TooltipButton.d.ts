@@ -6,6 +6,8 @@ interface TooltipButtonProps {
     Icon: React.JSX.Element | null;
     onClick?: () => void;
     url?: string;
+    variant?: 'text' | 'outlined' | 'contained';
+    style?: Record<string, any>;
 }
 export default function TooltipButton(props: TooltipButtonProps): React.JSX.Element;
 export {};
