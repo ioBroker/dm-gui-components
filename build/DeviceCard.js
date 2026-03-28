@@ -17,14 +17,15 @@ const ACTIONS = {
     ENABLE_DISABLE: 'enable/disable',
 };
 const styles = {
-    cardStyle: {
+    cardStyle: (theme) => ({
         width: 300,
         minHeight: 280,
         margin: 10,
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-    },
+        backgroundColor: theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5',
+    }),
     headerStyle: {
         display: 'flex',
         alignItems: 'center',
