@@ -22,7 +22,7 @@ const styles = {
         minHeight: 280,
         margin: 10,
         overflow: 'hidden',
-        display: 'inline-flex',
+        display: 'flex',
         flexDirection: 'column',
     },
     headerStyle: {

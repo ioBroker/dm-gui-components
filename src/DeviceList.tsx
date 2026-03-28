@@ -639,11 +639,10 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         height: 'calc(100% - 56px)',
                         marginTop: 8,
                         overflow: 'auto',
-                        // justifyContent: 'center',
-                        // alignItems: 'stretch',
-                        // display: 'grid',
-                        // columnGap: 8,
-                        // rowGap: 8,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'stretch',
+                        alignContent: 'flex-start',
                         ...this.props.style,
                     }}
                 >
