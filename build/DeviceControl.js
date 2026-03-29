@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, Fab, FormControl, InputLabel, MenuItem, Select, Switch, Stack, Slider, TextField, InputAdornment, FormControlLabel, } from '@mui/material';
+import { Button, Fab, FormControl, InputLabel, MenuItem, Select, Switch, Slider, TextField, InputAdornment, FormControlLabel, } from '@mui/material';
 import { Icon } from '@iobroker/adapter-react-v5';
 import { renderControlIcon, getTranslation } from './Utils';
 /**
@@ -29,16 +29,12 @@ export default class DeviceControlComponent extends Component {
                             if (min === undefined) {
                                 min = obj.common.min;
                             }
-                            if (min === undefined) {
-                                min = 0;
-                            }
+                            min ??= 0;
                             let max = this.props.control.max;
                             if (max === undefined) {
                                 min = obj.common.max;
                             }
-                            if (min === undefined) {
-                                max = 100;
-                            }
+                            max ??= 100;
                             let step = this.props.control.step;
                             if (step === undefined) {
                                 step = obj.common.step;
@@ -225,13 +221,19 @@ export default class DeviceControlComponent extends Component {
         if (this.state.min === undefined || this.state.max === undefined) {
             return React.createElement("div", { style: { width: '100%' } }, "...");
         }
-        return (React.createElement("div", { style: { width: '100%', minWidth: 300, paddingTop: 24, marginBottom: 8, overflow: 'visible' } },
-            this.props.control.label ? (React.createElement(InputLabel, { style: { color: this.props.control.color, marginBottom: 4 } }, getTranslation(this.props.control.label))) : null,
-            React.createElement(Stack, { spacing: 2, direction: "row", sx: { alignItems: 'center', width: '100%' } },
-                this.props.control.icon ? (React.createElement(Icon, { style: { color: this.props.control.color }, src: this.props.control.icon })) : null,
-                React.createElement(Slider, { value: parseFloat(this.state.value || '0'), min: this.state.min, max: this.state.max, step: this.state.step, valueLabelDisplay: "auto", onChange: (_e, value) => this.sendControl(this.props.deviceId, this.props.control, value) }),
-                this.props.control.iconOn ? (React.createElement(Icon, { style: { color: this.props.control.colorOn }, src: this.props.control.iconOn })) : null,
-                this.props.control.labelOn ? (React.createElement(InputLabel, { style: { color: this.props.control.colorOn } }, getTranslation(this.props.control.labelOn))) : null)));
+        return (React.createElement("div", { style: {
+                width: '100%',
+                minWidth: 300,
+                paddingTop: 8,
+                marginBottom: 8,
+                overflow: 'visible',
+                display: 'flex',
+            } },
+            this.props.control.label ? (React.createElement("div", { style: { color: this.props.control.color, marginBottom: 4 } }, getTranslation(this.props.control.label))) : null,
+            this.props.control.icon ? (React.createElement(Icon, { style: { color: this.props.control.color }, src: this.props.control.icon })) : null,
+            React.createElement(Slider, { style: { flexGrow: 1 }, value: parseFloat(this.state.value || '0'), min: this.state.min, max: this.state.max, step: this.state.step, valueLabelDisplay: "auto", onChange: (_e, value) => this.sendControl(this.props.deviceId, this.props.control, value) }),
+            this.props.control.iconOn ? (React.createElement(Icon, { style: { color: this.props.control.colorOn || this.props.control.color }, src: this.props.control.iconOn })) : null,
+            this.props.control.labelOn ? (React.createElement("div", { style: { color: this.props.control.colorOn || this.props.control.color } }, getTranslation(this.props.control.labelOn))) : null));
     }
     renderColor() {
         return (React.createElement(TextField, { fullWidth: true, label: this.props.control.label ? getTranslation(this.props.control.label) : undefined, type: "color", value: this.state.value, onChange: (e) => this.sendControl(this.props.deviceId, this.props.control, e.target.value), variant: "standard" }));
