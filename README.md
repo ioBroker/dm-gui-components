@@ -78,7 +78,7 @@ These names are supported for backward compatibility. Prefer the names from the 
 | `fa-stop`                      | Stop               | Stop                           |
 | `fa-pause`                     | Pause              | Pause                          |
 
-Font Awesome names can be prefixed with `fa-solid` (it is stripped automatically). Unrecognized FA names render a **QuestionMark** icon.
+Unrecognized FA names render a **QuestionMark** icon.
 
 <!--
 	Placeholder for the next version (at the beginning of the line):
