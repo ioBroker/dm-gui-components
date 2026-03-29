@@ -73,8 +73,7 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
 
                             const max: number = this.props.control.max ?? obj.common.max ?? 100;
 
-                            const step: number =
-                                this.props.control.step || obj.common.step || (max - min) / 100;
+                            const step: number = this.props.control.step || obj.common.step || (max - min) / 100;
 
                             let unit: string | undefined = this.props.control.unit;
                             if (unit === undefined) {
