@@ -11,6 +11,7 @@ import {
     Slider,
     TextField,
     InputAdornment,
+    FormControlLabel,
 } from '@mui/material';
 
 import { type Connection, Icon } from '@iobroker/adapter-react-v5';
@@ -244,8 +245,61 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
 
     renderSwitch(): JSX.Element {
         const tooltip = getTranslation(this.props.control.description ?? '');
-        // const icon = renderIcon(this.props.control, this.props.colors, this.state.value);
 
+        if (
+            (this.props.control.label || this.props.control.icon) &&
+            (this.props.control.labelOn || this.props.control.iconOn)
+        ) {
+            return (
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ color: this.props.control.color, display: 'flex', gap: 4 }}>
+                        {this.props.control.label ? getTranslation(this.props.control.label) : null}
+                        {this.props.control.icon ? <Icon src={this.props.control.icon} /> : null}
+                    </div>
+                    <Switch
+                        disabled={this.props.disabled}
+                        title={tooltip}
+                        checked={!!this.state.value}
+                        onChange={e => this.sendControl(this.props.deviceId, this.props.control, e.target.checked)}
+                    />
+                    <div
+                        style={{
+                            color: this.props.control.colorOn || this.props.control.color,
+                            display: 'flex',
+                            gap: 4,
+                        }}
+                    >
+                        {this.props.control.labelOn ? getTranslation(this.props.control.labelOn) : null}
+                        {this.props.control.icon ? <Icon src={this.props.control.icon} /> : null}
+                    </div>
+                </div>
+            );
+        }
+        if (this.props.control.label || this.props.control.icon) {
+            return (
+                <FormControlLabel
+                    control={
+                        <Switch
+                            disabled={this.props.disabled}
+                            title={tooltip}
+                            checked={!!this.state.value}
+                            onChange={e => this.sendControl(this.props.deviceId, this.props.control, e.target.checked)}
+                        />
+                    }
+                    slotProps={{
+                        typography: {
+                            style: { color: this.props.control.color },
+                        },
+                    }}
+                    label={
+                        <span style={{ color: this.props.control.color, display: 'flex', gap: 4 }}>
+                            {this.props.control.label ? getTranslation(this.props.control.label) : null}
+                            {this.props.control.icon ? <Icon src={this.props.control.icon} /> : null}
+                        </span>
+                    }
+                />
+            );
+        }
         return (
             <Switch
                 disabled={this.props.disabled}
