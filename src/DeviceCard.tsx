@@ -52,7 +52,7 @@ const styles: Record<string, any> = {
     cardStyle: (theme: IobTheme): React.CSSProperties => ({
         width: 300,
         minHeight: 280,
-        margin: 10,
+        margin: '10px',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -470,7 +470,8 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
 
         return (
             <Paper
-                style={{ ...styles.cardStyle, width: 200, minHeight: 200, margin: 5 }}
+                style={{ width: 200, minHeight: 200, margin: 5 }}
+                sx={styles.cardStyle}
                 key={JSON.stringify(this.props.id)}
             >
                 {/* Header */}
@@ -663,7 +664,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
 
         return (
             <Paper
-                style={styles.cardStyle}
+                sx={styles.cardStyle}
                 key={JSON.stringify(this.props.id)}
             >
                 {/* Header */}
@@ -826,7 +827,10 @@ export class DeviceCardSkeleton extends Component<DeviceCardSkeletonProps> {
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
 
         return (
-            <Paper style={{ ...styles.cardStyle, width: 200, minHeight: 200, margin: 5 }}>
+            <Paper
+                sx={styles.cardStyle}
+                style={{ width: 200, minHeight: 200, margin: 5 }}
+            >
                 <Box
                     sx={headerStyle}
                     style={{ ...styles.headerStyle, minHeight: 48 }}
@@ -872,7 +876,7 @@ export class DeviceCardSkeleton extends Component<DeviceCardSkeletonProps> {
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
 
         return (
-            <Paper style={styles.cardStyle}>
+            <Paper sx={styles.cardStyle}>
                 <Box
                     sx={headerStyle}
                     style={styles.headerStyle}
