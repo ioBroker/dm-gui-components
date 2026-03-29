@@ -20,6 +20,7 @@ import {
     IconButton,
     Paper,
     Skeleton,
+    Tooltip,
     Typography,
 } from '@mui/material';
 import React, { Component, type JSX } from 'react';
@@ -554,16 +555,20 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             </div>
                         ) : null}
                         {this.state.manufacturer ? (
-                            <div>
-                                <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
-                                {this.state.manufacturer}
-                            </div>
+                            <Tooltip
+                                title={getTranslation('manufacturer')}
+                                slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
+                            >
+                                <div>{this.state.manufacturer}</div>
+                            </Tooltip>
                         ) : null}
                         {this.state.model ? (
-                            <div>
-                                <b style={{ marginRight: 4 }}>{getTranslation('model')}:</b>
-                                {this.state.model}
-                            </div>
+                            <Tooltip
+                                title={getTranslation('model')}
+                                slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
+                            >
+                                <div>{this.state.model}</div>
+                            </Tooltip>
                         ) : null}
                     </Typography>
                     {this.props.device.customInfo ? (
