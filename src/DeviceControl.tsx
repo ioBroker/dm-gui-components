@@ -74,16 +74,12 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                             if (min === undefined) {
                                 min = obj.common.min;
                             }
-                            if (min === undefined) {
-                                min = 0;
-                            }
+                            min ??= 0;
                             let max: number | undefined = this.props.control.max;
                             if (max === undefined) {
                                 min = obj.common.max;
                             }
-                            if (min === undefined) {
-                                max = 100;
-                            }
+                            max ??= 100;
                             let step: number | undefined = this.props.control.step;
                             if (step === undefined) {
                                 step = obj.common.step;
@@ -367,45 +363,47 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
             return <div style={{ width: '100%' }}>...</div>;
         }
         return (
-            <div style={{ width: '100%', minWidth: 300, paddingTop: 24, marginBottom: 8, overflow: 'visible' }}>
+            <div
+                style={{
+                    width: '100%',
+                    minWidth: 300,
+                    paddingTop: 8,
+                    marginBottom: 8,
+                    overflow: 'visible',
+                    display: 'flex',
+                }}
+            >
                 {this.props.control.label ? (
-                    <InputLabel style={{ color: this.props.control.color, marginBottom: 4 }}>
+                    <div style={{ color: this.props.control.color, marginBottom: 4 }}>
                         {getTranslation(this.props.control.label)}
-                    </InputLabel>
+                    </div>
                 ) : null}
-                <Stack
-                    spacing={2}
-                    direction="row"
-                    sx={{ alignItems: 'center', width: '100%' }}
-                >
-                    {this.props.control.icon ? (
-                        <Icon
-                            style={{ color: this.props.control.color }}
-                            src={this.props.control.icon}
-                        />
-                    ) : null}
-                    <Slider
-                        value={parseFloat((this.state.value as string) || '0')}
-                        min={this.state.min}
-                        max={this.state.max}
-                        step={this.state.step}
-                        valueLabelDisplay="auto"
-                        onChange={(_e, value) =>
-                            this.sendControl(this.props.deviceId, this.props.control, value as number)
-                        }
+                {this.props.control.icon ? (
+                    <Icon
+                        style={{ color: this.props.control.color }}
+                        src={this.props.control.icon}
                     />
-                    {this.props.control.iconOn ? (
-                        <Icon
-                            style={{ color: this.props.control.colorOn }}
-                            src={this.props.control.iconOn}
-                        />
-                    ) : null}
-                    {this.props.control.labelOn ? (
-                        <InputLabel style={{ color: this.props.control.colorOn }}>
-                            {getTranslation(this.props.control.labelOn)}
-                        </InputLabel>
-                    ) : null}
-                </Stack>
+                ) : null}
+                <Slider
+                    style={{ flexGrow: 1 }}
+                    value={parseFloat((this.state.value as string) || '0')}
+                    min={this.state.min}
+                    max={this.state.max}
+                    step={this.state.step}
+                    valueLabelDisplay="auto"
+                    onChange={(_e, value) => this.sendControl(this.props.deviceId, this.props.control, value as number)}
+                />
+                {this.props.control.iconOn ? (
+                    <Icon
+                        style={{ color: this.props.control.colorOn || this.props.control.color }}
+                        src={this.props.control.iconOn}
+                    />
+                ) : null}
+                {this.props.control.labelOn ? (
+                    <div style={{ color: this.props.control.colorOn || this.props.control.color }}>
+                        {getTranslation(this.props.control.labelOn)}
+                    </div>
+                ) : null}
             </div>
         );
     }
