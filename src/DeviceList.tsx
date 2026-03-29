@@ -467,7 +467,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                 list = filteredDevices.map(device => (
                     <DeviceCard
                         key={JSON.stringify(device.id)}
-                        smallCards={this.props.smallCards}
+                        smallCards={this.props.smallCards ?? this.state.instanceInfo?.smallCards}
                         filter={this.props.embedded ? this.props.filter : this.state.filter}
                         alive={!!this.state.alive}
                         id={device.id}
@@ -492,7 +492,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         list.push(
                             <DeviceCardSkeleton
                                 key={`skeleton-${i}`}
-                                smallCards={this.props.smallCards}
+                                smallCards={this.props.smallCards ?? this.state.instanceInfo?.smallCards}
                                 theme={this.props.theme}
                             />,
                         );
