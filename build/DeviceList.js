@@ -334,11 +334,11 @@ export default class DeviceList extends Communication {
                 }
             }
             if (this.state.selectedInstance) {
-                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })));
+                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })));
                 if (this.state.loading) {
                     const skeletons = (this.state.totalDevices ?? list.length + 1) - list.length;
                     for (let i = 0; i < skeletons; i++) {
-                        list.push(React.createElement(DeviceCardSkeleton, { key: `skeleton-${i}`, smallCards: this.props.smallCards, theme: this.props.theme }));
+                        list.push(React.createElement(DeviceCardSkeleton, { key: `skeleton-${i}`, smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, theme: this.props.theme }));
                     }
                 }
                 else if (this.state.devices.length > 0) {
