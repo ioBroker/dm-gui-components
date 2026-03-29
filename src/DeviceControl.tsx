@@ -69,11 +69,11 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                     // read an object to get min and max
                     void this.props.socket.getObject(this.props.control.stateId).then(obj => {
                         if (obj?.common) {
-                            const min: number | undefined = this.props.control.min ?? obj.common.min ?? 0;
+                            const min: number = this.props.control.min ?? obj.common.min ?? 0;
 
-                            const max: number | undefined = this.props.control.max ?? obj.common.max ?? 100;
+                            const max: number = this.props.control.max ?? obj.common.max ?? 100;
 
-                            const step: number | undefined =
+                            const step: number =
                                 this.props.control.step || obj.common.step || (max - min) / 100;
 
                             let unit: string | undefined = this.props.control.unit;
