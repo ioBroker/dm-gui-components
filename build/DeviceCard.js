@@ -20,7 +20,7 @@ const styles = {
     cardStyle: (theme) => ({
         width: 300,
         minHeight: 280,
-        margin: 10,
+        margin: '10px',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -247,7 +247,7 @@ export default class DeviceCard extends Component {
         const icon = this.state.icon ? (React.createElement(DeviceTypeIcon, { src: this.state.icon, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
         const title = this.state.details?.data?.name || this.props.device.name || '';
-        return (React.createElement(Paper, { style: { ...styles.cardStyle, width: 200, minHeight: 200, margin: 5 }, key: JSON.stringify(this.props.id) },
+        return (React.createElement(Paper, { style: { width: 200, minHeight: 200, margin: 5 }, sx: styles.cardStyle, key: JSON.stringify(this.props.id) },
             React.createElement(Box, { sx: headerStyle, style: { ...styles.headerStyle, minHeight: 48 } },
                 React.createElement("div", { style: { ...styles.imgAreaStyle, height: 32, width: 32 } },
                     this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.state.manufacturer, model: this.state.model, onImageSelect: (imageData) => {
@@ -345,7 +345,7 @@ export default class DeviceCard extends Component {
         const icon = this.state.icon ? (React.createElement(DeviceTypeIcon, { src: this.state.icon, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
         const title = this.state.details?.data?.name || this.props.device.name || '';
-        return (React.createElement(Paper, { style: styles.cardStyle, key: JSON.stringify(this.props.id) },
+        return (React.createElement(Paper, { sx: styles.cardStyle, key: JSON.stringify(this.props.id) },
             React.createElement(Box, { sx: headerStyle, style: styles.headerStyle },
                 React.createElement("div", { style: styles.imgAreaStyle },
                     this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.state.manufacturer, model: this.state.model, onImageSelect: (imageData) => {
@@ -419,7 +419,7 @@ export class DeviceCardSkeleton extends Component {
     }
     renderSmall() {
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
-        return (React.createElement(Paper, { style: { ...styles.cardStyle, width: 200, minHeight: 200, margin: 5 } },
+        return (React.createElement(Paper, { sx: styles.cardStyle, style: { width: 200, minHeight: 200, margin: 5 } },
             React.createElement(Box, { sx: headerStyle, style: { ...styles.headerStyle, minHeight: 48 } },
                 React.createElement("div", { style: { ...styles.imgAreaStyle, height: 32, width: 32 } },
                     React.createElement(Skeleton, { variant: "rounded", width: 24, height: 24 })),
@@ -439,7 +439,7 @@ export class DeviceCardSkeleton extends Component {
     }
     renderBig() {
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
-        return (React.createElement(Paper, { style: styles.cardStyle },
+        return (React.createElement(Paper, { sx: styles.cardStyle },
             React.createElement(Box, { sx: headerStyle, style: styles.headerStyle },
                 React.createElement("div", { style: styles.imgAreaStyle },
                     React.createElement(Skeleton, { variant: "rounded", width: 24, height: 24 })),
