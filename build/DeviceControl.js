@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, Fab, FormControl, InputLabel, MenuItem, Select, Switch, Stack, Slider, TextField, InputAdornment, } from '@mui/material';
+import { Button, Fab, FormControl, InputLabel, MenuItem, Select, Switch, Stack, Slider, TextField, InputAdornment, FormControlLabel, } from '@mui/material';
 import { Icon } from '@iobroker/adapter-react-v5';
 import { renderControlIcon, getTranslation } from './Utils';
 /**
@@ -171,7 +171,30 @@ export default class DeviceControlComponent extends Component {
     }
     renderSwitch() {
         const tooltip = getTranslation(this.props.control.description ?? '');
-        // const icon = renderIcon(this.props.control, this.props.colors, this.state.value);
+        if ((this.props.control.label || this.props.control.icon) &&
+            (this.props.control.labelOn || this.props.control.iconOn)) {
+            return (React.createElement("div", { style: { display: 'flex', gap: 8 } },
+                React.createElement("div", { style: { color: this.props.control.color, display: 'flex', gap: 4 } },
+                    this.props.control.label ? getTranslation(this.props.control.label) : null,
+                    this.props.control.icon ? React.createElement(Icon, { src: this.props.control.icon }) : null),
+                React.createElement(Switch, { disabled: this.props.disabled, title: tooltip, checked: !!this.state.value, onChange: e => this.sendControl(this.props.deviceId, this.props.control, e.target.checked) }),
+                React.createElement("div", { style: {
+                        color: this.props.control.colorOn || this.props.control.color,
+                        display: 'flex',
+                        gap: 4,
+                    } },
+                    this.props.control.labelOn ? getTranslation(this.props.control.labelOn) : null,
+                    this.props.control.icon ? React.createElement(Icon, { src: this.props.control.icon }) : null)));
+        }
+        if (this.props.control.label || this.props.control.icon) {
+            return (React.createElement(FormControlLabel, { control: React.createElement(Switch, { disabled: this.props.disabled, title: tooltip, checked: !!this.state.value, onChange: e => this.sendControl(this.props.deviceId, this.props.control, e.target.checked) }), slotProps: {
+                    typography: {
+                        style: { color: this.props.control.color },
+                    },
+                }, label: React.createElement("span", { style: { color: this.props.control.color, display: 'flex', gap: 4 } },
+                    this.props.control.label ? getTranslation(this.props.control.label) : null,
+                    this.props.control.icon ? React.createElement(Icon, { src: this.props.control.icon }) : null) }));
+        }
         return (React.createElement(Switch, { disabled: this.props.disabled, title: tooltip, checked: !!this.state.value, onChange: e => this.sendControl(this.props.deviceId, this.props.control, e.target.checked) }));
     }
     getColor() {
