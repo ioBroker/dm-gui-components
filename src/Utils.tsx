@@ -243,6 +243,7 @@ export function renderControlIcon(
     action: ControlBase,
     colors?: { primary: string; secondary: string },
     value?: string | number | boolean | null,
+    noDefaultIcon?: boolean,
 ): React.JSX.Element | null {
     if (!action) {
         return null;
@@ -277,7 +278,10 @@ export function renderControlIcon(
             />
         );
     }
-    return getIconByName(action.id, action.icon, color);
+    if (!noDefaultIcon) {
+        return getIconByName(action.id, action.icon, color);
+    }
+    return null;
 }
 
 export function renderActionIcon(action: ActionBase): React.JSX.Element | null {

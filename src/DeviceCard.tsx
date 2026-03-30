@@ -361,21 +361,13 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                 open={!0}
                 onClose={() => this.setState({ showControlDialog: false })}
             >
-                <DialogTitle>
+                <DialogTitle style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     {this.state.name}
-                    <IconButton
-                        style={{
-                            position: 'absolute',
-                            top: 5,
-                            right: 5,
-                            zIndex: 10,
-                        }}
-                        onClick={() => this.setState({ showControlDialog: false })}
-                    >
+                    <IconButton onClick={() => this.setState({ showControlDialog: false })}>
                         <CloseIcon />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent style={{ display: 'flex', flexDirection: 'column', overflow: 'visible' }}>
+                <DialogContent style={{ display: 'flex', flexDirection: 'column' }}>
                     {this.props.device.controls?.map(control => (
                         <DeviceControlComponent
                             disabled={false}
@@ -417,7 +409,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         }
 
         if (this.props.device.controls?.length) {
-            // place a button and show a controls dialog
+            // place a button and show a control dialog
             return (
                 <Fab
                     size="small"

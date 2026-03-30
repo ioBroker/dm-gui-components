@@ -145,11 +145,11 @@ export default class DeviceControlComponent extends Component {
     }
     renderButton() {
         const tooltip = getTranslation(this.props.control.description ?? '');
-        const icon = renderControlIcon(this.props.control, this.props.colors, this.state.value);
+        const icon = renderControlIcon(this.props.control, this.props.colors, this.state.value, true);
         if (!this.props.control.label) {
             return (React.createElement(Fab, { size: "small", disabled: this.props.disabled, title: tooltip, onClick: () => this.sendControl(this.props.deviceId, this.props.control, true) }, icon));
         }
-        return (React.createElement(Button, { disabled: this.props.disabled, title: tooltip, onClick: () => this.sendControl(this.props.deviceId, this.props.control, true), startIcon: icon }, getTranslation(this.props.control.label)));
+        return (React.createElement(Button, { disabled: this.props.disabled, title: tooltip, onClick: () => this.sendControl(this.props.deviceId, this.props.control, true), startIcon: icon, variant: this.props.control.variant }, getTranslation(this.props.control.label)));
     }
     renderSwitch() {
         const tooltip = getTranslation(this.props.control.description ?? '');
@@ -215,11 +215,11 @@ export default class DeviceControlComponent extends Component {
                 overflow: 'visible',
                 display: 'flex',
             } },
-            this.props.control.label ? (React.createElement("div", { style: { color: this.props.control.color, marginBottom: 4 } }, getTranslation(this.props.control.label))) : null,
+            this.props.control.label ? (React.createElement("div", { style: { color: this.props.control.color, marginBottom: 4, whiteSpace: 'nowrap' } }, getTranslation(this.props.control.label))) : null,
             this.props.control.icon ? (React.createElement(Icon, { style: { color: this.props.control.color }, src: this.props.control.icon })) : null,
             React.createElement(Slider, { style: { flexGrow: 1 }, value: parseFloat(this.state.value || '0'), min: this.state.min, max: this.state.max, step: this.state.step, valueLabelDisplay: "auto", onChange: (_e, value) => this.sendControl(this.props.deviceId, this.props.control, value) }),
             this.props.control.iconOn ? (React.createElement(Icon, { style: { color: this.props.control.colorOn || this.props.control.color }, src: this.props.control.iconOn })) : null,
-            this.props.control.labelOn ? (React.createElement("div", { style: { color: this.props.control.colorOn || this.props.control.color } }, getTranslation(this.props.control.labelOn))) : null));
+            this.props.control.labelOn ? (React.createElement("div", { style: { color: this.props.control.colorOn || this.props.control.color, whiteSpace: 'nowrap' } }, getTranslation(this.props.control.labelOn))) : null));
     }
     renderColor() {
         return (React.createElement(TextField, { fullWidth: true, label: this.props.control.label ? getTranslation(this.props.control.label) : undefined, type: "color", value: this.state.value, onChange: (e) => this.sendControl(this.props.deviceId, this.props.control, e.target.value), variant: "standard" }));
@@ -256,7 +256,7 @@ export default class DeviceControlComponent extends Component {
             style.minHeight = 34;
             return (React.createElement(Fab, { disabled: this.props.disabled, size: "small", title: tooltip, color: colorProps, style: style, onClick: () => this.sendControl(this.props.deviceId, this.props.control, !this.state.value) }, icon));
         }
-        return (React.createElement(Button, { disabled: this.props.disabled, title: tooltip, color: colorProps, style: style, onClick: () => this.sendControl(this.props.deviceId, this.props.control, !this.state.value), startIcon: icon }, getTranslation(this.props.control.label)));
+        return (React.createElement(Button, { disabled: this.props.disabled, title: tooltip, color: colorProps, style: style, onClick: () => this.sendControl(this.props.deviceId, this.props.control, !this.state.value), startIcon: icon, variant: this.props.control.variant }, getTranslation(this.props.control.label)));
     }
     renderInfo() {
         return (React.createElement("div", null,

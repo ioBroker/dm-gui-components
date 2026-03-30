@@ -3,7 +3,7 @@ import type { ActionBase, ControlBase } from './protocol/api';
 export declare function renderControlIcon(action: ControlBase, colors?: {
     primary: string;
     secondary: string;
-}, value?: string | number | boolean | null): React.JSX.Element | null;
+}, value?: string | number | boolean | null, noDefaultIcon?: boolean): React.JSX.Element | null;
 export declare function renderActionIcon(action: ActionBase): React.JSX.Element | null;
 /**
  * Get Translation

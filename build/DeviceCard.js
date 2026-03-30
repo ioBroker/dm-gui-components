@@ -204,16 +204,11 @@ export default class DeviceCard extends Component {
         }
         const colors = { primary: '#111', secondary: '#888' };
         return (React.createElement(Dialog, { open: !0, onClose: () => this.setState({ showControlDialog: false }) },
-            React.createElement(DialogTitle, null,
+            React.createElement(DialogTitle, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
                 this.state.name,
-                React.createElement(IconButton, { style: {
-                        position: 'absolute',
-                        top: 5,
-                        right: 5,
-                        zIndex: 10,
-                    }, onClick: () => this.setState({ showControlDialog: false }) },
+                React.createElement(IconButton, { onClick: () => this.setState({ showControlDialog: false }) },
                     React.createElement(CloseIcon, null))),
-            React.createElement(DialogContent, { style: { display: 'flex', flexDirection: 'column', overflow: 'visible' } }, this.props.device.controls?.map(control => (React.createElement(DeviceControlComponent, { disabled: false, key: control.id, control: control, socket: this.props.socket, colors: colors, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }))))));
+            React.createElement(DialogContent, { style: { display: 'flex', flexDirection: 'column' } }, this.props.device.controls?.map(control => (React.createElement(DeviceControlComponent, { disabled: false, key: control.id, control: control, socket: this.props.socket, colors: colors, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }))))));
     }
     renderControls() {
         const colors = { primary: '#111', secondary: '#888' };
@@ -226,7 +221,7 @@ export default class DeviceCard extends Component {
             return (React.createElement(DeviceControlComponent, { disabled: !this.props.alive, control: firstControl, colors: colors, socket: this.props.socket, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }));
         }
         if (this.props.device.controls?.length) {
-            // place a button and show a controls dialog
+            // place a button and show a control dialog
             return (React.createElement(Fab, { size: "small", style: { width: 32, height: 32, minHeight: 32 }, disabled: !this.props.alive, onClick: () => this.setState({ showControlDialog: true }) },
                 React.createElement(ControlIcon, null)));
         }

@@ -198,7 +198,7 @@ function getIconByName(name, altName, color) {
     }
     return React.createElement(QuestionMark, { style: { color } });
 }
-export function renderControlIcon(action, colors, value) {
+export function renderControlIcon(action, colors, value, noDefaultIcon) {
     if (!action) {
         return null;
     }
@@ -220,7 +220,10 @@ export function renderControlIcon(action, colors, value) {
     if (action.icon?.startsWith('data:image')) {
         return (React.createElement(Icon, { src: action.icon, style: { color } }));
     }
-    return getIconByName(action.id, action.icon, color);
+    if (!noDefaultIcon) {
+        return getIconByName(action.id, action.icon, color);
+    }
+    return null;
 }
 export function renderActionIcon(action) {
     if (!action) {
