@@ -89,10 +89,25 @@ export default class DeviceList extends Communication {
             }
         }
         if (Object.keys(dmInstances).length === 1) {
-            await this.setStateAsync({ dmInstances, selectedInstance: Object.keys(dmInstances)[0] });
+            const selectedInstance = Object.keys(dmInstances)[0];
+            await this.setStateAsync({
+                dmInstances,
+                selectedInstance: selectedInstance,
+                groupKey: window.localStorage.getItem(`dm_group_${selectedInstance}`) || '',
+            });
         }
         else {
-            await this.setStateAsync({ dmInstances });
+            const selectedInstance = window.localStorage.getItem('dmSelectedInstance');
+            if (selectedInstance && dmInstances[selectedInstance]) {
+                await this.setStateAsync({
+                    dmInstances,
+                    selectedInstance,
+                    groupKey: window.localStorage.getItem(`dm_group_${selectedInstance}`) || '',
+                });
+            }
+            else {
+                await this.setStateAsync({ dmInstances });
+            }
         }
     }
     async componentDidMount() {
@@ -241,7 +256,15 @@ export default class DeviceList extends Communication {
                 return (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8 } },
                     g?.icon || React.createElement("div", { style: { width: 24 } }),
                     g?.name || value));
-            }, onChange: e => this.setState({ groupKey: e.target.value === '_' ? '' : e.target.value }) }, groups.map(g => (React.createElement(MenuItem, { value: g.value || '_', key: g.value || '_', style: { display: 'flex', alignItems: 'center', gap: 8 } },
+            }, onChange: e => {
+                if (e.target.value) {
+                    window.localStorage.setItem(`dm_group_${this.state.selectedInstance}`, e.target.value);
+                }
+                else {
+                    window.localStorage.removeItem(`dm_group_${this.state.selectedInstance}`);
+                }
+                this.setState({ groupKey: e.target.value === '_' ? '' : e.target.value });
+            } }, groups.map(g => (React.createElement(MenuItem, { value: g.value || '_', key: g.value || '_', style: { display: 'flex', alignItems: 'center', gap: 8 } },
             g.icon || React.createElement("div", { style: { width: 24 } }),
             g.name)))));
     }
@@ -370,7 +393,10 @@ export default class DeviceList extends Communication {
                     React.createElement(InputLabel, { id: "instance-select-label", style: { transform: 'translate(0, -9px) scale(0.75)' } }, getTranslation('instanceLabelText')),
                     React.createElement(Select, { style: { marginTop: 0, minWidth: 120 }, labelId: "instance-select-label", id: "instance-select", value: this.state.selectedInstance, onChange: event => {
                             window.localStorage.setItem('dmSelectedInstance', event.target.value);
-                            this.setState({ selectedInstance: event.target.value });
+                            this.setState({
+                                selectedInstance: event.target.value,
+                                groupKey: window.localStorage.getItem(`dm_group_${event.target.value}`) || '',
+                            });
                         }, displayEmpty: true, variant: "standard" }, Object.keys(this.state.dmInstances).map(id => (React.createElement(MenuItem, { key: id, value: id }, id)))))) : null,
                 this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
