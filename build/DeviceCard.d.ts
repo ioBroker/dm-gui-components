@@ -1,6 +1,6 @@
-import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/adapter-react-v5';
 import React, { Component, type JSX } from 'react';
-import type { ActionBase, ControlBase, ControlState, DeviceDetails, DeviceInfo, DeviceId, ConfigConnectionType } from './protocol/api';
+import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/adapter-react-v5';
+import type { ActionBase, ControlBase, ControlState, DeviceDetails, DeviceControl, DeviceInfo, DeviceId, ConfigConnectionType } from './protocol/api';
 interface DeviceCardProps {
     filter?: string;
     id: DeviceId;
@@ -57,6 +57,10 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
      */
     copyToClipboard: () => void;
     renderDialog(): JSX.Element | null;
+    renderControlItems(controls: DeviceControl[], allControls: DeviceControl[], colors: {
+        primary: string;
+        secondary: string;
+    }, parentGroupId?: string): JSX.Element[];
     renderControlDialog(): JSX.Element | null;
     renderControls(): JSX.Element | null;
     renderActions(): JSX.Element[] | null;

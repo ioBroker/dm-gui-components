@@ -507,18 +507,13 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
             label = this.props.control.labelOn;
         }
         if (label) {
-            // @ts-expect-error noTranslation defined
             label = getTranslation(this.props.control.label!, this.props.control.noTranslation);
         }
         let value = this.state.value;
         if (typeof this.state.value === 'boolean') {
-            // @ts-expect-error noTranslation defined
             if (this.props.control.textFalse && !this.state.value) {
-                // @ts-expect-error noTranslation defined
                 value = getTranslation(this.props.control.textFalse, this.props.control.noTranslation);
-                // @ts-expect-error noTranslation defined
             } else if (this.props.control.textTrue && this.state.value) {
-                // @ts-expect-error noTranslation defined
                 value = getTranslation(this.props.control.textTrue, this.props.control.noTranslation);
             }
         }
@@ -529,7 +524,6 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                 {label ? (
                     <InputLabel>
                         {label}
-                        {/* @ts-expect-error showSemicolon defined */}
                         {this.props.control.showSemicolon ? ':' : null}
                     </InputLabel>
                 ) : null}

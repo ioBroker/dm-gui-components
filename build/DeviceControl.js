@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, Fab, FormControl, InputLabel, MenuItem, Select, Switch, Slider, TextField, InputAdornment, FormControlLabel, } from '@mui/material';
+import { Button, Fab, FormControl, InputLabel, MenuItem, Select, Switch, Slider, TextField, InputAdornment, FormControlLabel, Divider, } from '@mui/material';
 import { Icon } from '@iobroker/adapter-react-v5';
 import { renderControlIcon, getTranslation } from './Utils';
 /**
@@ -259,11 +259,54 @@ export default class DeviceControlComponent extends Component {
         return (React.createElement(Button, { disabled: this.props.disabled, title: tooltip, color: colorProps, style: style, onClick: () => this.sendControl(this.props.deviceId, this.props.control, !this.state.value), startIcon: icon, variant: this.props.control.variant }, getTranslation(this.props.control.label)));
     }
     renderInfo() {
-        return (React.createElement("div", null,
-            this.props.control.label ? React.createElement(InputLabel, null, getTranslation(this.props.control.label)) : null,
+        let label = this.props.control.label;
+        if (this.state.value && this.props.control.labelOn && typeof this.state.value === 'boolean') {
+            label = this.props.control.labelOn;
+        }
+        if (label) {
+            label = getTranslation(this.props.control.label, this.props.control.noTranslation);
+        }
+        let value = this.state.value;
+        if (typeof this.state.value === 'boolean') {
+            if (this.props.control.textFalse && !this.state.value) {
+                value = getTranslation(this.props.control.textFalse, this.props.control.noTranslation);
+            }
+            else if (this.props.control.textTrue && this.state.value) {
+                value = getTranslation(this.props.control.textTrue, this.props.control.noTranslation);
+            }
+        }
+        const icon = renderControlIcon(this.props.control, this.props.colors, this.state.value, true);
+        return (React.createElement("div", { style: { display: 'flex' } },
+            icon,
+            label ? (React.createElement(InputLabel, null,
+                label,
+                this.props.control.showSemicolon ? ':' : null)) : null,
             React.createElement("span", null,
-                this.state.value,
+                value,
                 React.createElement("span", { style: { fontSize: 'smaller', opacity: 0.7, marginLeft: this.state.unit ? 4 : 0 } }, this.state.unit))));
+    }
+    renderDivider() {
+        const style = this.props.control.style || {};
+        if (this.props.control.color) {
+            style.color = this.props.control.color;
+        }
+        return React.createElement(Divider, { style: style });
+    }
+    renderHeader() {
+        const style = {
+            backgroundColor: this.props.colors.primary,
+            width: '100%',
+            display: 'flex',
+            gap: 8,
+        };
+        Object.assign(style, this.props.control.style);
+        if (this.props.control.color) {
+            style.color = this.props.control.color;
+        }
+        const icon = renderControlIcon(this.props.control, this.props.colors, false, true);
+        return (React.createElement("div", { style: style },
+            icon,
+            getTranslation(this.props.control.label)));
     }
     render() {
         if (this.props.control.type === 'button') {
@@ -292,6 +335,12 @@ export default class DeviceControlComponent extends Component {
         }
         if (this.props.control.type === 'info') {
             return this.renderInfo();
+        }
+        if (this.props.control.type === 'divider') {
+            return this.renderDivider();
+        }
+        if (this.props.control.type === 'header') {
+            return this.renderHeader();
         }
         return React.createElement("div", { style: { color: 'red' } }, this.props.control.type);
     }

@@ -1,7 +1,7 @@
-import { DeviceTypeIcon, I18n, Utils, } from '@iobroker/adapter-react-v5';
-import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon } from '@mui/icons-material';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, Paper, Skeleton, Tooltip, Typography, } from '@mui/material';
 import React, { Component } from 'react';
+import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon, ExpandMore, } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, Paper, Skeleton, Tooltip, Typography, Accordion, AccordionSummary, AccordionDetails, } from '@mui/material';
+import { DeviceTypeIcon, I18n, Utils, Icon, } from '@iobroker/adapter-react-v5';
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
@@ -198,17 +198,34 @@ export default class DeviceCard extends Component {
             React.createElement(DialogActions, null,
                 React.createElement(Button, { disabled: !this.props.alive, variant: "contained", color: "primary", onClick: () => this.setState({ open: false }), autoFocus: true }, getTranslation('closeButtonText')))));
     }
+    renderControlItems(controls, allControls, colors, parentGroupId) {
+        return controls
+            .filter(control => (parentGroupId ? control.group === parentGroupId : !control.group))
+            .map(control => {
+            if (control.type === 'group') {
+                const children = allControls.filter(ctrl => ctrl.group === control.id);
+                return (React.createElement(Accordion, { key: control.id },
+                    React.createElement(AccordionSummary, { expandIcon: React.createElement(ExpandMore, null) },
+                        React.createElement(Typography, { component: "span", style: { display: 'flex', gap: 8, color: control.color } },
+                            control.icon ? React.createElement(Icon, { src: control.icon }) : null,
+                            getTranslation(control.label))),
+                    React.createElement(AccordionDetails, { style: { display: 'flex', flexDirection: 'column' } }, this.renderControlItems(children, allControls, colors, control.id))));
+            }
+            return (React.createElement(DeviceControlComponent, { disabled: false, key: control.id, control: control, socket: this.props.socket, colors: colors, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }));
+        });
+    }
     renderControlDialog() {
         if (!this.state.showControlDialog || !this.props.alive) {
             return null;
         }
         const colors = { primary: '#111', secondary: '#888' };
+        const allControls = this.props.device.controls || [];
         return (React.createElement(Dialog, { open: !0, onClose: () => this.setState({ showControlDialog: false }) },
             React.createElement(DialogTitle, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
                 this.state.name,
                 React.createElement(IconButton, { onClick: () => this.setState({ showControlDialog: false }) },
                     React.createElement(CloseIcon, null))),
-            React.createElement(DialogContent, { style: { display: 'flex', flexDirection: 'column' } }, this.props.device.controls?.map(control => (React.createElement(DeviceControlComponent, { disabled: false, key: control.id, control: control, socket: this.props.socket, colors: colors, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }))))));
+            React.createElement(DialogContent, { style: { display: 'flex', flexDirection: 'column' } }, this.renderControlItems(allControls, allControls, colors))));
     }
     renderControls() {
         const colors = { primary: '#111', secondary: '#888' };

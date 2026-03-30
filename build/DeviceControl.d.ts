@@ -50,6 +50,8 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
     renderNumber(): JSX.Element;
     renderIcon(): JSX.Element;
     renderInfo(): JSX.Element;
+    renderDivider(): JSX.Element;
+    renderHeader(): JSX.Element;
     render(): JSX.Element;
 }
 export {};
