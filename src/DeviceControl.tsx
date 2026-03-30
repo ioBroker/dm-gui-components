@@ -11,6 +11,7 @@ import {
     TextField,
     InputAdornment,
     FormControlLabel,
+    Divider,
 } from '@mui/material';
 
 import { type Connection, Icon } from '@iobroker/adapter-react-v5';
@@ -501,15 +502,72 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
     }
 
     renderInfo(): JSX.Element {
+        let label = this.props.control.label;
+        if (this.state.value && this.props.control.labelOn && typeof this.state.value === 'boolean') {
+            label = this.props.control.labelOn;
+        }
+        if (label) {
+            // @ts-expect-error noTranslation defined
+            label = getTranslation(this.props.control.label!, this.props.control.noTranslation);
+        }
+        let value = this.state.value;
+        if (typeof this.state.value === 'boolean') {
+            // @ts-expect-error noTranslation defined
+            if (this.props.control.textFalse && !this.state.value) {
+                // @ts-expect-error noTranslation defined
+                value = getTranslation(this.props.control.textFalse, this.props.control.noTranslation);
+                // @ts-expect-error noTranslation defined
+            } else if (this.props.control.textTrue && this.state.value) {
+                // @ts-expect-error noTranslation defined
+                value = getTranslation(this.props.control.textTrue, this.props.control.noTranslation);
+            }
+        }
+        const icon = renderControlIcon(this.props.control, this.props.colors, this.state.value, true);
         return (
-            <div>
-                {this.props.control.label ? <InputLabel>{getTranslation(this.props.control.label)}</InputLabel> : null}
+            <div style={{ display: 'flex' }}>
+                {icon}
+                {label ? (
+                    <InputLabel>
+                        {label}
+                        {/* @ts-expect-error showSemicolon defined */}
+                        {this.props.control.showSemicolon ? ':' : null}
+                    </InputLabel>
+                ) : null}
+
                 <span>
-                    {this.state.value}
+                    {value}
                     <span style={{ fontSize: 'smaller', opacity: 0.7, marginLeft: this.state.unit ? 4 : 0 }}>
                         {this.state.unit}
                     </span>
                 </span>
+            </div>
+        );
+    }
+
+    renderDivider(): JSX.Element {
+        const style: React.CSSProperties = this.props.control.style || {};
+        if (this.props.control.color) {
+            style.color = this.props.control.color;
+        }
+        return <Divider style={style} />;
+    }
+
+    renderHeader(): JSX.Element {
+        const style: React.CSSProperties = {
+            backgroundColor: this.props.colors.primary,
+            width: '100%',
+            display: 'flex',
+            gap: 8,
+        };
+        Object.assign(style, this.props.control.style);
+        if (this.props.control.color) {
+            style.color = this.props.control.color;
+        }
+        const icon = renderControlIcon(this.props.control, this.props.colors, false, true);
+        return (
+            <div style={style}>
+                {icon}
+                {getTranslation(this.props.control.label!)}
             </div>
         );
     }
@@ -549,6 +607,14 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
 
         if (this.props.control.type === 'info') {
             return this.renderInfo();
+        }
+
+        if (this.props.control.type === 'divider') {
+            return this.renderDivider();
+        }
+
+        if (this.props.control.type === 'header') {
+            return this.renderHeader();
         }
 
         return <div style={{ color: 'red' }}>{this.props.control.type}</div>;

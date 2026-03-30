@@ -1,14 +1,10 @@
+import React, { Component, type JSX } from 'react';
 import {
-    DeviceTypeIcon,
-    I18n,
-    Utils,
-    type Connection,
-    type IobTheme,
-    type ThemeName,
-    type ThemeType,
-} from '@iobroker/adapter-react-v5';
-import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
-import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon } from '@mui/icons-material';
+    Close as CloseIcon,
+    VideogameAsset as ControlIcon,
+    MoreVert as MoreVertIcon,
+    ExpandMore,
+} from '@mui/icons-material';
 import {
     Box,
     Button,
@@ -22,8 +18,23 @@ import {
     Skeleton,
     Tooltip,
     Typography,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
 } from '@mui/material';
-import React, { Component, type JSX } from 'react';
+
+import {
+    DeviceTypeIcon,
+    I18n,
+    Utils,
+    type Connection,
+    type IobTheme,
+    type ThemeName,
+    type ThemeType,
+    Icon,
+} from '@iobroker/adapter-react-v5';
+import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
+
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
@@ -34,6 +45,7 @@ import type {
     ControlBase,
     ControlState,
     DeviceDetails,
+    DeviceControl,
     DeviceInfo,
     DeviceId,
     ConfigConnectionType,
@@ -356,6 +368,31 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
             return null;
         }
         const colors = { primary: '#111', secondary: '#888' };
+        const groups: Record<
+            string,
+            {
+                label: string;
+                color?: string;
+                icon?: React.JSX.Element;
+                controls: DeviceControl[];
+            }
+        > = {};
+        this.props.device.controls?.forEach(control => {
+            if (control.type === 'group') {
+                // Collect all items of this group
+                groups[control.id] = {
+                    label: getTranslation(control.label!),
+                    icon: control.icon ? <Icon src={control.icon} /> : undefined,
+                    color: control.color,
+                    controls: [],
+                };
+                this.props.device.controls?.forEach(ctrl => {
+                    if (ctrl.id !== control.id && ctrl.group === control.id) {
+                        groups[control.id].controls.push(ctrl);
+                    }
+                });
+            }
+        });
         return (
             <Dialog
                 open={!0}
@@ -368,18 +405,53 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                     </IconButton>
                 </DialogTitle>
                 <DialogContent style={{ display: 'flex', flexDirection: 'column' }}>
-                    {this.props.device.controls?.map(control => (
-                        <DeviceControlComponent
-                            disabled={false}
-                            key={control.id}
-                            control={control}
-                            socket={this.props.socket}
-                            colors={colors}
-                            deviceId={this.props.device.id}
-                            controlHandler={this.props.controlHandler}
-                            controlStateHandler={this.props.controlStateHandler}
-                        />
-                    ))}
+                    {this.props.device.controls
+                        ?.filter(control => !control.group)
+                        .map(control => {
+                            if (control.type === 'group') {
+                                return (
+                                    <Accordion key={control.id}>
+                                        <AccordionSummary expandIcon={<ExpandMore />}>
+                                            <Typography
+                                                component="span"
+                                                style={{ display: 'flex', gap: 8 }}
+                                            >
+                                                {groups[control.id].icon}
+                                                {groups[control.id].label}
+                                            </Typography>
+                                        </AccordionSummary>
+                                        <AccordionDetails>
+                                            {groups[control.id].controls.map(ctrl => {
+                                                return (
+                                                    <DeviceControlComponent
+                                                        disabled={false}
+                                                        key={ctrl.id}
+                                                        control={ctrl}
+                                                        socket={this.props.socket}
+                                                        colors={colors}
+                                                        deviceId={this.props.device.id}
+                                                        controlHandler={this.props.controlHandler}
+                                                        controlStateHandler={this.props.controlStateHandler}
+                                                    />
+                                                );
+                                            })}
+                                        </AccordionDetails>
+                                    </Accordion>
+                                );
+                            }
+                            return (
+                                <DeviceControlComponent
+                                    disabled={false}
+                                    key={control.id}
+                                    control={control}
+                                    socket={this.props.socket}
+                                    colors={colors}
+                                    deviceId={this.props.device.id}
+                                    controlHandler={this.props.controlHandler}
+                                    controlStateHandler={this.props.controlStateHandler}
+                                />
+                            );
+                        })}
                 </DialogContent>
             </Dialog>
         );
