@@ -300,13 +300,27 @@ export default class Communication extends Component {
         if (typeof button === 'string') {
             button = undefined;
         }
+        let disableButton = false;
+        if (!this.state.form?.ignoreApplyDisabled && this.state.form?.applyDisabledRule) {
+            // evaluate the rule
+            try {
+                const f = Function('data', `return ${this.state.form.applyDisabledRule};`);
+                disableButton = f(this.state.form.data);
+            }
+            catch (err) {
+                console.error(`Cannot execute function "${this.state.form.applyDisabledRule}": ${err}`);
+            }
+        }
+        else if (!this.state.form?.changed && !this.state.form?.ignoreApplyDisabled) {
+            disableButton = true;
+        }
         // TODO: detect if any input fields are present and if no one, do not disable the button
-        return (React.createElement(Button, { key: "apply", disabled: !this.state.form?.changed && !this.state.form?.ignoreApplyDisabled, variant: button?.variant || 'contained', color: button?.color === 'primary' ? 'primary' : button?.color === 'secondary' ? 'secondary' : 'primary', style: {
+        return (React.createElement(Button, { key: "apply", disabled: disableButton, variant: button?.variant || 'contained', color: button?.color === 'primary' ? 'primary' : button?.color === 'secondary' ? 'secondary' : 'primary', style: {
                 backgroundColor: button?.color && button?.color !== 'primary' && button?.color !== 'secondary'
                     ? button?.color
                     : undefined,
                 ...(button?.style || undefined),
-            }, onClick: () => this.state.form?.handleClose && this.state.form.handleClose(this.state.form?.data), startIcon: button?.icon ? React.createElement(Icon, { src: button?.icon }) : undefined }, getTranslation(button?.label || 'okButtonText', button?.noTranslation)));
+            }, onClick: () => this.state.form?.handleClose?.(this.state.form?.data), startIcon: button?.icon ? React.createElement(Icon, { src: button?.icon }) : undefined }, getTranslation(button?.label || 'okButtonText', button?.noTranslation)));
     }
     getCancelButton(button) {
         let isClose = false;

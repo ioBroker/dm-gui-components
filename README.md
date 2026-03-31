@@ -86,8 +86,8 @@ Unrecognized FA names render a **QuestionMark** icon.
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
-- (@GermanBluefox) Added support for `applyDisabledRule` 
+### 9.0.25 (2026-03-31)
+- (@GermanBluefox) Added support for `applyDisabledRule`
 
 ### 9.0.24 (2026-03-30)
 - (@GermanBluefox) Layout improved
