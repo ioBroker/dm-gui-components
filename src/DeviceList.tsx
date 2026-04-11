@@ -56,6 +56,7 @@ interface DeviceListState extends CommunicationState {
     devices: DeviceInfo[];
     totalDevices?: number;
     filter: string;
+    filterText: string;
     instanceInfo: InstanceDetails | null;
     loading: boolean | null;
     alive: boolean | null;
@@ -105,6 +106,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             ...this.state,
             devices: [],
             filter: '',
+            filterText: '',
             instanceInfo: null,
             loading: null,
             alive: null,
@@ -332,6 +334,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     }
 
     handleFilterChange(filter: string): void {
+        this.setState({ filterText: filter });
         if (this.filterTimeout) {
             clearTimeout(this.filterTimeout);
         }
@@ -633,12 +636,12 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             size="small"
                             label={getTranslation('filterLabelText')}
                             onChange={e => this.handleFilterChange(e.target.value)}
-                            value={this.state.filter}
+                            value={this.state.filterText}
                             autoComplete="off"
                             slotProps={{
                                 input: {
                                     autoComplete: 'new-password',
-                                    endAdornment: this.state.filter ? (
+                                    endAdornment: this.state.filterText ? (
                                         <InputAdornment position="end">
                                             <IconButton
                                                 tabIndex={-1}
