@@ -21,6 +21,7 @@ interface DeviceListState extends CommunicationState {
     devices: DeviceInfo[];
     totalDevices?: number;
     filter: string;
+    filterText: string;
     instanceInfo: InstanceDetails | null;
     loading: boolean | null;
     alive: boolean | null;

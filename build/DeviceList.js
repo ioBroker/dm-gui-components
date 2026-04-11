@@ -49,6 +49,7 @@ export default class DeviceList extends Communication {
             ...this.state,
             devices: [],
             filter: '',
+            filterText: '',
             instanceInfo: null,
             loading: null,
             alive: null,
@@ -236,6 +237,7 @@ export default class DeviceList extends Communication {
         return text;
     }
     handleFilterChange(filter) {
+        this.setState({ filterText: filter });
         if (this.filterTimeout) {
             clearTimeout(this.filterTimeout);
         }
@@ -405,10 +407,10 @@ export default class DeviceList extends Communication {
                 !this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.actions?.length ? (React.createElement("div", { style: { marginLeft: 20 } }, this.state.instanceInfo.actions.map(action => (React.createElement(InstanceActionButton, { key: action.id, action: action, instanceHandler: this.instanceHandler }))))) : null,
                 React.createElement("div", { style: { flexGrow: 1 } }),
                 !this.state.apiVersionError && this.renderGroups(deviceGroups),
-                !this.state.apiVersionError && this.state.alive ? (React.createElement(TextField, { variant: "standard", style: { width: 200 }, size: "small", label: getTranslation('filterLabelText'), onChange: e => this.handleFilterChange(e.target.value), value: this.state.filter, autoComplete: "off", slotProps: {
+                !this.state.apiVersionError && this.state.alive ? (React.createElement(TextField, { variant: "standard", style: { width: 200 }, size: "small", label: getTranslation('filterLabelText'), onChange: e => this.handleFilterChange(e.target.value), value: this.state.filterText, autoComplete: "off", slotProps: {
                         input: {
                             autoComplete: 'new-password',
-                            endAdornment: this.state.filter ? (React.createElement(InputAdornment, { position: "end" },
+                            endAdornment: this.state.filterText ? (React.createElement(InputAdornment, { position: "end" },
                                 React.createElement(IconButton, { tabIndex: -1, onClick: () => this.handleFilterChange(''), edge: "end" },
                                     React.createElement(Clear, null)))) : null,
                         },
