@@ -305,13 +305,28 @@ export default class DeviceList extends Communication {
                     React.createElement("span", null, getTranslation('noInstancesFoundText'))),
             ];
         }
+        const backgroundColor = this.props.theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5';
+        if (this.props.smallCards) {
+            return instanceIds.map(id => {
+                const info = this.state.dmInstances[id];
+                return (React.createElement(Card, { key: id, sx: { width: 200, margin: '5px', backgroundColor } },
+                    React.createElement(CardActionArea, { onClick: () => this.selectInstance(id), style: { height: '100%' } },
+                        React.createElement(CardContent, { style: {
+                                height: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: 8,
+                            } },
+                            info.icon ? (React.createElement(Icon, { src: info.icon, style: { width: 32, height: 32, flexShrink: 0 } })) : (React.createElement(QuestionMark, { style: { width: 32, height: 32, flexShrink: 0 } })),
+                            React.createElement("div", { style: { overflow: 'hidden' } },
+                                React.createElement(Typography, { variant: "body1", noWrap: true, style: { fontSize: 14, fontWeight: 'bold' } }, id),
+                                info.title ? (React.createElement(Typography, { variant: "caption", color: "textSecondary", noWrap: true, component: "div" }, info.title)) : null)))));
+            });
+        }
         return instanceIds.map(id => {
             const info = this.state.dmInstances[id];
-            return (React.createElement(Card, { key: id, sx: {
-                    width: 240,
-                    margin: '10px',
-                    backgroundColor: this.props.theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5',
-                } },
+            return (React.createElement(Card, { key: id, sx: { width: 240, margin: '10px', backgroundColor } },
                 React.createElement(CardActionArea, { onClick: () => this.selectInstance(id), style: { height: '100%' } },
                     React.createElement(CardContent, { style: {
                             height: '100%',
