@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "Alle Geräte herausgefiltert",
     "apiVersionError": "Das Backend ist neuer als die GUI. Bitte aktualisieren Sie den Admin.",
+    "backToInstancesList": "Zurück zur Instanzliste",
     "batteryTooltip": "Batterie",
     "cancelButtonText": "Abbrechen",
     "closeButtonText": "Schließen",
@@ -19,6 +20,7 @@
     "noButtonText": "Nein",
     "noDevicesFoundText": "Keine Geräte gefunden",
     "noInstanceSelectedText": "Bitte Instanz auswählen",
+    "noInstancesFoundText": "Keine laufenden Instanzen mit Gerätemanager-Unterstützung gefunden",
     "nothingToCopy": "nichts zu kopieren",
     "okButtonText": "OK",
     "pleaseEnterValueText": "Bitte eingeben",

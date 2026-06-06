@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "Todos los dispositivos filtrados",
     "apiVersionError": "El backend es más reciente que la interfaz gráfica de usuario. Por favor, actualice el administrador.",
+    "backToInstancesList": "Volver a la lista de instancias",
     "batteryTooltip": "Batería",
     "cancelButtonText": "Cancelar",
     "closeButtonText": "Cerca",
@@ -19,6 +20,7 @@
     "noButtonText": "No",
     "noDevicesFoundText": "No se encontraron dispositivos",
     "noInstanceSelectedText": "Por favor seleccione instancia",
+    "noInstancesFoundText": "No se encontraron instancias en ejecución compatibles con el administrador de dispositivos",
     "nothingToCopy": "nada que copiar",
     "okButtonText": "DE ACUERDO",
     "pleaseEnterValueText": "Por favor escribe",

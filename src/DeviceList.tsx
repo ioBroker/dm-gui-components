@@ -8,14 +8,16 @@ import {
     LinearProgress,
     Select,
     MenuItem,
-    FormControl,
-    InputLabel,
     Box,
+    Card,
+    CardActionArea,
+    CardContent,
+    Typography,
 } from '@mui/material';
 
-import { Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
+import { ArrowBack, Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
 
-import { I18n, DeviceTypeIcon } from '@iobroker/adapter-react-v5';
+import { I18n, DeviceTypeIcon, Icon } from '@iobroker/adapter-react-v5';
 import type { DeviceId, DeviceInfo, InstanceDetails } from './protocol/api';
 
 import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
@@ -62,7 +64,7 @@ interface DeviceListState extends CommunicationState {
     alive: boolean | null;
     triggerLoad: number;
     groupKey: string;
-    dmInstances: { [instanceName: string]: { title: string; instance: number } } | null;
+    dmInstances: { [instanceName: string]: { title: string; icon: string; instance: number } } | null;
     apiVersionError: boolean;
 }
 
@@ -115,6 +117,11 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             apiVersionError: false,
         };
 
+        if (this.props.selectedInstance === undefined) {
+            // Start with the root page that shows all instances as cards
+            this.state = { ...this.state, selectedInstance: '' };
+        }
+
         this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
     }
@@ -128,7 +135,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
         console.log('Loading adapters...');
         const res = await this.props.socket.getObjectViewSystem('instance', 'system.adapter.', 'system.adapter.\u9999');
-        const dmInstances: { [instanceName: string]: { title: string; instance: number } } = {};
+        const dmInstances: { [instanceName: string]: { title: string; icon: string; instance: number } } = {};
         for (const id in res) {
             if (!res[id].common.supportedMessages?.deviceManager) {
                 continue;
@@ -143,8 +150,11 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                 }
 
                 const instance = parseInt(instanceName.split('.').pop() || '0') || 0;
+                const common = res[id].common;
+                const adapterName = instanceName.split('.')[0];
                 dmInstances[instanceName] = {
-                    title: '',
+                    title: common.titleLang ? this.getText(common.titleLang) : common.title || adapterName,
+                    icon: common.icon ? `./adapter/${adapterName}/${common.icon}` : common.extIcon || '',
                     instance,
                 };
             } catch (error) {
@@ -153,6 +163,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         }
 
         if (Object.keys(dmInstances).length === 1) {
+            // With only one instance, select it directly and do not show the root page
             const selectedInstance = Object.keys(dmInstances)[0];
             await this.setStateAsync({
                 dmInstances,
@@ -160,17 +171,35 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                 groupKey: window.localStorage.getItem(`dm_group_${selectedInstance}`) || '',
             });
         } else {
-            const selectedInstance = window.localStorage.getItem('dmSelectedInstance');
-            if (selectedInstance && dmInstances[selectedInstance]) {
-                await this.setStateAsync({
-                    dmInstances,
-                    selectedInstance,
-                    groupKey: window.localStorage.getItem(`dm_group_${selectedInstance}`) || '',
-                });
-            } else {
-                await this.setStateAsync({ dmInstances });
-            }
+            await this.setStateAsync({ dmInstances });
         }
+    }
+
+    private selectInstance(instanceId: string): void {
+        window.localStorage.setItem('dmSelectedInstance', instanceId);
+        this.setState({
+            selectedInstance: instanceId,
+            groupKey: window.localStorage.getItem(`dm_group_${instanceId}`) || '',
+        });
+    }
+
+    private backToInstancesList(): void {
+        window.localStorage.removeItem('dmSelectedInstance');
+        this.setState({
+            selectedInstance: '',
+            devices: [],
+            totalDevices: undefined,
+            instanceInfo: null,
+            alive: null,
+            groupKey: '',
+            filter: '',
+            filterText: '',
+            apiVersionError: false,
+        });
+    }
+
+    private refreshInstanceList(): void {
+        this.setState({ dmInstances: null }, () => this.loadAdapters().catch(console.error));
     }
 
     async componentDidMount(): Promise<void> {
@@ -391,6 +420,135 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         );
     }
 
+    renderInstanceCards(): React.JSX.Element[] {
+        if (!this.state.dmInstances) {
+            return [
+                <LinearProgress
+                    key="loadingInstances"
+                    style={{ width: '100%' }}
+                />,
+            ];
+        }
+
+        const instanceIds = Object.keys(this.state.dmInstances);
+        if (!instanceIds.length) {
+            return [
+                <div
+                    style={{ padding: 25 }}
+                    key="noInstances"
+                >
+                    <span>{getTranslation('noInstancesFoundText')}</span>
+                </div>,
+            ];
+        }
+
+        const backgroundColor = this.props.theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5';
+
+        if (this.props.smallCards) {
+            return instanceIds.map(id => {
+                const info = this.state.dmInstances![id];
+                return (
+                    <Card
+                        key={id}
+                        sx={{ width: 200, margin: '5px', backgroundColor }}
+                    >
+                        <CardActionArea
+                            onClick={() => this.selectInstance(id)}
+                            style={{ height: '100%' }}
+                        >
+                            <CardContent
+                                style={{
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: 8,
+                                }}
+                            >
+                                {info.icon ? (
+                                    <Icon
+                                        src={info.icon}
+                                        style={{ width: 32, height: 32, flexShrink: 0 }}
+                                    />
+                                ) : (
+                                    <QuestionMark style={{ width: 32, height: 32, flexShrink: 0 }} />
+                                )}
+                                <div style={{ overflow: 'hidden' }}>
+                                    <Typography
+                                        variant="body1"
+                                        noWrap
+                                        style={{ fontSize: 14, fontWeight: 'bold' }}
+                                    >
+                                        {id}
+                                    </Typography>
+                                    {info.title ? (
+                                        <Typography
+                                            variant="caption"
+                                            color="textSecondary"
+                                            noWrap
+                                            component="div"
+                                        >
+                                            {info.title}
+                                        </Typography>
+                                    ) : null}
+                                </div>
+                            </CardContent>
+                        </CardActionArea>
+                    </Card>
+                );
+            });
+        }
+
+        return instanceIds.map(id => {
+            const info = this.state.dmInstances![id];
+            return (
+                <Card
+                    key={id}
+                    sx={{ width: 240, margin: '10px', backgroundColor }}
+                >
+                    <CardActionArea
+                        onClick={() => this.selectInstance(id)}
+                        style={{ height: '100%' }}
+                    >
+                        <CardContent
+                            style={{
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 8,
+                            }}
+                        >
+                            {info.icon ? (
+                                <Icon
+                                    src={info.icon}
+                                    style={{ width: 64, height: 64 }}
+                                />
+                            ) : (
+                                <QuestionMark style={{ width: 64, height: 64 }} />
+                            )}
+                            <Typography
+                                variant="h6"
+                                style={{ textAlign: 'center', wordBreak: 'break-all' }}
+                            >
+                                {id}
+                            </Typography>
+                            {info.title ? (
+                                <Typography
+                                    variant="body2"
+                                    color="textSecondary"
+                                    style={{ textAlign: 'center' }}
+                                >
+                                    {info.title}
+                                </Typography>
+                            ) : null}
+                        </CardContent>
+                    </CardActionArea>
+                </Card>
+            );
+        });
+    }
+
     renderContent(): JSX.Element | JSX.Element[] | null {
         const emptyStyle: React.CSSProperties = {
             padding: 25,
@@ -421,8 +579,13 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         }
         const deviceGroups: { name: string; value: string; count: number; icon?: React.JSX.Element | string | null }[] =
             [];
+        const showRootPage =
+            !this.props.embedded && this.props.selectedInstance === undefined && !this.state.selectedInstance;
+
         let list: React.JSX.Element[] | undefined;
-        if (!this.props.embedded && !this.state.alive) {
+        if (showRootPage) {
+            list = this.renderInstanceCards();
+        } else if (!this.props.embedded && !this.state.alive) {
             list = [
                 <div
                     style={emptyStyle}
@@ -564,39 +727,47 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     style={{ backgroundColor: '#777', display: 'flex' }}
                 >
                     {this.props.title}
-                    {this.props.selectedInstance === undefined && this.state.dmInstances ? (
-                        <FormControl>
-                            <InputLabel
-                                id="instance-select-label"
-                                style={{ transform: 'translate(0, -9px) scale(0.75)' }}
-                            >
-                                {getTranslation('instanceLabelText')}
-                            </InputLabel>
-                            <Select
-                                style={{ marginTop: 0, minWidth: 120 }}
-                                labelId="instance-select-label"
-                                id="instance-select"
-                                value={this.state.selectedInstance}
-                                onChange={event => {
-                                    window.localStorage.setItem('dmSelectedInstance', event.target.value);
-                                    this.setState({
-                                        selectedInstance: event.target.value,
-                                        groupKey: window.localStorage.getItem(`dm_group_${event.target.value}`) || '',
-                                    });
-                                }}
-                                displayEmpty
-                                variant="standard"
-                            >
-                                {Object.keys(this.state.dmInstances).map(id => (
-                                    <MenuItem
-                                        key={id}
-                                        value={id}
+                    {this.props.selectedInstance === undefined &&
+                    this.state.dmInstances &&
+                    this.state.selectedInstance ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {Object.keys(this.state.dmInstances).length > 1 ? (
+                                <Tooltip
+                                    title={getTranslation('backToInstancesList')}
+                                    slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
+                                >
+                                    <IconButton
+                                        onClick={() => this.backToInstancesList()}
+                                        size="small"
                                     >
-                                        {id}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                                        <ArrowBack />
+                                    </IconButton>
+                                </Tooltip>
+                            ) : null}
+                            {this.state.dmInstances[this.state.selectedInstance]?.icon ? (
+                                <Icon
+                                    src={this.state.dmInstances[this.state.selectedInstance].icon}
+                                    style={{ width: 24, height: 24 }}
+                                />
+                            ) : null}
+                            <span style={{ marginRight: 8 }}>{this.state.selectedInstance}</span>
+                        </div>
+                    ) : null}
+                    {this.props.selectedInstance === undefined && !this.state.selectedInstance ? (
+                        <Tooltip
+                            title={getTranslation('refreshInstanceList')}
+                            slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
+                        >
+                            <span>
+                                <IconButton
+                                    onClick={() => this.refreshInstanceList()}
+                                    disabled={!this.state.dmInstances}
+                                    size="small"
+                                >
+                                    <Refresh />
+                                </IconButton>
+                            </span>
+                        </Tooltip>
                     ) : null}
                     {this.state.selectedInstance ? (
                         <Tooltip

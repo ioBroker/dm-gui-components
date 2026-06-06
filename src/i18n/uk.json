@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "Усі пристрої відфільтровано",
     "apiVersionError": "Бекенд новіший, як графічний інтерфейс. Будь ласка, оновіть адміністратора",
+    "backToInstancesList": "Назад до списку екземплярів",
     "batteryTooltip": "Батарея",
     "cancelButtonText": "Скасувати",
     "closeButtonText": "Закрити",
@@ -19,6 +20,7 @@
     "noButtonText": "Немає",
     "noDevicesFoundText": "Пристроїв не знайдено",
     "noInstanceSelectedText": "Виберіть екземпляр",
+    "noInstancesFoundText": "Запущених екземплярів з підтримкою менеджера пристроїв не знайдено",
     "nothingToCopy": "нічого для копіювання",
     "okButtonText": "в порядку",
     "pleaseEnterValueText": "Будь ласка введіть",

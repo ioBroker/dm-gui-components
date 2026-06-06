@@ -406,7 +406,7 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                 fullWidth
                 label={this.props.control.label ? getTranslation(this.props.control.label) : undefined}
                 type="color"
-                value={this.state.value as string}
+                value={this.state.value}
                 onChange={(e): Promise<void> =>
                     this.sendControl(this.props.deviceId, this.props.control, e.target.value)
                 }
@@ -420,7 +420,7 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
             <TextField
                 fullWidth
                 label={this.props.control.label ? getTranslation(this.props.control.label) : undefined}
-                value={this.state.value as string}
+                value={this.state.value}
                 onChange={(e): Promise<void> =>
                     this.sendControl(this.props.deviceId, this.props.control, e.target.value)
                 }
@@ -435,7 +435,7 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                 fullWidth
                 type="number"
                 label={this.props.control.label ? getTranslation(this.props.control.label) : undefined}
-                value={this.state.value as number}
+                value={this.state.value}
                 onChange={(e): Promise<void> => {
                     if (isNaN(parseFloat(e.target.value))) {
                         return Promise.resolve();

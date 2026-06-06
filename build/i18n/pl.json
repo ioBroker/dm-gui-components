@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "Wszystkie urządzenia zostały odfiltrowane",
     "apiVersionError": "Zaplecze jest nowsze i ma interfejs graficzny. Proszę zaktualizować administratora.",
+    "backToInstancesList": "Powrót do listy instancji",
     "batteryTooltip": "Bateria",
     "cancelButtonText": "Anulować",
     "closeButtonText": "Zamknąć",
@@ -19,6 +20,7 @@
     "noButtonText": "NIE",
     "noDevicesFoundText": "Nie znaleziono urządzeń",
     "noInstanceSelectedText": "Wybierz instancję",
+    "noInstancesFoundText": "Nie znaleziono działających instancji z obsługą menedżera urządzeń",
     "nothingToCopy": "nicDoSkopiowania",
     "okButtonText": "OK",
     "pleaseEnterValueText": "Podaj",

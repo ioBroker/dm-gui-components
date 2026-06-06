@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "Tutti i dispositivi sono stati filtrati",
     "apiVersionError": "Il backend è più recente come GUI. Aggiorna l'amministratore.",
+    "backToInstancesList": "Torna all'elenco delle istanze",
     "batteryTooltip": "Batteria",
     "cancelButtonText": "Annulla",
     "closeButtonText": "Vicino",
@@ -19,6 +20,7 @@
     "noButtonText": "NO",
     "noDevicesFoundText": "Nessun dispositivo trovato",
     "noInstanceSelectedText": "Seleziona l'istanza",
+    "noInstancesFoundText": "Nessuna istanza in esecuzione con supporto per la gestione dei dispositivi trovata",
     "nothingToCopy": "Niente da copiare",
     "okButtonText": "OK",
     "pleaseEnterValueText": "Prego entra",

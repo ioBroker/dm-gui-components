@@ -1,7 +1,7 @@
 import React from 'react';
-import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, FormControl, InputLabel, Box, } from '@mui/material';
-import { Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
-import { I18n, DeviceTypeIcon } from '@iobroker/adapter-react-v5';
+import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Box, Card, CardActionArea, CardContent, Typography, } from '@mui/material';
+import { ArrowBack, Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
+import { I18n, DeviceTypeIcon, Icon } from '@iobroker/adapter-react-v5';
 import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
 import { getTranslation } from './Utils';
 import Communication from './Communication';
@@ -57,6 +57,10 @@ export default class DeviceList extends Communication {
             dmInstances: null,
             apiVersionError: false,
         };
+        if (this.props.selectedInstance === undefined) {
+            // Start with the root page that shows all instances as cards
+            this.state = { ...this.state, selectedInstance: '' };
+        }
         this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
     }
@@ -80,8 +84,11 @@ export default class DeviceList extends Communication {
                     continue;
                 }
                 const instance = parseInt(instanceName.split('.').pop() || '0') || 0;
+                const common = res[id].common;
+                const adapterName = instanceName.split('.')[0];
                 dmInstances[instanceName] = {
-                    title: '',
+                    title: common.titleLang ? this.getText(common.titleLang) : common.title || adapterName,
+                    icon: common.icon ? `./adapter/${adapterName}/${common.icon}` : common.extIcon || '',
                     instance,
                 };
             }
@@ -90,6 +97,7 @@ export default class DeviceList extends Communication {
             }
         }
         if (Object.keys(dmInstances).length === 1) {
+            // With only one instance, select it directly and do not show the root page
             const selectedInstance = Object.keys(dmInstances)[0];
             await this.setStateAsync({
                 dmInstances,
@@ -98,18 +106,32 @@ export default class DeviceList extends Communication {
             });
         }
         else {
-            const selectedInstance = window.localStorage.getItem('dmSelectedInstance');
-            if (selectedInstance && dmInstances[selectedInstance]) {
-                await this.setStateAsync({
-                    dmInstances,
-                    selectedInstance,
-                    groupKey: window.localStorage.getItem(`dm_group_${selectedInstance}`) || '',
-                });
-            }
-            else {
-                await this.setStateAsync({ dmInstances });
-            }
+            await this.setStateAsync({ dmInstances });
         }
+    }
+    selectInstance(instanceId) {
+        window.localStorage.setItem('dmSelectedInstance', instanceId);
+        this.setState({
+            selectedInstance: instanceId,
+            groupKey: window.localStorage.getItem(`dm_group_${instanceId}`) || '',
+        });
+    }
+    backToInstancesList() {
+        window.localStorage.removeItem('dmSelectedInstance');
+        this.setState({
+            selectedInstance: '',
+            devices: [],
+            totalDevices: undefined,
+            instanceInfo: null,
+            alive: null,
+            groupKey: '',
+            filter: '',
+            filterText: '',
+            apiVersionError: false,
+        });
+    }
+    refreshInstanceList() {
+        this.setState({ dmInstances: null }, () => this.loadAdapters().catch(console.error));
     }
     async componentDidMount() {
         let alive = false;
@@ -270,6 +292,39 @@ export default class DeviceList extends Communication {
             g.icon || React.createElement("div", { style: { width: 24 } }),
             g.name)))));
     }
+    renderInstanceCards() {
+        if (!this.state.dmInstances) {
+            return [
+                React.createElement(LinearProgress, { key: "loadingInstances", style: { width: '100%' } }),
+            ];
+        }
+        const instanceIds = Object.keys(this.state.dmInstances);
+        if (!instanceIds.length) {
+            return [
+                React.createElement("div", { style: { padding: 25 }, key: "noInstances" },
+                    React.createElement("span", null, getTranslation('noInstancesFoundText'))),
+            ];
+        }
+        return instanceIds.map(id => {
+            const info = this.state.dmInstances[id];
+            return (React.createElement(Card, { key: id, sx: {
+                    width: 240,
+                    margin: '10px',
+                    backgroundColor: this.props.theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5',
+                } },
+                React.createElement(CardActionArea, { onClick: () => this.selectInstance(id), style: { height: '100%' } },
+                    React.createElement(CardContent, { style: {
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 8,
+                        } },
+                        info.icon ? (React.createElement(Icon, { src: info.icon, style: { width: 64, height: 64 } })) : (React.createElement(QuestionMark, { style: { width: 64, height: 64 } })),
+                        React.createElement(Typography, { variant: "h6", style: { textAlign: 'center', wordBreak: 'break-all' } }, id),
+                        info.title ? (React.createElement(Typography, { variant: "body2", color: "textSecondary", style: { textAlign: 'center' } }, info.title)) : null))));
+        });
+    }
     renderContent() {
         const emptyStyle = {
             padding: 25,
@@ -299,8 +354,12 @@ export default class DeviceList extends Communication {
             setTimeout(() => this.setState({ selectedInstance: this.props.selectedInstance }), 50);
         }
         const deviceGroups = [];
+        const showRootPage = !this.props.embedded && this.props.selectedInstance === undefined && !this.state.selectedInstance;
         let list;
-        if (!this.props.embedded && !this.state.alive) {
+        if (showRootPage) {
+            list = this.renderInstanceCards();
+        }
+        else if (!this.props.embedded && !this.state.alive) {
             list = [
                 React.createElement("div", { style: emptyStyle, key: "notAlive" },
                     React.createElement("span", null, getTranslation('instanceNotAlive'))),
@@ -391,15 +450,18 @@ export default class DeviceList extends Communication {
         return (React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden' } },
             React.createElement(Toolbar, { variant: "dense", style: { backgroundColor: '#777', display: 'flex' } },
                 this.props.title,
-                this.props.selectedInstance === undefined && this.state.dmInstances ? (React.createElement(FormControl, null,
-                    React.createElement(InputLabel, { id: "instance-select-label", style: { transform: 'translate(0, -9px) scale(0.75)' } }, getTranslation('instanceLabelText')),
-                    React.createElement(Select, { style: { marginTop: 0, minWidth: 120 }, labelId: "instance-select-label", id: "instance-select", value: this.state.selectedInstance, onChange: event => {
-                            window.localStorage.setItem('dmSelectedInstance', event.target.value);
-                            this.setState({
-                                selectedInstance: event.target.value,
-                                groupKey: window.localStorage.getItem(`dm_group_${event.target.value}`) || '',
-                            });
-                        }, displayEmpty: true, variant: "standard" }, Object.keys(this.state.dmInstances).map(id => (React.createElement(MenuItem, { key: id, value: id }, id)))))) : null,
+                this.props.selectedInstance === undefined &&
+                    this.state.dmInstances &&
+                    this.state.selectedInstance ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                    Object.keys(this.state.dmInstances).length > 1 ? (React.createElement(Tooltip, { title: getTranslation('backToInstancesList'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+                        React.createElement(IconButton, { onClick: () => this.backToInstancesList(), size: "small" },
+                            React.createElement(ArrowBack, null)))) : null,
+                    this.state.dmInstances[this.state.selectedInstance]?.icon ? (React.createElement(Icon, { src: this.state.dmInstances[this.state.selectedInstance].icon, style: { width: 24, height: 24 } })) : null,
+                    React.createElement("span", { style: { marginRight: 8 } }, this.state.selectedInstance))) : null,
+                this.props.selectedInstance === undefined && !this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshInstanceList'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+                    React.createElement("span", null,
+                        React.createElement(IconButton, { onClick: () => this.refreshInstanceList(), disabled: !this.state.dmInstances, size: "small" },
+                            React.createElement(Refresh, null))))) : null,
                 this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
                         React.createElement(IconButton, { onClick: () => this.loadAllData(), disabled: !this.state.alive || this.state.apiVersionError, size: "small" },

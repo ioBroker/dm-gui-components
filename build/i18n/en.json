@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "All devices filtered out",
     "apiVersionError": "Backend is newer as GUI. Please update admin",
+    "backToInstancesList": "Back to the list of instances",
     "batteryTooltip": "Battery",
     "cancelButtonText": "Cancel",
     "closeButtonText": "Close",
@@ -19,6 +20,7 @@
     "noButtonText": "No",
     "noDevicesFoundText": "No devices found",
     "noInstanceSelectedText": "Please select instance",
+    "noInstancesFoundText": "No running instances with device manager support found",
     "nothingToCopy": "nothingToCopy",
     "okButtonText": "OK",
     "pleaseEnterValueText": "Please enter",

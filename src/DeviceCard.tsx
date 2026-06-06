@@ -33,8 +33,6 @@ import {
     type ThemeType,
     Icon,
 } from '@iobroker/adapter-react-v5';
-import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
-
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
@@ -338,7 +336,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                     <JsonConfig
                         instanceId={this.props.instanceId}
                         socket={this.props.socket}
-                        schema={this.state.details.schema as ConfigItemPanel | ConfigItemTabs}
+                        schema={this.state.details.schema}
                         data={this.state.data}
                         onChange={(data: Record<string, any>) => this.setState({ data })}
                         themeName={this.props.themeName}
@@ -613,7 +611,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             <JsonConfig
                                 instanceId={this.props.instanceId}
                                 socket={this.props.socket}
-                                schema={this.props.device.customInfo.schema as ConfigItemPanel | ConfigItemTabs}
+                                schema={this.props.device.customInfo.schema}
                                 data={this.props.device.customInfo.data || {}}
                                 onChange={(_data: Record<string, any>) => {
                                     /* ignore */
@@ -802,7 +800,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             <JsonConfig
                                 instanceId={this.props.instanceId}
                                 socket={this.props.socket}
-                                schema={this.props.device.customInfo.schema as ConfigItemPanel | ConfigItemTabs}
+                                schema={this.props.device.customInfo.schema}
                                 data={this.props.device.customInfo.data || {}}
                                 onChange={(_data: Record<string, any>) => {
                                     /* ignore */

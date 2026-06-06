@@ -30,6 +30,7 @@ interface DeviceListState extends CommunicationState {
     dmInstances: {
         [instanceName: string]: {
             title: string;
+            icon: string;
             instance: number;
         };
     } | null;
@@ -48,6 +49,9 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     constructor(props: DeviceListProps);
     setStateAsync(state: Partial<DeviceListState>): Promise<void>;
     private loadAdapters;
+    private selectInstance;
+    private backToInstancesList;
+    private refreshInstanceList;
     componentDidMount(): Promise<void>;
     componentWillUnmount(): void;
     aliveHandler: ioBroker.StateChangeHandler;
@@ -67,6 +71,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         count: number;
         icon?: React.JSX.Element | string | null;
     }[] | undefined): React.JSX.Element | null;
+    renderInstanceCards(): React.JSX.Element[];
     renderContent(): JSX.Element | JSX.Element[] | null;
 }
 export {};

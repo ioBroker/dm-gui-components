@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "Todos os dispositivos foram filtrados",
     "apiVersionError": "O backend é mais recente que a GUI. Por favor, atualize o painel de administração.",
+    "backToInstancesList": "Voltar à lista de instâncias",
     "batteryTooltip": "Bateria",
     "cancelButtonText": "Cancelar",
     "closeButtonText": "Fechar",
@@ -19,6 +20,7 @@
     "noButtonText": "Não",
     "noDevicesFoundText": "Nenhum dispositivo encontrado",
     "noInstanceSelectedText": "Selecione a instância",
+    "noInstancesFoundText": "Nenhuma instância em execução com suporte ao gerenciador de dispositivos encontrada",
     "nothingToCopy": "nadaParaCopiar",
     "okButtonText": "OK",
     "pleaseEnterValueText": "Por favor, insira",

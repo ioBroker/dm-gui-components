@@ -15,7 +15,7 @@ function DeviceImageUpload(params: DeviceImageUploadProps): React.JSX.Element | 
     const { socket, manufacturer, model, deviceId, onImageSelect, uploadImagesToInstance } = params;
 
     const handleImageUpload: ChangeEventHandler<HTMLInputElement> = (event: ChangeEvent<HTMLInputElement>): void => {
-        const target = event.target as HTMLInputElement;
+        const target = event.target;
         const files: FileList | null = target.files;
         if (!files || files.length === 0) {
             return;

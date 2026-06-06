@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "Tous les appareils filtrés",
     "apiVersionError": "L'interface d'administration est plus récente que l'interface graphique. Veuillez mettre à jour l'interface d'administration.",
+    "backToInstancesList": "Retour à la liste des instances",
     "batteryTooltip": "Batterie",
     "cancelButtonText": "Annuler",
     "closeButtonText": "Fermer",
@@ -19,6 +20,7 @@
     "noButtonText": "Non",
     "noDevicesFoundText": "Aucun périphérique trouvé",
     "noInstanceSelectedText": "Veuillez sélectionner une instance",
+    "noInstancesFoundText": "Aucune instance en cours d'exécution avec prise en charge du gestionnaire d'appareils trouvée",
     "nothingToCopy": "rien à copier",
     "okButtonText": "D'ACCORD",
     "pleaseEnterValueText": "Entrez s'il vous plait",

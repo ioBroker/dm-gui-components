@@ -2,13 +2,11 @@ import {
     I18n,
     Icon,
     Utils,
-    type AdminConnection,
     type Connection,
     type IobTheme,
     type ThemeName,
     type ThemeType,
 } from '@iobroker/adapter-react-v5';
-import type { ConfigItemPanel, ConfigItemTabs } from '@iobroker/json-config';
 import { Check, Close, ContentCopy } from '@mui/icons-material';
 import {
     Backdrop,
@@ -638,9 +636,9 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                 <DialogContent>
                     <JsonConfig
                         instanceId={this.state.selectedInstance}
-                        schema={form.schema as ConfigItemPanel | ConfigItemTabs}
+                        schema={form.schema}
                         data={form.data || {}}
-                        socket={this.props.socket as AdminConnection}
+                        socket={this.props.socket}
                         onChange={(data: Record<string, any>) => {
                             console.log('handleFormChange', { data });
                             if (form) {

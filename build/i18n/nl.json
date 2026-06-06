@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "Alle apparaten zijn eruit gefilterd",
     "apiVersionError": "De backend is nieuwer dan de GUI. Update de beheerder.",
+    "backToInstancesList": "Terug naar de exemplaarlijst",
     "batteryTooltip": "Batterij",
     "cancelButtonText": "Annuleren",
     "closeButtonText": "Dichtbij",
@@ -19,6 +20,7 @@
     "noButtonText": "Nee",
     "noDevicesFoundText": "Geen apparaten gevonden",
     "noInstanceSelectedText": "Selecteer een exemplaar",
+    "noInstancesFoundText": "Geen actieve exemplaren met apparaatbeheerondersteuning gevonden",
     "nothingToCopy": "nietsOmTeKopiëren",
     "okButtonText": "OK",
     "pleaseEnterValueText": "Kom binnen alstublieft",

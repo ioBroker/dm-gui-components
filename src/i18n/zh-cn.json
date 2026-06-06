@@ -1,6 +1,7 @@
 {
     "allDevicesFilteredOut": "所有设备均被过滤掉",
     "apiVersionError": "后端比图形用户界面更新。请更新管理员。",
+    "backToInstancesList": "返回实例列表",
     "batteryTooltip": "电池",
     "cancelButtonText": "取消",
     "closeButtonText": "关闭",
@@ -19,6 +20,7 @@
     "noButtonText": "不",
     "noDevicesFoundText": "未找到设备",
     "noInstanceSelectedText": "请选择实例",
+    "noInstancesFoundText": "未找到支持设备管理器的运行实例",
     "nothingToCopy": "无可复制",
     "okButtonText": "好的",
     "pleaseEnterValueText": "请输入",
