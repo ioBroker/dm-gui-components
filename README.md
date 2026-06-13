@@ -86,6 +86,9 @@ Unrecognized FA names render a **QuestionMark** icon.
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Updated packages
+
 ### 9.1.0 (2026-06-06)
 - (@GermanBluefox) Replaced the instance selector with a root page that shows all instances as cards; the toolbar shows a back arrow to return to the root page
 - (@GermanBluefox) Updated packages
