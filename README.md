@@ -86,7 +86,7 @@ Unrecognized FA names render a **QuestionMark** icon.
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 9.1.1 (2026-06-13)
 - (@GermanBluefox) Updated packages
 
 ### 9.1.0 (2026-06-06)
