@@ -1,7 +1,7 @@
 import React from 'react';
 import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Box, Card, CardActionArea, CardContent, Typography, } from '@mui/material';
-import { ArrowBack, Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
-import { I18n, DeviceTypeIcon, Icon } from '@iobroker/adapter-react-v5';
+import { ArrowBack, Clear, QuestionMark, Refresh, FilterAlt, FilterAltOff, SystemUpdateAlt, BatteryAlert, } from '@mui/icons-material';
+import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/adapter-react-v5';
 import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
 import { getTranslation } from './Utils';
 import Communication from './Communication';
@@ -17,6 +17,14 @@ import es from './i18n/es.json';
 import pl from './i18n/pl.json';
 import uk from './i18n/uk.json';
 import zhCn from './i18n/zh-cn.json';
+/** Returns true if any of the device status objects carries a battery value */
+function hasBatteryStatus(status) {
+    if (!status || typeof status === 'string') {
+        return false;
+    }
+    const list = Array.isArray(status) ? status : [status];
+    return list.some(entry => typeof entry !== 'string' && entry.battery !== undefined);
+}
 /**
  * Device List Component
  */
@@ -56,6 +64,9 @@ export default class DeviceList extends Communication {
             groupKey: '',
             dmInstances: null,
             apiVersionError: false,
+            onlyUpdatable: window.localStorage.getItem('dm_onlyUpdatable') === 'true',
+            onlyBatteryProblem: window.localStorage.getItem('dm_onlyBatteryProblem') === 'true',
+            filterField: window.localStorage.getItem('dm_filterField') || 'name',
         };
         if (this.props.selectedInstance === undefined) {
             // Start with the root page that shows all instances as cards
@@ -340,6 +351,45 @@ export default class DeviceList extends Communication {
                         info.title ? (React.createElement(Typography, { variant: "body2", color: "textSecondary", style: { textAlign: 'center' } }, info.title)) : null))));
         });
     }
+    /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
+    getEffectiveFilterField() {
+        const field = this.state.filterField;
+        if (field !== 'name' && this.state.devices.some(device => device[field] !== undefined)) {
+            return field;
+        }
+        return 'name';
+    }
+    renderFilterFields() {
+        const fields = [
+            { value: 'name', label: getTranslation('name') },
+        ];
+        if (this.state.devices.some(device => device.identifier !== undefined)) {
+            fields.push({
+                value: 'identifier',
+                label: this.getText(this.state.instanceInfo?.identifierLabel ?? 'ID'),
+            });
+        }
+        if (this.state.devices.some(device => device.manufacturer !== undefined)) {
+            fields.push({ value: 'manufacturer', label: getTranslation('manufacturer') });
+        }
+        if (this.state.devices.some(device => device.model !== undefined)) {
+            fields.push({ value: 'model', label: getTranslation('model') });
+        }
+        // Only show the field selector when there is more than just the name to choose from
+        if (fields.length < 2) {
+            return null;
+        }
+        const current = this.getEffectiveFilterField();
+        return (React.createElement(Select, { variant: "standard", style: { width: 130, flexShrink: 0 }, value: current, onChange: e => {
+                const filterField = e.target.value;
+                this.setState({ filterField });
+                window.localStorage.setItem('dm_filterField', filterField);
+            } }, fields.map(field => (React.createElement(MenuItem, { value: field.value, key: field.value }, field.label)))));
+    }
+    // eslint-disable-next-line class-methods-use-this
+    renderRootInfo() {
+        return (React.createElement(InfoBox, { key: "rootInfo", type: "info", closeable: true, storeId: "dm_rootInfoClosed", style: { width: 'calc(100% - 20px)', margin: '0 10px 8px 10px' } }, getTranslation('rootInfoText')));
+    }
     renderContent() {
         const emptyStyle = {
             padding: 25,
@@ -373,6 +423,7 @@ export default class DeviceList extends Communication {
         let list;
         if (showRootPage) {
             list = this.renderInstanceCards();
+            list.unshift(this.renderRootInfo());
         }
         else if (!this.props.embedded && !this.state.alive) {
             list = [
@@ -433,7 +484,7 @@ export default class DeviceList extends Communication {
                 }
             }
             if (this.state.selectedInstance) {
-                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })));
+                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat, onlyUpdatable: this.state.onlyUpdatable, onlyBatteryProblem: this.state.onlyBatteryProblem, filterField: this.props.embedded ? undefined : this.getEffectiveFilterField() })));
                 if (this.state.loading) {
                     const skeletons = (this.state.totalDevices ?? list.length + 1) - list.length;
                     for (let i = 0; i < skeletons; i++) {
@@ -484,17 +535,44 @@ export default class DeviceList extends Communication {
                 !this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.actions?.length ? (React.createElement("div", { style: { marginLeft: 20 } }, this.state.instanceInfo.actions.map(action => (React.createElement(InstanceActionButton, { key: action.id, action: action, instanceHandler: this.instanceHandler }))))) : null,
                 React.createElement("div", { style: { flexGrow: 1 } }),
                 !this.state.apiVersionError && this.renderGroups(deviceGroups),
-                !this.state.apiVersionError && this.state.alive ? (React.createElement(TextField, { variant: "standard", style: { width: 200 }, size: "small", label: getTranslation('filterLabelText'), onChange: e => this.handleFilterChange(e.target.value), value: this.state.filterText, autoComplete: "off", slotProps: {
-                        input: {
-                            autoComplete: 'new-password',
-                            endAdornment: this.state.filterText ? (React.createElement(InputAdornment, { position: "end" },
-                                React.createElement(IconButton, { tabIndex: -1, onClick: () => this.handleFilterChange(''), edge: "end" },
-                                    React.createElement(Clear, null)))) : null,
-                        },
-                        htmlInput: {
-                            autoComplete: 'off',
-                        },
-                    } })) : null),
+                !this.state.apiVersionError &&
+                    this.state.alive &&
+                    this.state.devices.some(device => device.update) ? (React.createElement(Tooltip, { title: getTranslation('onlyUpdatableTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+                    React.createElement(IconButton, { color: this.state.onlyUpdatable ? 'primary' : 'default', onClick: () => {
+                            const onlyUpdatable = !this.state.onlyUpdatable;
+                            this.setState({ onlyUpdatable });
+                            window.localStorage.setItem('dm_onlyUpdatable', onlyUpdatable ? 'true' : 'false');
+                        }, size: "small" },
+                        React.createElement(SystemUpdateAlt, null)))) : null,
+                !this.state.apiVersionError &&
+                    this.state.alive &&
+                    this.state.devices.some(device => hasBatteryStatus(device.status)) ? (React.createElement(Tooltip, { title: getTranslation('onlyBatteryProblemTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+                    React.createElement(IconButton, { color: this.state.onlyBatteryProblem ? 'primary' : 'default', onClick: () => {
+                            const onlyBatteryProblem = !this.state.onlyBatteryProblem;
+                            this.setState({ onlyBatteryProblem });
+                            window.localStorage.setItem('dm_onlyBatteryProblem', onlyBatteryProblem ? 'true' : 'false');
+                        }, size: "small" },
+                        React.createElement(BatteryAlert, null)))) : null,
+                !this.state.apiVersionError && this.state.alive ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                    React.createElement(FilterAlt, { style: { color: '#fff' } }),
+                    this.renderFilterFields(),
+                    React.createElement(TextField, { variant: "standard", style: { width: 200 }, size: "small", placeholder: getTranslation('filterLabelText'), onChange: e => this.handleFilterChange(e.target.value), value: this.state.filterText, autoComplete: "off", slotProps: {
+                            input: {
+                                autoComplete: 'new-password',
+                                endAdornment: this.state.filterText ? (React.createElement(InputAdornment, { position: "end" },
+                                    React.createElement(IconButton, { tabIndex: -1, onClick: () => this.handleFilterChange(''), edge: "end" },
+                                        React.createElement(Clear, null)))) : null,
+                            },
+                            htmlInput: {
+                                autoComplete: 'off',
+                            },
+                        } }))) : null,
+                React.createElement(Typography, { style: {
+                        marginLeft: 16,
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        color: '#fff',
+                    } }, "Config-Manager")),
             React.createElement("div", { style: {
                     width: '100%',
                     height: 'calc(100% - 56px)',

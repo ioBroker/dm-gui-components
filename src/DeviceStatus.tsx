@@ -17,12 +17,20 @@ import {
     Link as LinkIcon,
     LinkOff as LinkOffIcon,
     NetworkCheck as NetworkCheckIcon,
+    SystemUpdateAlt as SystemUpdateAltIcon,
     Warning as WarningIcon,
 } from '@mui/icons-material';
 import { IconButton, Tooltip } from '@mui/material';
 import React, { useMemo, type CSSProperties, type MouseEvent } from 'react';
 import { useStateOrObject } from './hooks';
-import type { ActionBase, ConfigConnectionType, DeviceAction, DeviceId, DeviceStatus } from './protocol/api';
+import type {
+    ActionBase,
+    ConfigConnectionType,
+    DeviceAction,
+    DeviceId,
+    DeviceInfo,
+    DeviceStatus,
+} from './protocol/api';
 import Switch from './Switch';
 import { getTranslation } from './Utils';
 import type { StateOrObjectHandler } from './StateOrObjectHandler';
@@ -127,6 +135,10 @@ interface DeviceStatusProps {
     statusAction?: DeviceAction;
     enabled?: boolean;
     disableEnableAction?: DeviceAction;
+    /** Update information of the device (firmware/software) */
+    update?: DeviceInfo['update'];
+    /** Reserved "update" action. If provided, the update indicator becomes a clickable button */
+    updateAction?: DeviceAction;
     deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     theme: IobTheme;
     stateOrObjectHandler: StateOrObjectHandler;
@@ -165,6 +177,10 @@ const iconStyleUnknown = {
 const iconStylePreWarning = {
     fill: '#ffcc00',
     color: '#ffcc00',
+};
+const iconStyleUpdate = {
+    fill: '#2196f3',
+    color: '#2196f3',
 };
 
 function getBatteryIcon(battery: number): React.ReactNode {
@@ -215,6 +231,9 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
     const rssi = useStateOrObject(status.rssi, props.stateOrObjectHandler);
     const battery = useStateOrObject(status.battery, props.stateOrObjectHandler);
     const warning = useStateOrObject(status.warning, props.stateOrObjectHandler);
+    const updateAvailable = useStateOrObject(props.update?.available, props.stateOrObjectHandler);
+    const updateVersion = useStateOrObject(props.update?.version, props.stateOrObjectHandler);
+    const updateNewVersion = useStateOrObject(props.update?.newVersion, props.stateOrObjectHandler);
 
     const batteryIconTooltip = useMemo<React.ReactNode>(() => {
         if (typeof battery === 'number') {
@@ -436,6 +455,34 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
                         <WarningIcon style={iconStyleWarning} />
                     </div>
                 )
+            ) : null}
+
+            {updateAvailable ? (
+                <Tooltip
+                    title={
+                        getTranslation('updateAvailable') +
+                        (updateNewVersion ? `: ${updateVersion ? `${updateVersion} → ` : ''}${updateNewVersion}` : '')
+                    }
+                    slotProps={{ popper: { sx: styles.tooltip } }}
+                >
+                    {props.updateAction ? (
+                        <IconButton
+                            size="small"
+                            onClick={e => {
+                                if (props.updateAction) {
+                                    e.stopPropagation();
+                                    props.deviceHandler(props.deviceId, props.updateAction)();
+                                }
+                            }}
+                        >
+                            <SystemUpdateAltIcon style={iconStyleUpdate} />
+                        </IconButton>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <SystemUpdateAltIcon style={iconStyleUpdate} />
+                        </div>
+                    )}
+                </Tooltip>
             ) : null}
 
             {disability}

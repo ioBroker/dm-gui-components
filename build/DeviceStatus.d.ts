@@ -1,6 +1,6 @@
 import type { Connection, IobTheme } from '@iobroker/adapter-react-v5';
 import React, { type CSSProperties, type MouseEvent } from 'react';
-import type { ActionBase, ConfigConnectionType, DeviceAction, DeviceId, DeviceStatus } from './protocol/api';
+import type { ActionBase, ConfigConnectionType, DeviceAction, DeviceId, DeviceInfo, DeviceStatus } from './protocol/api';
 import type { StateOrObjectHandler } from './StateOrObjectHandler';
 export declare const ACTIONS: {
     STATUS: string;
@@ -29,6 +29,10 @@ interface DeviceStatusProps {
     statusAction?: DeviceAction;
     enabled?: boolean;
     disableEnableAction?: DeviceAction;
+    /** Update information of the device (firmware/software) */
+    update?: DeviceInfo['update'];
+    /** Reserved "update" action. If provided, the update indicator becomes a clickable button */
+    updateAction?: DeviceAction;
     deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     theme: IobTheme;
     stateOrObjectHandler: StateOrObjectHandler;

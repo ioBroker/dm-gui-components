@@ -1,4 +1,4 @@
-import { Battery20 as Battery20Icon, Battery30 as Battery30Icon, Battery50 as Battery50Icon, Battery60 as Battery60Icon, Battery80 as Battery80Icon, Battery90 as Battery90Icon, BatteryAlert as BatteryAlertIcon, BatteryCharging50 as BatteryCharging50Icon, BatteryFull as BatteryFullIcon, Bluetooth as IconConnectionBluetooth, Cable as IconConnectionLan, BluetoothDisabled as IconConnectionNoBluetooth, WifiOff as IconConnectionNoWifi, Wifi as IconConnectionWifi, Link as LinkIcon, LinkOff as LinkOffIcon, NetworkCheck as NetworkCheckIcon, Warning as WarningIcon, } from '@mui/icons-material';
+import { Battery20 as Battery20Icon, Battery30 as Battery30Icon, Battery50 as Battery50Icon, Battery60 as Battery60Icon, Battery80 as Battery80Icon, Battery90 as Battery90Icon, BatteryAlert as BatteryAlertIcon, BatteryCharging50 as BatteryCharging50Icon, BatteryFull as BatteryFullIcon, Bluetooth as IconConnectionBluetooth, Cable as IconConnectionLan, BluetoothDisabled as IconConnectionNoBluetooth, WifiOff as IconConnectionNoWifi, Wifi as IconConnectionWifi, Link as LinkIcon, LinkOff as LinkOffIcon, NetworkCheck as NetworkCheckIcon, SystemUpdateAlt as SystemUpdateAltIcon, Warning as WarningIcon, } from '@mui/icons-material';
 import { IconButton, Tooltip } from '@mui/material';
 import React, { useMemo } from 'react';
 import { useStateOrObject } from './hooks';
@@ -60,6 +60,10 @@ const iconStylePreWarning = {
     fill: '#ffcc00',
     color: '#ffcc00',
 };
+const iconStyleUpdate = {
+    fill: '#2196f3',
+    color: '#2196f3',
+};
 function getBatteryIcon(battery) {
     if (battery > 95) {
         return React.createElement(BatteryFullIcon, { style: iconStyleOK });
@@ -107,6 +111,9 @@ export default function DeviceStatus(props) {
     const rssi = useStateOrObject(status.rssi, props.stateOrObjectHandler);
     const battery = useStateOrObject(status.battery, props.stateOrObjectHandler);
     const warning = useStateOrObject(status.warning, props.stateOrObjectHandler);
+    const updateAvailable = useStateOrObject(props.update?.available, props.stateOrObjectHandler);
+    const updateVersion = useStateOrObject(props.update?.version, props.stateOrObjectHandler);
+    const updateNewVersion = useStateOrObject(props.update?.newVersion, props.stateOrObjectHandler);
     const batteryIconTooltip = useMemo(() => {
         if (typeof battery === 'number') {
             return getBatteryIcon(battery);
@@ -191,6 +198,15 @@ export default function DeviceStatus(props) {
             React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
                 React.createElement(WarningIcon, { style: iconStyleWarning })))) : (React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
             React.createElement(WarningIcon, { style: iconStyleWarning })))) : null,
+        updateAvailable ? (React.createElement(Tooltip, { title: getTranslation('updateAvailable') +
+                (updateNewVersion ? `: ${updateVersion ? `${updateVersion} → ` : ''}${updateNewVersion}` : ''), slotProps: { popper: { sx: styles.tooltip } } }, props.updateAction ? (React.createElement(IconButton, { size: "small", onClick: e => {
+                if (props.updateAction) {
+                    e.stopPropagation();
+                    props.deviceHandler(props.deviceId, props.updateAction)();
+                }
+            } },
+            React.createElement(SystemUpdateAltIcon, { style: iconStyleUpdate }))) : (React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
+            React.createElement(SystemUpdateAltIcon, { style: iconStyleUpdate }))))) : null,
         disability));
 }
 //# sourceMappingURL=DeviceStatus.js.map

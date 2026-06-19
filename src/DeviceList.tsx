@@ -15,12 +15,21 @@ import {
     Typography,
 } from '@mui/material';
 
-import { ArrowBack, Clear, QuestionMark, Refresh, FilterAltOff } from '@mui/icons-material';
+import {
+    ArrowBack,
+    Clear,
+    QuestionMark,
+    Refresh,
+    FilterAlt,
+    FilterAltOff,
+    SystemUpdateAlt,
+    BatteryAlert,
+} from '@mui/icons-material';
 
-import { I18n, DeviceTypeIcon, Icon } from '@iobroker/adapter-react-v5';
-import type { DeviceId, DeviceInfo, InstanceDetails } from './protocol/api';
+import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/adapter-react-v5';
+import type { DeviceId, DeviceInfo, DeviceStatus, InstanceDetails } from './protocol/api';
 
-import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
+import DeviceCard, { DeviceCardSkeleton, type DeviceFilterField } from './DeviceCard';
 import { getTranslation } from './Utils';
 import Communication, { type CommunicationProps, type CommunicationState } from './Communication';
 import InstanceActionButton from './InstanceActionButton';
@@ -36,6 +45,15 @@ import es from './i18n/es.json';
 import pl from './i18n/pl.json';
 import uk from './i18n/uk.json';
 import zhCn from './i18n/zh-cn.json';
+
+/** Returns true if any of the device status objects carries a battery value */
+function hasBatteryStatus(status?: DeviceStatus | DeviceStatus[]): boolean {
+    if (!status || typeof status === 'string') {
+        return false;
+    }
+    const list = Array.isArray(status) ? status : [status];
+    return list.some(entry => typeof entry !== 'string' && entry.battery !== undefined);
+}
 
 interface DeviceListProps extends CommunicationProps {
     /** Instance to upload images to, like `adapterName.X` */
@@ -66,6 +84,12 @@ interface DeviceListState extends CommunicationState {
     groupKey: string;
     dmInstances: { [instanceName: string]: { title: string; icon: string; instance: number } } | null;
     apiVersionError: boolean;
+    /** Show only devices that have an available update */
+    onlyUpdatable: boolean;
+    /** Show only devices that have a battery problem */
+    onlyBatteryProblem: boolean;
+    /** Device field the text filter applies to */
+    filterField: DeviceFilterField;
 }
 
 /**
@@ -115,6 +139,9 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             groupKey: '',
             dmInstances: null,
             apiVersionError: false,
+            onlyUpdatable: window.localStorage.getItem('dm_onlyUpdatable') === 'true',
+            onlyBatteryProblem: window.localStorage.getItem('dm_onlyBatteryProblem') === 'true',
+            filterField: (window.localStorage.getItem('dm_filterField') as DeviceFilterField) || 'name',
         };
 
         if (this.props.selectedInstance === undefined) {
@@ -549,6 +576,77 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         });
     }
 
+    /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
+    private getEffectiveFilterField(): DeviceFilterField {
+        const field = this.state.filterField;
+        if (field !== 'name' && this.state.devices.some(device => device[field] !== undefined)) {
+            return field;
+        }
+        return 'name';
+    }
+
+    renderFilterFields(): React.JSX.Element | null {
+        const fields: { value: DeviceFilterField; label: string }[] = [
+            { value: 'name', label: getTranslation('name') },
+        ];
+        if (this.state.devices.some(device => device.identifier !== undefined)) {
+            fields.push({
+                value: 'identifier',
+                label: this.getText(this.state.instanceInfo?.identifierLabel ?? 'ID'),
+            });
+        }
+        if (this.state.devices.some(device => device.manufacturer !== undefined)) {
+            fields.push({ value: 'manufacturer', label: getTranslation('manufacturer') });
+        }
+        if (this.state.devices.some(device => device.model !== undefined)) {
+            fields.push({ value: 'model', label: getTranslation('model') });
+        }
+
+        // Only show the field selector when there is more than just the name to choose from
+        if (fields.length < 2) {
+            return null;
+        }
+
+        const current = this.getEffectiveFilterField();
+
+        return (
+            <Select
+                variant="standard"
+                style={{ width: 130, flexShrink: 0 }}
+                value={current}
+                onChange={e => {
+                    const filterField = e.target.value as DeviceFilterField;
+                    this.setState({ filterField });
+                    window.localStorage.setItem('dm_filterField', filterField);
+                }}
+            >
+                {fields.map(field => (
+                    <MenuItem
+                        value={field.value}
+                        key={field.value}
+                    >
+                        {field.label}
+                    </MenuItem>
+                ))}
+            </Select>
+        );
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    renderRootInfo(): React.JSX.Element {
+        return (
+            <InfoBox
+                key="rootInfo"
+                type="info"
+                closeable
+                storeId="dm_rootInfoClosed"
+                style={{ width: 'calc(100% - 20px)', margin: '0 10px 8px 10px' }}
+            >
+                {getTranslation('rootInfoText')}
+            </InfoBox>
+        );
+    }
+
     renderContent(): JSX.Element | JSX.Element[] | null {
         const emptyStyle: React.CSSProperties = {
             padding: 25,
@@ -585,6 +683,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         let list: React.JSX.Element[] | undefined;
         if (showRootPage) {
             list = this.renderInstanceCards();
+            list.unshift(this.renderRootInfo());
         } else if (!this.props.embedded && !this.state.alive) {
             list = [
                 <div
@@ -671,6 +770,9 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         theme={this.props.theme}
                         isFloatComma={this.props.isFloatComma}
                         dateFormat={this.props.dateFormat}
+                        onlyUpdatable={this.state.onlyUpdatable}
+                        onlyBatteryProblem={this.state.onlyBatteryProblem}
+                        filterField={this.props.embedded ? undefined : this.getEffectiveFilterField()}
                     />
                 ));
                 if (this.state.loading) {
@@ -800,36 +902,93 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     <div style={{ flexGrow: 1 }} />
 
                     {!this.state.apiVersionError && this.renderGroups(deviceGroups)}
-                    {!this.state.apiVersionError && this.state.alive ? (
-                        <TextField
-                            variant="standard"
-                            style={{ width: 200 }}
-                            size="small"
-                            label={getTranslation('filterLabelText')}
-                            onChange={e => this.handleFilterChange(e.target.value)}
-                            value={this.state.filterText}
-                            autoComplete="off"
-                            slotProps={{
-                                input: {
-                                    autoComplete: 'new-password',
-                                    endAdornment: this.state.filterText ? (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                tabIndex={-1}
-                                                onClick={() => this.handleFilterChange('')}
-                                                edge="end"
-                                            >
-                                                <Clear />
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ) : null,
-                                },
-                                htmlInput: {
-                                    autoComplete: 'off',
-                                },
-                            }}
-                        />
+                    {!this.state.apiVersionError &&
+                    this.state.alive &&
+                    this.state.devices.some(device => device.update) ? (
+                        <Tooltip
+                            title={getTranslation('onlyUpdatableTooltip')}
+                            slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
+                        >
+                            <IconButton
+                                color={this.state.onlyUpdatable ? 'primary' : 'default'}
+                                onClick={() => {
+                                    const onlyUpdatable = !this.state.onlyUpdatable;
+                                    this.setState({ onlyUpdatable });
+                                    window.localStorage.setItem('dm_onlyUpdatable', onlyUpdatable ? 'true' : 'false');
+                                }}
+                                size="small"
+                            >
+                                <SystemUpdateAlt />
+                            </IconButton>
+                        </Tooltip>
                     ) : null}
+                    {!this.state.apiVersionError &&
+                    this.state.alive &&
+                    this.state.devices.some(device => hasBatteryStatus(device.status)) ? (
+                        <Tooltip
+                            title={getTranslation('onlyBatteryProblemTooltip')}
+                            slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
+                        >
+                            <IconButton
+                                color={this.state.onlyBatteryProblem ? 'primary' : 'default'}
+                                onClick={() => {
+                                    const onlyBatteryProblem = !this.state.onlyBatteryProblem;
+                                    this.setState({ onlyBatteryProblem });
+                                    window.localStorage.setItem(
+                                        'dm_onlyBatteryProblem',
+                                        onlyBatteryProblem ? 'true' : 'false',
+                                    );
+                                }}
+                                size="small"
+                            >
+                                <BatteryAlert />
+                            </IconButton>
+                        </Tooltip>
+                    ) : null}
+                    {!this.state.apiVersionError && this.state.alive ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <FilterAlt style={{ color: '#fff' }} />
+                            {this.renderFilterFields()}
+                            <TextField
+                                variant="standard"
+                                style={{ width: 200 }}
+                                size="small"
+                                placeholder={getTranslation('filterLabelText')}
+                                onChange={e => this.handleFilterChange(e.target.value)}
+                                value={this.state.filterText}
+                                autoComplete="off"
+                                slotProps={{
+                                    input: {
+                                        autoComplete: 'new-password',
+                                        endAdornment: this.state.filterText ? (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    tabIndex={-1}
+                                                    onClick={() => this.handleFilterChange('')}
+                                                    edge="end"
+                                                >
+                                                    <Clear />
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ) : null,
+                                    },
+                                    htmlInput: {
+                                        autoComplete: 'off',
+                                    },
+                                }}
+                            />
+                        </div>
+                    ) : null}
+                    <Typography
+                        style={{
+                            marginLeft: 16,
+                            fontWeight: 'bold',
+                            whiteSpace: 'nowrap',
+                            color: '#fff',
+                        }}
+                    >
+                        Config-Manager
+                    </Typography>
                 </Toolbar>
                 <div
                     style={{

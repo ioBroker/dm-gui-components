@@ -15,6 +15,8 @@ const ACTIONS = {
     STATUS: 'status',
     /** This action will be called when the user clicks on the enabled / disabled icon. The enabled/disabled icon will be shown only if the node status has the "enabled" flag set to false or true */
     ENABLE_DISABLE: 'enable/disable',
+    /** This action will be called when the user clicks on the update indicator. The update indicator is shown only if `DeviceInfo.update.available` is true */
+    UPDATE: 'update',
 };
 const styles = {
     cardStyle: (theme) => ({
@@ -90,6 +92,10 @@ function getText(text) {
 export default class DeviceCard extends Component {
     stateOrObjectHandler;
     subscriptions = new Map();
+    /** Separate subscription for the nested `device.update.available` field (used for the update indicator and the "only updatable" filter) */
+    updateAvailableSubscription;
+    /** Separate subscription for the nested battery status (used for the "battery problem" filter) */
+    batteryProblemSubscription;
     constructor(props) {
         super(props);
         this.state = {
@@ -144,7 +150,36 @@ export default class DeviceCard extends Component {
         await this.addStateOrObjectListener('model', getText);
         await this.addStateOrObjectListener('connectionType');
         await this.addStateOrObjectListener('enabled');
+        await this.subscribeUpdateAvailable();
+        await this.subscribeBatteryProblem();
         await this.fetchIcon().catch(e => console.error(e));
+    }
+    async subscribeUpdateAvailable() {
+        this.updateAvailableSubscription = await this.stateOrObjectHandler.addListener(this.props.device.update?.available, value => this.setState({ updateAvailable: !!value }));
+    }
+    /** Extract the battery value (literal or state/object reference) from the device status */
+    getBatteryItem() {
+        const status = this.props.device.status;
+        if (!status || typeof status === 'string') {
+            return undefined;
+        }
+        const list = Array.isArray(status) ? status : [status];
+        for (const entry of list) {
+            if (typeof entry !== 'string' && entry.battery !== undefined) {
+                return entry.battery;
+            }
+        }
+        return undefined;
+    }
+    /** A battery problem is an explicit battery warning (`false`) or a charge level below 30 % */
+    static isBatteryProblem(value) {
+        if (value === false) {
+            return true;
+        }
+        return typeof value === 'number' && value < 30;
+    }
+    async subscribeBatteryProblem() {
+        this.batteryProblemSubscription = await this.stateOrObjectHandler.addListener(this.getBatteryItem(), value => this.setState({ batteryProblem: DeviceCard.isBatteryProblem(value) }));
     }
     async addStateOrObjectListener(key, transform) {
         const sub = await this.stateOrObjectHandler.addListener(this.props.device[key], value => this.setState({ [key]: transform ? transform(value) : value }));
@@ -161,12 +196,22 @@ export default class DeviceCard extends Component {
                 await subscription.unsubscribe();
             }
         }
+        if (this.props.device.update?.available !== prevProps.device.update?.available) {
+            await this.updateAvailableSubscription?.unsubscribe();
+            await this.subscribeUpdateAvailable();
+        }
+        if (this.props.device.status !== prevProps.device.status) {
+            await this.batteryProblemSubscription?.unsubscribe();
+            await this.subscribeBatteryProblem();
+        }
     }
     async componentWillUnmount() {
         for (const [, { subscription }] of this.subscriptions) {
             await subscription.unsubscribe();
         }
         this.subscriptions.clear();
+        await this.updateAvailableSubscription?.unsubscribe();
+        await this.batteryProblemSubscription?.unsubscribe();
     }
     /**
      * Load the device details
@@ -245,7 +290,7 @@ export default class DeviceCard extends Component {
         return null;
     }
     renderActions() {
-        const actions = this.props.device.actions?.filter(a => a.id !== ACTIONS.STATUS && a.id !== ACTIONS.ENABLE_DISABLE);
+        const actions = this.props.device.actions?.filter(a => a.id !== ACTIONS.STATUS && a.id !== ACTIONS.ENABLE_DISABLE && a.id !== ACTIONS.UPDATE);
         return actions?.length
             ? actions.map(a => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: a.id, deviceId: this.props.device.id, action: a, deviceHandler: this.props.deviceHandler })))
             : null;
@@ -276,7 +321,7 @@ export default class DeviceCard extends Component {
                         }
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
+            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body2", style: { ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' } },
                     this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
@@ -368,7 +413,7 @@ export default class DeviceCard extends Component {
                         }
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
+            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body1", style: styles.deviceInfoStyle },
                     this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard },
@@ -406,8 +451,17 @@ export default class DeviceCard extends Component {
             this.renderControlDialog()));
     }
     render() {
-        const name = this.state.name?.toLowerCase() ?? '';
-        if (this.props.filter && !name.includes(this.props.filter.toLowerCase())) {
+        if (this.props.filter) {
+            const field = this.props.filterField ?? 'name';
+            const value = String(this.state[field] ?? '').toLowerCase();
+            if (!value.includes(this.props.filter.toLowerCase())) {
+                return React.createElement(React.Fragment, null);
+            }
+        }
+        if (this.props.onlyUpdatable && !this.state.updateAvailable) {
+            return React.createElement(React.Fragment, null);
+        }
+        if (this.props.onlyBatteryProblem && !this.state.batteryProblem) {
             return React.createElement(React.Fragment, null);
         }
         if (this.props.smallCards) {

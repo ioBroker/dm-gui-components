@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react';
 import type { DeviceId, DeviceInfo, InstanceDetails } from './protocol/api';
+import { type DeviceFilterField } from './DeviceCard';
 import Communication, { type CommunicationProps, type CommunicationState } from './Communication';
 interface DeviceListProps extends CommunicationProps {
     /** Instance to upload images to, like `adapterName.X` */
@@ -35,6 +36,12 @@ interface DeviceListState extends CommunicationState {
         };
     } | null;
     apiVersionError: boolean;
+    /** Show only devices that have an available update */
+    onlyUpdatable: boolean;
+    /** Show only devices that have a battery problem */
+    onlyBatteryProblem: boolean;
+    /** Device field the text filter applies to */
+    filterField: DeviceFilterField;
 }
 /**
  * Device List Component
@@ -72,6 +79,10 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         icon?: React.JSX.Element | string | null;
     }[] | undefined): React.JSX.Element | null;
     renderInstanceCards(): React.JSX.Element[];
+    /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
+    private getEffectiveFilterField;
+    renderFilterFields(): React.JSX.Element | null;
+    renderRootInfo(): React.JSX.Element;
     renderContent(): JSX.Element | JSX.Element[] | null;
 }
 export {};

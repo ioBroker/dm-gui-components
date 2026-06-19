@@ -47,7 +47,11 @@ import type {
     DeviceInfo,
     DeviceId,
     ConfigConnectionType,
+    DeviceStatus,
 } from './protocol/api';
+
+/** Device fields that can be used for the text filter */
+export type DeviceFilterField = 'name' | 'identifier' | 'manufacturer' | 'model';
 import { getTranslation } from './Utils';
 import { StateOrObjectHandler, type StateOrObjectSubscription } from './StateOrObjectHandler';
 
@@ -57,6 +61,8 @@ const ACTIONS = {
     STATUS: 'status',
     /** This action will be called when the user clicks on the enabled / disabled icon. The enabled/disabled icon will be shown only if the node status has the "enabled" flag set to false or true */
     ENABLE_DISABLE: 'enable/disable',
+    /** This action will be called when the user clicks on the update indicator. The update indicator is shown only if `DeviceInfo.update.available` is true */
+    UPDATE: 'update',
 };
 
 const styles: Record<string, any> = {
@@ -159,6 +165,12 @@ interface DeviceCardProps {
     theme: IobTheme;
     isFloatComma: boolean;
     dateFormat: string;
+    /** If true, only devices that have an available update are shown */
+    onlyUpdatable?: boolean;
+    /** If true, only devices that have a battery problem (empty/low battery) are shown */
+    onlyBatteryProblem?: boolean;
+    /** Device field the text filter applies to. Default `name` */
+    filterField?: DeviceFilterField;
 }
 
 function getText(text: ioBroker.StringOrTranslated | undefined): string | undefined {
@@ -186,6 +198,8 @@ interface DeviceCardState {
     model?: string;
     connectionType?: ConfigConnectionType;
     enabled?: boolean;
+    updateAvailable?: boolean;
+    batteryProblem?: boolean;
 }
 
 /**
@@ -197,6 +211,12 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         keyof DeviceInfo & keyof DeviceCardState,
         { subscription: StateOrObjectSubscription; transform?: (value: any) => any }
     > = new Map();
+
+    /** Separate subscription for the nested `device.update.available` field (used for the update indicator and the "only updatable" filter) */
+    private updateAvailableSubscription?: StateOrObjectSubscription;
+
+    /** Separate subscription for the nested battery status (used for the "battery problem" filter) */
+    private batteryProblemSubscription?: StateOrObjectSubscription;
 
     constructor(props: DeviceCardProps) {
         super(props);
@@ -260,8 +280,46 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         await this.addStateOrObjectListener('model', getText);
         await this.addStateOrObjectListener('connectionType');
         await this.addStateOrObjectListener('enabled');
+        await this.subscribeUpdateAvailable();
+        await this.subscribeBatteryProblem();
 
         await this.fetchIcon().catch(e => console.error(e));
+    }
+
+    private async subscribeUpdateAvailable(): Promise<void> {
+        this.updateAvailableSubscription = await this.stateOrObjectHandler.addListener(
+            this.props.device.update?.available,
+            value => this.setState({ updateAvailable: !!value }),
+        );
+    }
+
+    /** Extract the battery value (literal or state/object reference) from the device status */
+    private getBatteryItem(): Extract<DeviceStatus, object>['battery'] {
+        const status = this.props.device.status;
+        if (!status || typeof status === 'string') {
+            return undefined;
+        }
+        const list = Array.isArray(status) ? status : [status];
+        for (const entry of list) {
+            if (typeof entry !== 'string' && entry.battery !== undefined) {
+                return entry.battery;
+            }
+        }
+        return undefined;
+    }
+
+    /** A battery problem is an explicit battery warning (`false`) or a charge level below 30 % */
+    private static isBatteryProblem(value: number | boolean | string | undefined): boolean {
+        if (value === false) {
+            return true;
+        }
+        return typeof value === 'number' && value < 30;
+    }
+
+    private async subscribeBatteryProblem(): Promise<void> {
+        this.batteryProblemSubscription = await this.stateOrObjectHandler.addListener(this.getBatteryItem(), value =>
+            this.setState({ batteryProblem: DeviceCard.isBatteryProblem(value) }),
+        );
     }
 
     private async addStateOrObjectListener(
@@ -286,6 +344,16 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                 await subscription.unsubscribe();
             }
         }
+
+        if (this.props.device.update?.available !== prevProps.device.update?.available) {
+            await this.updateAvailableSubscription?.unsubscribe();
+            await this.subscribeUpdateAvailable();
+        }
+
+        if (this.props.device.status !== prevProps.device.status) {
+            await this.batteryProblemSubscription?.unsubscribe();
+            await this.subscribeBatteryProblem();
+        }
     }
 
     async componentWillUnmount(): Promise<void> {
@@ -293,6 +361,8 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
             await subscription.unsubscribe();
         }
         this.subscriptions.clear();
+        await this.updateAvailableSubscription?.unsubscribe();
+        await this.batteryProblemSubscription?.unsubscribe();
     }
 
     /**
@@ -469,7 +539,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
 
     renderActions(): JSX.Element[] | null {
         const actions = this.props.device.actions?.filter(
-            a => a.id !== ACTIONS.STATUS && a.id !== ACTIONS.ENABLE_DISABLE,
+            a => a.id !== ACTIONS.STATUS && a.id !== ACTIONS.ENABLE_DISABLE && a.id !== ACTIONS.UPDATE,
         );
 
         return actions?.length
@@ -568,6 +638,10 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             enabled={this.state.enabled}
                             statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
                             disableEnableAction={this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE)}
+                            update={i === 0 ? this.props.device.update : undefined}
+                            updateAction={
+                                i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined
+                            }
                             deviceHandler={this.props.deviceHandler}
                             theme={this.props.theme}
                             stateOrObjectHandler={this.stateOrObjectHandler}
@@ -765,6 +839,10 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             enabled={this.state.enabled}
                             statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
                             disableEnableAction={this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE)}
+                            update={i === 0 ? this.props.device.update : undefined}
+                            updateAction={
+                                i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined
+                            }
                             deviceHandler={this.props.deviceHandler}
                             theme={this.props.theme}
                             stateOrObjectHandler={this.stateOrObjectHandler}
@@ -839,8 +917,19 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     }
 
     render(): JSX.Element {
-        const name = this.state.name?.toLowerCase() ?? '';
-        if (this.props.filter && !name.includes(this.props.filter.toLowerCase())) {
+        if (this.props.filter) {
+            const field = this.props.filterField ?? 'name';
+            const value = String(this.state[field] ?? '').toLowerCase();
+            if (!value.includes(this.props.filter.toLowerCase())) {
+                return <></>;
+            }
+        }
+
+        if (this.props.onlyUpdatable && !this.state.updateAvailable) {
+            return <></>;
+        }
+
+        if (this.props.onlyBatteryProblem && !this.state.batteryProblem) {
             return <></>;
         }
 

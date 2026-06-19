@@ -1,6 +1,8 @@
 import React, { Component, type JSX } from 'react';
 import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/adapter-react-v5';
 import type { ActionBase, ControlBase, ControlState, DeviceDetails, DeviceControl, DeviceInfo, DeviceId, ConfigConnectionType } from './protocol/api';
+/** Device fields that can be used for the text filter */
+export type DeviceFilterField = 'name' | 'identifier' | 'manufacturer' | 'model';
 interface DeviceCardProps {
     filter?: string;
     id: DeviceId;
@@ -19,6 +21,12 @@ interface DeviceCardProps {
     theme: IobTheme;
     isFloatComma: boolean;
     dateFormat: string;
+    /** If true, only devices that have an available update are shown */
+    onlyUpdatable?: boolean;
+    /** If true, only devices that have a battery problem (empty/low battery) are shown */
+    onlyBatteryProblem?: boolean;
+    /** Device field the text filter applies to. Default `name` */
+    filterField?: DeviceFilterField;
 }
 interface DeviceCardState {
     open: boolean;
@@ -35,6 +43,8 @@ interface DeviceCardState {
     model?: string;
     connectionType?: ConfigConnectionType;
     enabled?: boolean;
+    updateAvailable?: boolean;
+    batteryProblem?: boolean;
 }
 /**
  * Device Card Component
@@ -42,9 +52,19 @@ interface DeviceCardState {
 export default class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
     private readonly stateOrObjectHandler;
     private readonly subscriptions;
+    /** Separate subscription for the nested `device.update.available` field (used for the update indicator and the "only updatable" filter) */
+    private updateAvailableSubscription?;
+    /** Separate subscription for the nested battery status (used for the "battery problem" filter) */
+    private batteryProblemSubscription?;
     constructor(props: DeviceCardProps);
     fetchIcon(): Promise<void>;
     componentDidMount(): Promise<void>;
+    private subscribeUpdateAvailable;
+    /** Extract the battery value (literal or state/object reference) from the device status */
+    private getBatteryItem;
+    /** A battery problem is an explicit battery warning (`false`) or a charge level below 30 % */
+    private static isBatteryProblem;
+    private subscribeBatteryProblem;
     private addStateOrObjectListener;
     componentDidUpdate(prevProps: DeviceCardProps): Promise<void>;
     componentWillUnmount(): Promise<void>;
