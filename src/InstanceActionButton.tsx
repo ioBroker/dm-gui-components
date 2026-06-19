@@ -27,6 +27,7 @@ export default function InstanceActionButton(params: InstanceActionButtonProps):
             disabled={action.disabled}
             Icon={icon}
             onClick={instanceHandler(action)}
+            url={'url' in action ? getTranslation(action.url) : undefined}
         />
     );
 }
