@@ -244,7 +244,7 @@ let language;
 export function getTranslation(
 /** Text to translate */
 text, noTranslation) {
-    language = language || I18n.getLanguage();
+    language ||= I18n.getLanguage();
     if (typeof text === 'object') {
         return text[language] || text.en;
     }

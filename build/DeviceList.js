@@ -435,12 +435,12 @@ export default class DeviceList extends Communication {
     }
     renderRootInfo() {
         // The root ThemeProvider (Communication.render) already supplies the correct theme context. The explicit color
-        // is a safety net so older InfoBox versions (whose Typography has no own color) stay readable in dark mode.
+        // is a safety net, so older InfoBox versions (whose Typography has no own color) stay readable in dark mode.
         return (React.createElement(InfoBox, { key: "rootInfo", type: "info", closeable: true, storeId: "dm_rootInfoClosed", style: {
                 width: 'calc(100% - 20px)',
                 margin: '0 10px 8px 10px',
                 color: this.props.theme.palette.text.primary,
-            } }, getTranslation('rootInfoText')));
+            } }, I18n.t('rootInfoText')));
     }
     renderContent() {
         const emptyStyle = {
