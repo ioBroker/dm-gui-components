@@ -86,7 +86,7 @@ Unrecognized FA names render a **QuestionMark** icon.
 -->
 
 ## Changelog
-### 9.1.2 (2026-06-19)
+### **WORK IN PROGRESS**
 - (@GermanBluefox) Implemented filter on different fields (name, id, type, alive, enabled, connected, etc.)
 
 ### 9.1.1 (2026-06-13)
