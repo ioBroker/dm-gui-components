@@ -85,7 +85,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     renderInstanceCards(): React.JSX.Element[];
     /** Collects the resolved model values reported by the cards and keeps the distinct, sorted list in state */
     private reportModel;
-    /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
+    /** The selected filter field, falling back to `name` if the stored field is not available (e.g. no models found) */
     private getEffectiveFilterField;
     renderFilterFields(): React.JSX.Element | null;
     /** The filter value input: a model dropdown for the `model` field, a free-text field otherwise */

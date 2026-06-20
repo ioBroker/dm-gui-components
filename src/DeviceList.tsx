@@ -152,7 +152,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
         if (this.props.selectedInstance === undefined) {
             // Start with the root page that shows all instances as cards
-            this.state = { ...this.state, selectedInstance: '' };
+            this.state = { ...this.state, selectedInstance: this.props.instance ?? '' };
         }
 
         this.lastInstance = this.state.selectedInstance;
@@ -200,7 +200,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             const selectedInstance = Object.keys(dmInstances)[0];
             await this.setStateAsync({
                 dmInstances,
-                selectedInstance: selectedInstance,
+                selectedInstance,
                 groupKey: window.localStorage.getItem(`dm_group_${selectedInstance}`) || '',
             });
         } else {
@@ -210,6 +210,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
     private selectInstance(instanceId: string): void {
         window.localStorage.setItem('dmSelectedInstance', instanceId);
+        this.props.onInstanceChanged?.(instanceId);
         this.setState({
             selectedInstance: instanceId,
             groupKey: window.localStorage.getItem(`dm_group_${instanceId}`) || '',
@@ -218,6 +219,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
     private backToInstancesList(): void {
         window.localStorage.removeItem('dmSelectedInstance');
+        this.props.onInstanceChanged?.('');
         this.setState({
             selectedInstance: '',
             devices: [],
@@ -604,13 +606,17 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         }
     };
 
-    /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
+    /** The selected filter field, falling back to `name` if the stored field is not available (e.g. no models found) */
     private getEffectiveFilterField(): DeviceFilterField {
         const field = this.state.filterField;
-        if (field !== 'name' && this.state.devices.some(device => device[field] !== undefined)) {
-            return field;
+        if (field === 'name') {
+            return 'name';
         }
-        return 'name';
+        // The model field is only available if at least one model value was actually found
+        if (field === 'model') {
+            return this.state.modelOptions.length ? 'model' : 'name';
+        }
+        return this.state.devices.some(device => device[field] !== undefined) ? field : 'name';
     }
 
     renderFilterFields(): React.JSX.Element | null {
@@ -626,7 +632,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         if (this.state.devices.some(device => device.manufacturer !== undefined)) {
             fields.push({ value: 'manufacturer', label: getTranslation('manufacturer') });
         }
-        if (this.state.devices.some(device => device.model !== undefined)) {
+        // Only offer the model filter if at least one model value was actually found
+        if (this.state.modelOptions.length) {
             fields.push({ value: 'model', label: getTranslation('model') });
         }
 
@@ -918,10 +925,19 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         }
 
         return (
-            <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+            <div
+                style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+            >
                 <Toolbar
                     variant="dense"
-                    style={{ backgroundColor: '#777', display: 'flex' }}
+                    style={{
+                        backgroundColor: '#777',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        rowGap: 4,
+                        alignItems: 'center',
+                        flexShrink: 0,
+                    }}
                 >
                     {this.props.title}
                     {this.props.selectedInstance === undefined &&
@@ -1041,13 +1057,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         </Tooltip>
                     ) : null}
                     {!this.state.apiVersionError && this.state.alive ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <FilterAlt style={{ color: '#fff' }} />
                             {this.renderFilterFields()}
                             {this.renderFilterValue()}
                         </div>
                     ) : null}
                     <Typography
+                        sx={{ display: { xs: 'none', md: 'block' } }}
                         style={{
                             marginLeft: 16,
                             fontWeight: 'bold',
@@ -1061,7 +1078,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                 <div
                     style={{
                         width: '100%',
-                        height: 'calc(100% - 56px)',
+                        flex: 1,
+                        minHeight: 0,
                         marginTop: 8,
                         overflow: 'auto',
                         display: 'flex',

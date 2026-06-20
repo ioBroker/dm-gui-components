@@ -34,7 +34,9 @@ export default class Communication extends Component {
             showConfirmation: null,
             showInput: null,
             inputValue: null,
-            selectedInstance: this.props.selectedInstance ?? (window.localStorage.getItem('dmSelectedInstance') || ''),
+            selectedInstance: this.props.selectedInstance ??
+                this.props.instance ??
+                (window.localStorage.getItem('dmSelectedInstance') || ''),
         };
         // eslint-disable-next-line react/no-unused-class-component-methods
         this.instanceHandler = action => () => {

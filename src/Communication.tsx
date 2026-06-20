@@ -64,8 +64,12 @@ declare module '@mui/material/Button' {
 export type CommunicationProps = {
     /** Socket connection */
     socket: Connection;
-    /** Instance to communicate with device-manager backend, like `adapterName.X` */
+    /** Instance to communicate with device-manager backend, like `adapterName.X`. Cannot be changed (No instance selector */
     selectedInstance?: string; // adapterName.X
+    /** You can provide a preselected instance, so the instance selector will be predefined with this value */
+    instance?: string;
+    /** Required if "instance" is defined. */
+    onInstanceChanged?: (instance: string) => void;
     registerHandler?: (handler: null | ((command: string) => void)) => void;
     themeName: ThemeName;
     themeType: ThemeType;
@@ -140,7 +144,10 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             showConfirmation: null,
             showInput: null,
             inputValue: null,
-            selectedInstance: this.props.selectedInstance ?? (window.localStorage.getItem('dmSelectedInstance') || ''),
+            selectedInstance:
+                this.props.selectedInstance ??
+                this.props.instance ??
+                (window.localStorage.getItem('dmSelectedInstance') || ''),
         } as S;
 
         // eslint-disable-next-line react/no-unused-class-component-methods

@@ -10,8 +10,12 @@ declare module '@mui/material/Button' {
 export type CommunicationProps = {
     /** Socket connection */
     socket: Connection;
-    /** Instance to communicate with device-manager backend, like `adapterName.X` */
+    /** Instance to communicate with device-manager backend, like `adapterName.X`. Cannot be changed (No instance selector */
     selectedInstance?: string;
+    /** You can provide a preselected instance, so the instance selector will be predefined with this value */
+    instance?: string;
+    /** Required if "instance" is defined. */
+    onInstanceChanged?: (instance: string) => void;
     registerHandler?: (handler: null | ((command: string) => void)) => void;
     themeName: ThemeName;
     themeType: ThemeType;

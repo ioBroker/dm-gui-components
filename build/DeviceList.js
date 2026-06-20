@@ -73,7 +73,7 @@ export default class DeviceList extends Communication {
         };
         if (this.props.selectedInstance === undefined) {
             // Start with the root page that shows all instances as cards
-            this.state = { ...this.state, selectedInstance: '' };
+            this.state = { ...this.state, selectedInstance: this.props.instance ?? '' };
         }
         this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
@@ -115,7 +115,7 @@ export default class DeviceList extends Communication {
             const selectedInstance = Object.keys(dmInstances)[0];
             await this.setStateAsync({
                 dmInstances,
-                selectedInstance: selectedInstance,
+                selectedInstance,
                 groupKey: window.localStorage.getItem(`dm_group_${selectedInstance}`) || '',
             });
         }
@@ -125,6 +125,7 @@ export default class DeviceList extends Communication {
     }
     selectInstance(instanceId) {
         window.localStorage.setItem('dmSelectedInstance', instanceId);
+        this.props.onInstanceChanged?.(instanceId);
         this.setState({
             selectedInstance: instanceId,
             groupKey: window.localStorage.getItem(`dm_group_${instanceId}`) || '',
@@ -132,6 +133,7 @@ export default class DeviceList extends Communication {
     }
     backToInstancesList() {
         window.localStorage.removeItem('dmSelectedInstance');
+        this.props.onInstanceChanged?.('');
         this.setState({
             selectedInstance: '',
             devices: [],
@@ -375,13 +377,17 @@ export default class DeviceList extends Communication {
             this.setState({ modelOptions });
         }
     };
-    /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
+    /** The selected filter field, falling back to `name` if the stored field is not available (e.g. no models found) */
     getEffectiveFilterField() {
         const field = this.state.filterField;
-        if (field !== 'name' && this.state.devices.some(device => device[field] !== undefined)) {
-            return field;
+        if (field === 'name') {
+            return 'name';
         }
-        return 'name';
+        // The model field is only available if at least one model value was actually found
+        if (field === 'model') {
+            return this.state.modelOptions.length ? 'model' : 'name';
+        }
+        return this.state.devices.some(device => device[field] !== undefined) ? field : 'name';
     }
     renderFilterFields() {
         const fields = [
@@ -396,7 +402,8 @@ export default class DeviceList extends Communication {
         if (this.state.devices.some(device => device.manufacturer !== undefined)) {
             fields.push({ value: 'manufacturer', label: getTranslation('manufacturer') });
         }
-        if (this.state.devices.some(device => device.model !== undefined)) {
+        // Only offer the model filter if at least one model value was actually found
+        if (this.state.modelOptions.length) {
             fields.push({ value: 'model', label: getTranslation('model') });
         }
         // Only show the field selector when there is more than just the name to choose from
@@ -565,8 +572,15 @@ export default class DeviceList extends Communication {
                 this.state.loading ? React.createElement(LinearProgress, { style: { width: '100%' } }) : null,
                 this.state.apiVersionError ? React.createElement("div", null, I18n.t('apiVersionError')) : list));
         }
-        return (React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden' } },
-            React.createElement(Toolbar, { variant: "dense", style: { backgroundColor: '#777', display: 'flex' } },
+        return (React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' } },
+            React.createElement(Toolbar, { variant: "dense", style: {
+                    backgroundColor: '#777',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    rowGap: 4,
+                    alignItems: 'center',
+                    flexShrink: 0,
+                } },
                 this.props.title,
                 this.props.selectedInstance === undefined &&
                     this.state.dmInstances &&
@@ -605,11 +619,11 @@ export default class DeviceList extends Communication {
                             window.localStorage.setItem('dm_onlyBatteryProblem', onlyBatteryProblem ? 'true' : 'false');
                         }, size: "small" },
                         React.createElement(BatteryAlert, null)))) : null,
-                !this.state.apiVersionError && this.state.alive ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                !this.state.apiVersionError && this.state.alive ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
                     React.createElement(FilterAlt, { style: { color: '#fff' } }),
                     this.renderFilterFields(),
                     this.renderFilterValue())) : null,
-                React.createElement(Typography, { style: {
+                React.createElement(Typography, { sx: { display: { xs: 'none', md: 'block' } }, style: {
                         marginLeft: 16,
                         fontWeight: 'bold',
                         whiteSpace: 'nowrap',
@@ -617,7 +631,8 @@ export default class DeviceList extends Communication {
                     } }, "Config-Manager")),
             React.createElement("div", { style: {
                     width: '100%',
-                    height: 'calc(100% - 56px)',
+                    flex: 1,
+                    minHeight: 0,
                     marginTop: 8,
                     overflow: 'auto',
                     display: 'flex',
