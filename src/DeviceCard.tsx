@@ -171,6 +171,8 @@ interface DeviceCardProps {
     onlyBatteryProblem?: boolean;
     /** Device field the text filter applies to. Default `name` */
     filterField?: DeviceFilterField;
+    /** Reports the resolved model value of this device up to the list (used to build the model filter dropdown) */
+    onModel?: (deviceId: DeviceId, model: string | undefined) => void;
 }
 
 function getText(text: ioBroker.StringOrTranslated | undefined): string | undefined {
@@ -332,7 +334,11 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         this.subscriptions.set(key, { subscription: sub, transform });
     }
 
-    async componentDidUpdate(prevProps: DeviceCardProps): Promise<void> {
+    async componentDidUpdate(prevProps: DeviceCardProps, prevState: DeviceCardState): Promise<void> {
+        if (prevState.model !== this.state.model) {
+            this.props.onModel?.(this.props.device.id, this.state.model);
+        }
+
         for (const [key, { subscription, transform }] of [...this.subscriptions]) {
             const newItem = this.props.device[key];
             const prevItem = prevProps.device[key];
@@ -363,6 +369,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         this.subscriptions.clear();
         await this.updateAvailableSubscription?.unsubscribe();
         await this.batteryProblemSubscription?.unsubscribe();
+        this.props.onModel?.(this.props.device.id, undefined);
     }
 
     /**

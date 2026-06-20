@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Tutti i dispositivi sono stati filtrati",
+    "allModels": "Tutti i modelli",
     "apiVersionError": "Il backend è più recente come GUI. Aggiorna l'amministratore.",
     "backToInstancesList": "Torna all'elenco delle istanze",
     "batteryTooltip": "Batteria",

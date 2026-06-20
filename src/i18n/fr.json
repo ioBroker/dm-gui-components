@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Tous les appareils filtrés",
+    "allModels": "Tous les modèles",
     "apiVersionError": "L'interface d'administration est plus récente que l'interface graphique. Veuillez mettre à jour l'interface d'administration.",
     "backToInstancesList": "Retour à la liste des instances",
     "batteryTooltip": "Batterie",

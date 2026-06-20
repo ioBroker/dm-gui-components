@@ -1,6 +1,6 @@
 import { I18n, Icon, Utils, } from '@iobroker/adapter-react-v5';
 import { Check, Close, ContentCopy } from '@mui/icons-material';
-import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, FormControlLabel, Grid2, IconButton, Input, InputAdornment, InputLabel, LinearProgress, MenuItem, Select, Slider, Snackbar, TextField, Typography, } from '@mui/material';
+import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, FormControlLabel, Grid2, IconButton, Input, InputAdornment, InputLabel, LinearProgress, MenuItem, Select, Slider, Snackbar, TextField, ThemeProvider, Typography, } from '@mui/material';
 import React, { Component } from 'react';
 import JsonConfig from './JsonConfig';
 import { DmProtocolV1 } from './protocol/DmProtocolV1';
@@ -572,7 +572,9 @@ export default class Communication extends Component {
                 React.createElement(Button, { variant: "contained", color: "grey", onClick: () => this.setState({ showInput: null }), startIcon: React.createElement(Close, null) }, getTranslation('cancelButtonText')))));
     }
     render() {
-        return (React.createElement(React.Fragment, null,
+        // Provide the theme as MUI context so third-party components (e.g. InfoBox) and dialogs render with the
+        // correct theme. The component only receives the theme as a prop, otherwise the context theme could be wrong.
+        return (React.createElement(ThemeProvider, { theme: this.props.theme },
             this.renderSnackbar(),
             this.renderContent(),
             this.renderConfirmDialog(),

@@ -42,6 +42,8 @@ interface DeviceListState extends CommunicationState {
     onlyBatteryProblem: boolean;
     /** Device field the text filter applies to */
     filterField: DeviceFilterField;
+    /** Distinct resolved model values across the loaded devices (for the model filter dropdown) */
+    modelOptions: string[];
 }
 /**
  * Device List Component
@@ -52,6 +54,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     private lastAliveSubscribe;
     private lastTriggerLoad;
     private filterTimeout;
+    /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */
+    private readonly modelValues;
     private readonly language;
     constructor(props: DeviceListProps);
     setStateAsync(state: Partial<DeviceListState>): Promise<void>;
@@ -79,9 +83,13 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         icon?: React.JSX.Element | string | null;
     }[] | undefined): React.JSX.Element | null;
     renderInstanceCards(): React.JSX.Element[];
+    /** Collects the resolved model values reported by the cards and keeps the distinct, sorted list in state */
+    private reportModel;
     /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
     private getEffectiveFilterField;
     renderFilterFields(): React.JSX.Element | null;
+    /** The filter value input: a model dropdown for the `model` field, a free-text field otherwise */
+    renderFilterValue(): React.JSX.Element;
     renderRootInfo(): React.JSX.Element;
     renderContent(): JSX.Element | JSX.Element[] | null;
 }

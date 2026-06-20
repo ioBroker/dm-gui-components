@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "所有设备均被过滤掉",
+    "allModels": "所有型号",
     "apiVersionError": "后端比图形用户界面更新。请更新管理员。",
     "backToInstancesList": "返回实例列表",
     "batteryTooltip": "电池",

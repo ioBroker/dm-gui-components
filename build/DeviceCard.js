@@ -185,7 +185,10 @@ export default class DeviceCard extends Component {
         const sub = await this.stateOrObjectHandler.addListener(this.props.device[key], value => this.setState({ [key]: transform ? transform(value) : value }));
         this.subscriptions.set(key, { subscription: sub, transform });
     }
-    async componentDidUpdate(prevProps) {
+    async componentDidUpdate(prevProps, prevState) {
+        if (prevState.model !== this.state.model) {
+            this.props.onModel?.(this.props.device.id, this.state.model);
+        }
         for (const [key, { subscription, transform }] of [...this.subscriptions]) {
             const newItem = this.props.device[key];
             const prevItem = prevProps.device[key];
@@ -212,6 +215,7 @@ export default class DeviceCard extends Component {
         this.subscriptions.clear();
         await this.updateAvailableSubscription?.unsubscribe();
         await this.batteryProblemSubscription?.unsubscribe();
+        this.props.onModel?.(this.props.device.id, undefined);
     }
     /**
      * Load the device details

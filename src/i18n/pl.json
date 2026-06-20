@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Wszystkie urządzenia zostały odfiltrowane",
+    "allModels": "Wszystkie modele",
     "apiVersionError": "Zaplecze jest nowsze i ma interfejs graficzny. Proszę zaktualizować administratora.",
     "backToInstancesList": "Powrót do listy instancji",
     "batteryTooltip": "Bateria",

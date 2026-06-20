@@ -27,6 +27,8 @@ interface DeviceCardProps {
     onlyBatteryProblem?: boolean;
     /** Device field the text filter applies to. Default `name` */
     filterField?: DeviceFilterField;
+    /** Reports the resolved model value of this device up to the list (used to build the model filter dropdown) */
+    onModel?: (deviceId: DeviceId, model: string | undefined) => void;
 }
 interface DeviceCardState {
     open: boolean;
@@ -66,7 +68,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     private static isBatteryProblem;
     private subscribeBatteryProblem;
     private addStateOrObjectListener;
-    componentDidUpdate(prevProps: DeviceCardProps): Promise<void>;
+    componentDidUpdate(prevProps: DeviceCardProps, prevState: DeviceCardState): Promise<void>;
     componentWillUnmount(): Promise<void>;
     /**
      * Load the device details

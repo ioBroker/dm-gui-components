@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Усі пристрої відфільтровано",
+    "allModels": "Всі моделі",
     "apiVersionError": "Бекенд новіший, як графічний інтерфейс. Будь ласка, оновіть адміністратора",
     "backToInstancesList": "Назад до списку екземплярів",
     "batteryTooltip": "Батарея",

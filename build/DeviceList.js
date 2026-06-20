@@ -34,6 +34,8 @@ export default class DeviceList extends Communication {
     lastAliveSubscribe = '';
     lastTriggerLoad = 0;
     filterTimeout = null;
+    /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */
+    modelValues = new Map();
     language = I18n.getLanguage();
     constructor(props) {
         super(props);
@@ -67,6 +69,7 @@ export default class DeviceList extends Communication {
             onlyUpdatable: window.localStorage.getItem('dm_onlyUpdatable') === 'true',
             onlyBatteryProblem: window.localStorage.getItem('dm_onlyBatteryProblem') === 'true',
             filterField: window.localStorage.getItem('dm_filterField') || 'name',
+            modelOptions: [],
         };
         if (this.props.selectedInstance === undefined) {
             // Start with the root page that shows all instances as cards
@@ -351,6 +354,27 @@ export default class DeviceList extends Communication {
                         info.title ? (React.createElement(Typography, { variant: "body2", color: "textSecondary", style: { textAlign: 'center' } }, info.title)) : null))));
         });
     }
+    /** Collects the resolved model values reported by the cards and keeps the distinct, sorted list in state */
+    reportModel = (deviceId, model) => {
+        const key = JSON.stringify(deviceId);
+        if (model) {
+            if (this.modelValues.get(key) === model) {
+                return;
+            }
+            this.modelValues.set(key, model);
+        }
+        else if (this.modelValues.has(key)) {
+            this.modelValues.delete(key);
+        }
+        else {
+            return;
+        }
+        const modelOptions = Array.from(new Set(this.modelValues.values())).sort();
+        if (modelOptions.length !== this.state.modelOptions.length ||
+            modelOptions.some((model, i) => model !== this.state.modelOptions[i])) {
+            this.setState({ modelOptions });
+        }
+    };
     /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
     getEffectiveFilterField() {
         const field = this.state.filterField;
@@ -384,11 +408,39 @@ export default class DeviceList extends Communication {
                 const filterField = e.target.value;
                 this.setState({ filterField });
                 window.localStorage.setItem('dm_filterField', filterField);
+                // reset the current filter value when switching the field
+                this.handleFilterChange('');
             } }, fields.map(field => (React.createElement(MenuItem, { value: field.value, key: field.value }, field.label)))));
     }
-    // eslint-disable-next-line class-methods-use-this
+    /** The filter value input: a model dropdown for the `model` field, a free-text field otherwise */
+    renderFilterValue() {
+        if (this.getEffectiveFilterField() === 'model') {
+            const value = this.state.modelOptions.includes(this.state.filterText) ? this.state.filterText : '';
+            return (React.createElement(Select, { variant: "standard", style: { width: 200 }, displayEmpty: true, value: value, onChange: e => this.handleFilterChange(e.target.value) },
+                React.createElement(MenuItem, { value: "" },
+                    React.createElement("em", null, getTranslation('allModels'))),
+                this.state.modelOptions.map(model => (React.createElement(MenuItem, { value: model, key: model }, model)))));
+        }
+        return (React.createElement(TextField, { variant: "standard", style: { width: 200 }, size: "small", placeholder: getTranslation('filterLabelText'), onChange: e => this.handleFilterChange(e.target.value), value: this.state.filterText, autoComplete: "off", slotProps: {
+                input: {
+                    autoComplete: 'new-password',
+                    endAdornment: this.state.filterText ? (React.createElement(InputAdornment, { position: "end" },
+                        React.createElement(IconButton, { tabIndex: -1, onClick: () => this.handleFilterChange(''), edge: "end" },
+                            React.createElement(Clear, null)))) : null,
+                },
+                htmlInput: {
+                    autoComplete: 'off',
+                },
+            } }));
+    }
     renderRootInfo() {
-        return (React.createElement(InfoBox, { key: "rootInfo", type: "info", closeable: true, storeId: "dm_rootInfoClosed", style: { width: 'calc(100% - 20px)', margin: '0 10px 8px 10px' } }, getTranslation('rootInfoText')));
+        // The root ThemeProvider (Communication.render) already supplies the correct theme context. The explicit color
+        // is a safety net so older InfoBox versions (whose Typography has no own color) stay readable in dark mode.
+        return (React.createElement(InfoBox, { key: "rootInfo", type: "info", closeable: true, storeId: "dm_rootInfoClosed", style: {
+                width: 'calc(100% - 20px)',
+                margin: '0 10px 8px 10px',
+                color: this.props.theme.palette.text.primary,
+            } }, getTranslation('rootInfoText')));
     }
     renderContent() {
         const emptyStyle = {
@@ -484,7 +536,7 @@ export default class DeviceList extends Communication {
                 }
             }
             if (this.state.selectedInstance) {
-                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat, onlyUpdatable: this.state.onlyUpdatable, onlyBatteryProblem: this.state.onlyBatteryProblem, filterField: this.props.embedded ? undefined : this.getEffectiveFilterField() })));
+                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat, onlyUpdatable: this.state.onlyUpdatable, onlyBatteryProblem: this.state.onlyBatteryProblem, filterField: this.props.embedded ? undefined : this.getEffectiveFilterField(), onModel: this.reportModel })));
                 if (this.state.loading) {
                     const skeletons = (this.state.totalDevices ?? list.length + 1) - list.length;
                     for (let i = 0; i < skeletons; i++) {
@@ -556,17 +608,7 @@ export default class DeviceList extends Communication {
                 !this.state.apiVersionError && this.state.alive ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8 } },
                     React.createElement(FilterAlt, { style: { color: '#fff' } }),
                     this.renderFilterFields(),
-                    React.createElement(TextField, { variant: "standard", style: { width: 200 }, size: "small", placeholder: getTranslation('filterLabelText'), onChange: e => this.handleFilterChange(e.target.value), value: this.state.filterText, autoComplete: "off", slotProps: {
-                            input: {
-                                autoComplete: 'new-password',
-                                endAdornment: this.state.filterText ? (React.createElement(InputAdornment, { position: "end" },
-                                    React.createElement(IconButton, { tabIndex: -1, onClick: () => this.handleFilterChange(''), edge: "end" },
-                                        React.createElement(Clear, null)))) : null,
-                            },
-                            htmlInput: {
-                                autoComplete: 'off',
-                            },
-                        } }))) : null,
+                    this.renderFilterValue())) : null,
                 React.createElement(Typography, { style: {
                         marginLeft: 16,
                         fontWeight: 'bold',

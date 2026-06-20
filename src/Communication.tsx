@@ -32,6 +32,7 @@ import {
     Slider,
     Snackbar,
     TextField,
+    ThemeProvider,
     Typography,
 } from '@mui/material';
 import React, { Component } from 'react';
@@ -982,8 +983,10 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     }
 
     render(): React.JSX.Element {
+        // Provide the theme as MUI context so third-party components (e.g. InfoBox) and dialogs render with the
+        // correct theme. The component only receives the theme as a prop, otherwise the context theme could be wrong.
         return (
-            <>
+            <ThemeProvider theme={this.props.theme}>
                 {this.renderSnackbar()}
                 {this.renderContent()}
                 {this.renderConfirmDialog()}
@@ -993,7 +996,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                 {this.renderConfirmationDialog()}
                 {this.renderInputDialog()}
                 {this.renderSpinner()}
-            </>
+            </ThemeProvider>
         );
     }
 }

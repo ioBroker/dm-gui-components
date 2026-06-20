@@ -1,5 +1,6 @@
 {
     "allDevicesFilteredOut": "Alle apparaten zijn eruit gefilterd",
+    "allModels": "Alle modellen",
     "apiVersionError": "De backend is nieuwer dan de GUI. Update de beheerder.",
     "backToInstancesList": "Terug naar de exemplaarlijst",
     "batteryTooltip": "Batterij",

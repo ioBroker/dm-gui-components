@@ -313,7 +313,7 @@ export function getTranslation(
     text: ioBroker.StringOrTranslated,
     noTranslation?: boolean,
 ): string {
-    language = language || I18n.getLanguage();
+    language ||= I18n.getLanguage();
 
     if (typeof text === 'object') {
         return text[language] || text.en;

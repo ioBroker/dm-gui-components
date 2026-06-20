@@ -90,6 +90,8 @@ interface DeviceListState extends CommunicationState {
     onlyBatteryProblem: boolean;
     /** Device field the text filter applies to */
     filterField: DeviceFilterField;
+    /** Distinct resolved model values across the loaded devices (for the model filter dropdown) */
+    modelOptions: string[];
 }
 
 /**
@@ -105,6 +107,9 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     private lastTriggerLoad = 0;
 
     private filterTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */
+    private readonly modelValues = new Map<string, string>();
 
     private readonly language: ioBroker.Languages = I18n.getLanguage();
 
@@ -142,6 +147,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             onlyUpdatable: window.localStorage.getItem('dm_onlyUpdatable') === 'true',
             onlyBatteryProblem: window.localStorage.getItem('dm_onlyBatteryProblem') === 'true',
             filterField: (window.localStorage.getItem('dm_filterField') as DeviceFilterField) || 'name',
+            modelOptions: [],
         };
 
         if (this.props.selectedInstance === undefined) {
@@ -576,6 +582,28 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         });
     }
 
+    /** Collects the resolved model values reported by the cards and keeps the distinct, sorted list in state */
+    private reportModel = (deviceId: DeviceId, model: string | undefined): void => {
+        const key = JSON.stringify(deviceId);
+        if (model) {
+            if (this.modelValues.get(key) === model) {
+                return;
+            }
+            this.modelValues.set(key, model);
+        } else if (this.modelValues.has(key)) {
+            this.modelValues.delete(key);
+        } else {
+            return;
+        }
+        const modelOptions = Array.from(new Set(this.modelValues.values())).sort();
+        if (
+            modelOptions.length !== this.state.modelOptions.length ||
+            modelOptions.some((model, i) => model !== this.state.modelOptions[i])
+        ) {
+            this.setState({ modelOptions });
+        }
+    };
+
     /** The selected filter field, falling back to `name` if the stored field is not present on any current device */
     private getEffectiveFilterField(): DeviceFilterField {
         const field = this.state.filterField;
@@ -618,6 +646,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     const filterField = e.target.value as DeviceFilterField;
                     this.setState({ filterField });
                     window.localStorage.setItem('dm_filterField', filterField);
+                    // reset the current filter value when switching the field
+                    this.handleFilterChange('');
                 }}
             >
                 {fields.map(field => (
@@ -632,17 +662,81 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         );
     }
 
-    // eslint-disable-next-line class-methods-use-this
+    /** The filter value input: a model dropdown for the `model` field, a free-text field otherwise */
+    renderFilterValue(): React.JSX.Element {
+        if (this.getEffectiveFilterField() === 'model') {
+            const value = this.state.modelOptions.includes(this.state.filterText) ? this.state.filterText : '';
+            return (
+                <Select
+                    variant="standard"
+                    style={{ width: 200 }}
+                    displayEmpty
+                    value={value}
+                    onChange={e => this.handleFilterChange(e.target.value)}
+                >
+                    <MenuItem value="">
+                        <em>{getTranslation('allModels')}</em>
+                    </MenuItem>
+                    {this.state.modelOptions.map(model => (
+                        <MenuItem
+                            value={model}
+                            key={model}
+                        >
+                            {model}
+                        </MenuItem>
+                    ))}
+                </Select>
+            );
+        }
+
+        return (
+            <TextField
+                variant="standard"
+                style={{ width: 200 }}
+                size="small"
+                placeholder={getTranslation('filterLabelText')}
+                onChange={e => this.handleFilterChange(e.target.value)}
+                value={this.state.filterText}
+                autoComplete="off"
+                slotProps={{
+                    input: {
+                        autoComplete: 'new-password',
+                        endAdornment: this.state.filterText ? (
+                            <InputAdornment position="end">
+                                <IconButton
+                                    tabIndex={-1}
+                                    onClick={() => this.handleFilterChange('')}
+                                    edge="end"
+                                >
+                                    <Clear />
+                                </IconButton>
+                            </InputAdornment>
+                        ) : null,
+                    },
+                    htmlInput: {
+                        autoComplete: 'off',
+                    },
+                }}
+            />
+        );
+    }
+
     renderRootInfo(): React.JSX.Element {
+        // The root ThemeProvider (Communication.render) already supplies the correct theme context. The explicit color
+        // is a safety net, so older InfoBox versions (whose Typography has no own color) stay readable in dark mode.
         return (
             <InfoBox
                 key="rootInfo"
                 type="info"
                 closeable
                 storeId="dm_rootInfoClosed"
-                style={{ width: 'calc(100% - 20px)', margin: '0 10px 8px 10px' }}
+                style={{
+                    width: 'calc(100% - 20px)',
+                    margin: '0 10px 8px 10px',
+                    color: this.props.theme.palette.text.primary,
+                }}
             >
-                {getTranslation('rootInfoText')}
+                {I18n.t('rootInfoText')}
             </InfoBox>
         );
     }
@@ -773,6 +867,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         onlyUpdatable={this.state.onlyUpdatable}
                         onlyBatteryProblem={this.state.onlyBatteryProblem}
                         filterField={this.props.embedded ? undefined : this.getEffectiveFilterField()}
+                        onModel={this.reportModel}
                     />
                 ));
                 if (this.state.loading) {
@@ -949,34 +1044,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <FilterAlt style={{ color: '#fff' }} />
                             {this.renderFilterFields()}
-                            <TextField
-                                variant="standard"
-                                style={{ width: 200 }}
-                                size="small"
-                                placeholder={getTranslation('filterLabelText')}
-                                onChange={e => this.handleFilterChange(e.target.value)}
-                                value={this.state.filterText}
-                                autoComplete="off"
-                                slotProps={{
-                                    input: {
-                                        autoComplete: 'new-password',
-                                        endAdornment: this.state.filterText ? (
-                                            <InputAdornment position="end">
-                                                <IconButton
-                                                    tabIndex={-1}
-                                                    onClick={() => this.handleFilterChange('')}
-                                                    edge="end"
-                                                >
-                                                    <Clear />
-                                                </IconButton>
-                                            </InputAdornment>
-                                        ) : null,
-                                    },
-                                    htmlInput: {
-                                        autoComplete: 'off',
-                                    },
-                                }}
-                            />
+                            {this.renderFilterValue()}
                         </div>
                     ) : null}
                     <Typography
