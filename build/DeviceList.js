@@ -286,7 +286,7 @@ export default class DeviceList extends Communication {
         if (!groups?.length) {
             return null;
         }
-        return (React.createElement(Select, { style: { minWidth: 120, marginRight: 8, marginTop: 12.5 }, variant: "standard", value: this.state.groupKey || '_', renderValue: value => {
+        return (React.createElement(Select, { style: { minWidth: 120, marginRight: 8, flexShrink: 0 }, variant: "standard", value: this.state.groupKey || '_', renderValue: value => {
                 if (value === '_') {
                     value = '';
                 }
@@ -525,7 +525,7 @@ export default class DeviceList extends Communication {
                         icon: React.createElement(QuestionMark, null),
                     });
                 }
-                if (this.state.groupKey) {
+                if (this.state.groupKey && this.state.groupKey !== '_') {
                     // filter out all devices belonging to this group
                     if (this.state.groupKey === '?') {
                         filteredDevices = filteredDevices.filter(device => !device.group?.key);
