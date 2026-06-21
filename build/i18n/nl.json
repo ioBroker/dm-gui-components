@@ -34,5 +34,6 @@
     "selectInstanceText": "Selecteer een instantie",
     "toClipboard": "naar klembord",
     "updateAvailable": "Update beschikbaar",
+    "updateConfirmation": "Wilt u de beschikbare update installeren?",
     "yesButtonText": "Ja"
 }

@@ -34,5 +34,6 @@
     "selectInstanceText": "Please select instance",
     "toClipboard": "to clipboard",
     "updateAvailable": "Update available",
+    "updateConfirmation": "Do you want to install the available update?",
     "yesButtonText": "Yes"
 }

@@ -1,3 +1,4 @@
+import { I18n } from '@iobroker/adapter-react-v5';
 import { Battery20 as Battery20Icon, Battery30 as Battery30Icon, Battery50 as Battery50Icon, Battery60 as Battery60Icon, Battery80 as Battery80Icon, Battery90 as Battery90Icon, BatteryAlert as BatteryAlertIcon, BatteryCharging50 as BatteryCharging50Icon, BatteryFull as BatteryFullIcon, Bluetooth as IconConnectionBluetooth, Cable as IconConnectionLan, BluetoothDisabled as IconConnectionNoBluetooth, WifiOff as IconConnectionNoWifi, Wifi as IconConnectionWifi, Link as LinkIcon, LinkOff as LinkOffIcon, NetworkCheck as NetworkCheckIcon, SystemUpdateAlt as SystemUpdateAltIcon, Warning as WarningIcon, } from '@mui/icons-material';
 import { IconButton, Tooltip } from '@mui/material';
 import React, { useMemo } from 'react';
@@ -200,10 +201,24 @@ export default function DeviceStatus(props) {
             React.createElement(WarningIcon, { style: iconStyleWarning })))) : null,
         updateAvailable ? (React.createElement(Tooltip, { title: getTranslation('updateAvailable') +
                 (updateNewVersion ? `: ${updateVersion ? `${updateVersion} → ` : ''}${updateNewVersion}` : ''), slotProps: { popper: { sx: styles.tooltip } } }, props.updateAction ? (React.createElement(IconButton, { size: "small", onClick: e => {
-                if (props.updateAction) {
-                    e.stopPropagation();
-                    props.deviceHandler(props.deviceId, props.updateAction)();
+                if (!props.updateAction) {
+                    return;
                 }
+                e.stopPropagation();
+                // An update is a significant operation, so always ask for confirmation
+                // before triggering it. Reuse the action's own confirmation message if the
+                // backend provided one; otherwise build a default one including the versions.
+                // The confirmation is then handled by the standard device action flow
+                // (deviceHandler -> showConfirmation -> renderConfirmationDialog).
+                let confirmation = props.updateAction.confirmation;
+                if (!confirmation) {
+                    let message = getTranslation('updateConfirmation');
+                    if (updateNewVersion) {
+                        message += `: ${updateVersion ? `${updateVersion} → ` : ''}${updateNewVersion}`;
+                    }
+                    confirmation = { [I18n.getLanguage()]: message, en: message };
+                }
+                props.deviceHandler(props.deviceId, { ...props.updateAction, confirmation })();
             } },
             React.createElement(SystemUpdateAltIcon, { style: iconStyleUpdate }))) : (React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
             React.createElement(SystemUpdateAltIcon, { style: iconStyleUpdate }))))) : null,

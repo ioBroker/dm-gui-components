@@ -34,5 +34,6 @@
     "selectInstanceText": "Seleziona l'istanza",
     "toClipboard": "negli appunti",
     "updateAvailable": "Aggiornamento disponibile",
+    "updateConfirmation": "Vuoi installare l'aggiornamento disponibile?",
     "yesButtonText": "SÌ"
 }

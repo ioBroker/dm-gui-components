@@ -34,5 +34,6 @@
     "selectInstanceText": "Por favor, selecione uma instância.",
     "toClipboard": "para a área de transferência",
     "updateAvailable": "Atualização disponível",
+    "updateConfirmation": "Deseja instalar a atualização disponível?",
     "yesButtonText": "Sim"
 }

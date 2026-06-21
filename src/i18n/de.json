@@ -34,5 +34,6 @@
     "selectInstanceText": "Bitte eine Instanz auswählen.",
     "toClipboard": "in die Zwischenablage kopiert",
     "updateAvailable": "Update verfügbar",
+    "updateConfirmation": "Möchten Sie das verfügbare Update installieren?",
     "yesButtonText": "Ja"
 }

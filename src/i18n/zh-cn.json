@@ -34,5 +34,6 @@
     "selectInstanceText": "请选择实例",
     "toClipboard": "到剪贴板",
     "updateAvailable": "有可用更新",
+    "updateConfirmation": "是否要安装可用的更新？",
     "yesButtonText": "是的"
 }

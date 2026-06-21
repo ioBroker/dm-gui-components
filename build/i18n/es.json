@@ -34,5 +34,6 @@
     "selectInstanceText": "Por favor seleccione una instancia",
     "toClipboard": "al portapapeles",
     "updateAvailable": "Actualización disponible",
+    "updateConfirmation": "¿Desea instalar la actualización disponible?",
     "yesButtonText": "Sí"
 }

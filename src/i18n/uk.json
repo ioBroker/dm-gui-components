@@ -34,5 +34,6 @@
     "selectInstanceText": "Будь ласка, виберіть екземпляр",
     "toClipboard": "в буфер обміну",
     "updateAvailable": "Доступне оновлення",
+    "updateConfirmation": "Бажаєте встановити доступне оновлення?",
     "yesButtonText": "Так"
 }

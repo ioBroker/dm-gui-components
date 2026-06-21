@@ -34,5 +34,6 @@
     "selectInstanceText": "Proszę wybrać instancję",
     "toClipboard": "do schowka",
     "updateAvailable": "Dostępna aktualizacja",
+    "updateConfirmation": "Czy chcesz zainstalować dostępną aktualizację?",
     "yesButtonText": "Tak"
 }

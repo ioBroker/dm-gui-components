@@ -1,3 +1,4 @@
+import { I18n } from '@iobroker/adapter-react-v5';
 import type { Connection, IobTheme, ThemeType } from '@iobroker/adapter-react-v5';
 import {
     Battery20 as Battery20Icon,
@@ -469,10 +470,25 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
                         <IconButton
                             size="small"
                             onClick={e => {
-                                if (props.updateAction) {
-                                    e.stopPropagation();
-                                    props.deviceHandler(props.deviceId, props.updateAction)();
+                                if (!props.updateAction) {
+                                    return;
                                 }
+                                e.stopPropagation();
+                                // An update is a significant operation, so always ask for confirmation
+                                // before triggering it. Reuse the action's own confirmation message if the
+                                // backend provided one; otherwise build a default one including the versions.
+                                // The confirmation is then handled by the standard device action flow
+                                // (deviceHandler -> showConfirmation -> renderConfirmationDialog).
+                                let confirmation: boolean | ioBroker.StringOrTranslated | undefined =
+                                    props.updateAction.confirmation;
+                                if (!confirmation) {
+                                    let message = getTranslation('updateConfirmation');
+                                    if (updateNewVersion) {
+                                        message += `: ${updateVersion ? `${updateVersion} → ` : ''}${updateNewVersion}`;
+                                    }
+                                    confirmation = { [I18n.getLanguage()]: message, en: message };
+                                }
+                                props.deviceHandler(props.deviceId, { ...props.updateAction, confirmation })();
                             }}
                         >
                             <SystemUpdateAltIcon style={iconStyleUpdate} />

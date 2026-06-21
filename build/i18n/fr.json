@@ -34,5 +34,6 @@
     "selectInstanceText": "Veuillez sélectionner une instance",
     "toClipboard": "au presse-papiers",
     "updateAvailable": "Mise à jour disponible",
+    "updateConfirmation": "Voulez-vous installer la mise à jour disponible ?",
     "yesButtonText": "Oui"
 }

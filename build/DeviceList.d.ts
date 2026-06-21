@@ -52,6 +52,13 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     static i18nInitialized: boolean;
     private lastInstance;
     private lastAliveSubscribe;
+    /**
+     * Synchronous mirror of `state.alive`. `setState` is asynchronous, so the guard in `aliveHandler`
+     * cannot rely on `state.alive` being committed yet when `subscribeState` replays the current value.
+     * This field is always updated synchronously together with `setState({ alive })` and is the source
+     * of truth for the "did alive actually change?" check, which prevents the double device load.
+     */
+    private alive;
     private lastTriggerLoad;
     private filterTimeout;
     /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */

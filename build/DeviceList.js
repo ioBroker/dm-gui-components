@@ -32,6 +32,13 @@ export default class DeviceList extends Communication {
     static i18nInitialized = false;
     lastInstance;
     lastAliveSubscribe = '';
+    /**
+     * Synchronous mirror of `state.alive`. `setState` is asynchronous, so the guard in `aliveHandler`
+     * cannot rely on `state.alive` being committed yet when `subscribeState` replays the current value.
+     * This field is always updated synchronously together with `setState({ alive })` and is the source
+     * of truth for the "did alive actually change?" check, which prevents the double device load.
+     */
+    alive = null;
     lastTriggerLoad = 0;
     filterTimeout = null;
     /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */
@@ -134,6 +141,7 @@ export default class DeviceList extends Communication {
     backToInstancesList() {
         window.localStorage.removeItem('dmSelectedInstance');
         this.props.onInstanceChanged?.('');
+        this.alive = null;
         this.setState({
             selectedInstance: '',
             devices: [],
@@ -156,7 +164,7 @@ export default class DeviceList extends Communication {
             // show instance selector
             await this.loadAdapters();
         }
-        if (this.state.alive === null && this.state.selectedInstance) {
+        if (this.alive === null && this.state.selectedInstance) {
             try {
                 // check if the instance is alive
                 const stateAlive = await this.props.socket.getState(`system.adapter.${this.state.selectedInstance}.alive`);
@@ -167,11 +175,16 @@ export default class DeviceList extends Communication {
             catch (error) {
                 console.error(error);
             }
+            // Update the synchronous mirror BEFORE subscribing. `subscribeState` replays the current
+            // value to `aliveHandler`; with `this.alive` already set, that replay is recognized as
+            // "no change" and does not trigger a second `loadAllData()` in addition to the one below.
+            this.alive = alive;
             this.lastAliveSubscribe = this.state.selectedInstance;
-            this.setState({ alive }, () => this.props.socket.subscribeState(`system.adapter.${this.state.selectedInstance}.alive`, this.aliveHandler));
+            this.setState({ alive });
+            await this.props.socket.subscribeState(`system.adapter.${this.state.selectedInstance}.alive`, this.aliveHandler);
         }
-        else if (this.state.alive !== null) {
-            alive = this.state.alive;
+        else if (this.alive !== null) {
+            alive = this.alive;
         }
         if (alive) {
             try {
@@ -190,10 +203,15 @@ export default class DeviceList extends Communication {
     aliveHandler = (id, state) => {
         if (this.state.selectedInstance && id === `system.adapter.${this.state.selectedInstance}.alive`) {
             const alive = !!state?.val;
-            if (alive !== this.state.alive) {
+            // Compare against the synchronous mirror, not `state.alive` (which may not be committed yet
+            // when `subscribeState` replays the initial value). This is what stops the double load.
+            if (alive !== this.alive) {
+                this.alive = alive;
                 this.setState({ alive }, () => {
                     if (alive) {
-                        this.componentDidMount().catch(console.error);
+                        // The instance just became alive: (re)load all data directly instead of
+                        // re-running the whole mount logic.
+                        this.loadAllData().catch(console.error);
                     }
                 });
             }
@@ -213,7 +231,7 @@ export default class DeviceList extends Communication {
     loadDeviceList() {
         this.setState({ loading: true }, async () => {
             console.log(`Loading devices for ${this.state.selectedInstance}...`);
-            let alive = this.state.alive;
+            let alive = this.alive;
             if (this.state.selectedInstance !== this.lastAliveSubscribe) {
                 if (this.lastAliveSubscribe) {
                     // unsubscribe from the old instance
@@ -224,13 +242,15 @@ export default class DeviceList extends Communication {
                     try {
                         // check if the instance is alive
                         const stateAlive = await this.props.socket.getState(`system.adapter.${this.state.selectedInstance}.alive`);
-                        if (stateAlive?.val) {
-                            alive = true;
-                        }
+                        alive = !!stateAlive?.val;
                     }
                     catch (error) {
                         console.error(error);
+                        alive = false;
                     }
+                    // Set the synchronous mirror before subscribing so the replayed initial value
+                    // does not trigger an extra load on top of the one performed right below.
+                    this.alive = alive;
                     await this.props.socket.subscribeState(`system.adapter.${this.state.selectedInstance}.alive`, this.aliveHandler);
                 }
                 else {
@@ -239,6 +259,7 @@ export default class DeviceList extends Communication {
             }
             let devices = [];
             try {
+                this.alive = alive;
                 this.setState({ devices, loading: !!alive, alive });
                 if (alive) {
                     await this.loadDevices((batch, total) => {
