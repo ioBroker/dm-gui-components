@@ -1,10 +1,10 @@
 import { type Connection } from '@iobroker/adapter-react-v5';
-import type { RetVal } from '@iobroker/dm-utils';
+import type { DeviceId, RetVal } from '@iobroker/dm-utils';
 import type { ControlState, DeviceInfo, DmActionResponse, DmControlResponse, InstanceDetails } from './api';
 
 export interface Message {
     actionId?: string;
-    deviceId?: string;
+    deviceId?: DeviceId;
     value?: unknown;
     origin?: number;
     confirm?: boolean;
@@ -34,7 +34,7 @@ export abstract class DmProtocolBase {
 
     public abstract sendControl(
         command: CommandName,
-        messageToSend: { deviceId: string; controlId: string; state?: ControlState },
+        messageToSend: { deviceId: DeviceId; controlId: string; state?: ControlState },
     ): Promise<DmControlResponse>;
 
     protected send<T = any>(command: CommandName, data?: any): Promise<T> {

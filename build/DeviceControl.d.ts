@@ -36,7 +36,7 @@ interface DeviceControlState {
 export default class DeviceControlComponent extends Component<DeviceControlProps, DeviceControlState> {
     constructor(props: DeviceControlProps);
     componentDidMount(): Promise<void>;
-    stateHandler: (id: string, state: ioBroker.State) => Promise<void>;
+    stateHandler: (id: string, state: ioBroker.State | null | undefined) => Promise<void>;
     componentWillUnmount(): void;
     static getDerivedStateFromProps(props: DeviceControlProps, state: DeviceControlState): Partial<DeviceControlState> | null;
     sendControl(deviceId: DeviceId, control: ControlBase, value: ControlState): Promise<void>;

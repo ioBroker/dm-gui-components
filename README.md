@@ -86,6 +86,9 @@ Unrecognized FA names render a **QuestionMark** icon.
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Strict types
+
 ### 9.1.7 (2026-06-21)
 - (@GermanBluefox) Remove double loading of devices
 

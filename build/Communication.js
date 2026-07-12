@@ -539,7 +539,9 @@ export default class Communication extends Component {
                     React.createElement(Typography, { gutterBottom: true }, getTranslation(this.state.showInput.inputBefore.label)),
                     React.createElement(Grid2, { container: true, spacing: 2, alignItems: "center" },
                         React.createElement(Grid2, null,
-                            React.createElement(Slider, { value: typeof this.state.inputValue === 'number' ? this.state.inputValue : 0, onChange: (_event, newValue) => this.setState({ inputValue: newValue }) })),
+                            React.createElement(Slider, { value: typeof this.state.inputValue === 'number' ? this.state.inputValue : 0, onChange: (_event, newValue) => this.setState({
+                                    inputValue: Array.isArray(newValue) ? newValue[0] : newValue,
+                                }) })),
                         React.createElement(Grid2, null,
                             React.createElement(Input, { value: this.state.inputValue, size: "small", onChange: e => this.setState({
                                     inputValue: e.target.value === '' ? 0 : Number(e.target.value),

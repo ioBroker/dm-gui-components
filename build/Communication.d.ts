@@ -30,7 +30,7 @@ interface CommunicationFormInState extends CommunicationForm {
 }
 interface InputAction extends ActionBase {
     /** If it is a device action */
-    deviceId?: string;
+    deviceId?: DeviceId;
 }
 export type CommunicationState = {
     showSpinner: boolean;
@@ -57,9 +57,9 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     private protocol;
     private responseTimeout;
     instanceHandler: (action: ActionBase) => () => void;
-    deviceHandler: (deviceId: string, action: ActionBase) => () => void;
-    controlHandler: (deviceId: string, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
-    controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
+    controlHandler: (deviceId: DeviceId, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
+    controlStateHandler: (deviceId: DeviceId, control: ControlBase) => () => Promise<ioBroker.State | null>;
     constructor(props: P);
     componentWillUnmount(): void;
     loadAllData(): Promise<void>;
@@ -68,7 +68,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     deleteDevice(_deviceId: DeviceId): void;
     sendActionToInstance: (command: CommandName, messageToSend: Message) => void;
     sendControlToInstance: (command: CommandName, messageToSend: {
-        deviceId: string;
+        deviceId: DeviceId;
         controlId: string;
         state?: ControlState;
     }) => Promise<null | ioBroker.State>;

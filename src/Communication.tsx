@@ -86,7 +86,7 @@ interface CommunicationFormInState extends CommunicationForm {
 
 interface InputAction extends ActionBase {
     /** If it is a device action */
-    deviceId?: string;
+    deviceId?: DeviceId;
 }
 
 export type CommunicationState = {
@@ -119,17 +119,17 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     instanceHandler: (action: ActionBase) => () => void;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
-    deviceHandler: (deviceId: string, action: ActionBase) => () => void;
+    deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
     controlHandler: (
-        deviceId: string,
+        deviceId: DeviceId,
         control: ControlBase,
         state: ControlState,
     ) => () => Promise<ioBroker.State | null>;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
-    controlStateHandler: (deviceId: string, control: ControlBase) => () => Promise<ioBroker.State | null>;
+    controlStateHandler: (deviceId: DeviceId, control: ControlBase) => () => Promise<ioBroker.State | null>;
 
     constructor(props: P) {
         super(props);
@@ -369,7 +369,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
     sendControlToInstance = async (
         command: CommandName,
-        messageToSend: { deviceId: string; controlId: string; state?: ControlState },
+        messageToSend: { deviceId: DeviceId; controlId: string; state?: ControlState },
     ): Promise<null | ioBroker.State> => {
         const response = await this.protocol.sendControl(command, messageToSend);
         const type = response.type;
@@ -914,8 +914,10 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                 <Grid2>
                                     <Slider
                                         value={typeof this.state.inputValue === 'number' ? this.state.inputValue : 0}
-                                        onChange={(_event: Event, newValue: number) =>
-                                            this.setState({ inputValue: newValue })
+                                        onChange={(_event: Event, newValue: number | number[]) =>
+                                            this.setState({
+                                                inputValue: Array.isArray(newValue) ? newValue[0] : newValue,
+                                            })
                                         }
                                     />
                                 </Grid2>

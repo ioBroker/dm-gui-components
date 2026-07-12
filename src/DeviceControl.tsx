@@ -154,7 +154,7 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
         }
     }
 
-    stateHandler = async (id: string, state: ioBroker.State): Promise<void> => {
+    stateHandler = async (id: string, state: ioBroker.State | null | undefined): Promise<void> => {
         if (id === this.props.control.stateId && state) {
             // request new state
             const newState: ioBroker.State | null = await this.props.controlStateHandler(
