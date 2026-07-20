@@ -7,7 +7,7 @@ interface JsonConfigDmProps {
     socket: Connection;
     schema: ConfigItemPanel | ConfigItemTabs;
     data: Record<string, any>;
-    onChange: (data: Record<string, any>) => void;
+    onChange: (data: Record<string, any> | null) => void;
     themeName: ThemeName;
     themeType: ThemeType;
     theme: IobTheme;
@@ -37,7 +37,7 @@ export default function JsonConfig(props: JsonConfigDmProps): React.JSX.Element 
                 schema={schema}
                 data={data}
                 onError={setError}
-                onChange={(_data: Record<string, any>) => onChange(_data)}
+                onChange={(_data: Record<string, any> | null) => onChange(_data)}
                 embedded
                 themeName={props.themeName}
                 themeType={props.themeType}

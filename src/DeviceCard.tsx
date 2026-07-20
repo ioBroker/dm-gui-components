@@ -415,7 +415,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         socket={this.props.socket}
                         schema={this.state.details.schema}
                         data={this.state.data}
-                        onChange={(data: Record<string, any>) => this.setState({ data })}
+                        onChange={(data: Record<string, any> | null) => data && this.setState({ data })}
                         themeName={this.props.themeName}
                         themeType={this.props.themeType}
                         theme={this.props.theme}
@@ -694,7 +694,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                                 socket={this.props.socket}
                                 schema={this.props.device.customInfo.schema}
                                 data={this.props.device.customInfo.data || {}}
-                                onChange={(_data: Record<string, any>) => {
+                                onChange={(_data: Record<string, any> | null) => {
                                     /* ignore */
                                 }}
                                 themeName={this.props.themeName}
@@ -887,7 +887,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                                 socket={this.props.socket}
                                 schema={this.props.device.customInfo.schema}
                                 data={this.props.device.customInfo.data || {}}
-                                onChange={(_data: Record<string, any>) => {
+                                onChange={(_data: Record<string, any> | null) => {
                                     /* ignore */
                                 }}
                                 themeName={this.props.themeName}

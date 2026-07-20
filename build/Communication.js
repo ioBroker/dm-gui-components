@@ -399,7 +399,7 @@ export default class Communication extends Component {
             React.createElement(DialogContent, null,
                 React.createElement(JsonConfig, { instanceId: this.state.selectedInstance, schema: form.schema, data: form.data || {}, socket: this.props.socket, onChange: (data) => {
                         console.log('handleFormChange', { data });
-                        if (form) {
+                        if (form && data) {
                             form.data = data;
                             form.changed = JSON.stringify(data) !== form.originalData;
                             this.setState({ form });

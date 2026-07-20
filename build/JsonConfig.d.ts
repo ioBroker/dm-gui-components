@@ -6,7 +6,7 @@ interface JsonConfigDmProps {
     socket: Connection;
     schema: ConfigItemPanel | ConfigItemTabs;
     data: Record<string, any>;
-    onChange: (data: Record<string, any>) => void;
+    onChange: (data: Record<string, any> | null) => void;
     themeName: ThemeName;
     themeType: ThemeType;
     theme: IobTheme;

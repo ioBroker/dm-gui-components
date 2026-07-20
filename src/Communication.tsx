@@ -647,9 +647,9 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                         schema={form.schema}
                         data={form.data || {}}
                         socket={this.props.socket}
-                        onChange={(data: Record<string, any>) => {
+                        onChange={(data: Record<string, any> | null) => {
                             console.log('handleFormChange', { data });
-                            if (form) {
+                            if (form && data) {
                                 form.data = data;
                                 form.changed = JSON.stringify(data) !== form.originalData;
                                 this.setState({ form });

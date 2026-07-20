@@ -243,7 +243,7 @@ export default class DeviceCard extends Component {
         }
         return (React.createElement(Dialog, { open: !0, maxWidth: "md", onClose: () => this.setState({ open: false }) },
             React.createElement(DialogContent, null,
-                React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.state.details.schema, data: this.state.data, onChange: (data) => this.setState({ data }), themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })),
+                React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.state.details.schema, data: this.state.data, onChange: (data) => data && this.setState({ data }), themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat })),
             React.createElement(DialogActions, null,
                 React.createElement(Button, { disabled: !this.props.alive, variant: "contained", color: "primary", onClick: () => this.setState({ open: false }), autoFocus: true }, getTranslation('closeButtonText')))));
     }
