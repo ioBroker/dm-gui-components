@@ -52,8 +52,8 @@
   },
   "homepage": "https://github.com/ioBroker/dm-gui-components#readme",
   "dependencies": {
-    "@iobroker/adapter-react-v5": "^8.3.1",
-    "@iobroker/json-config": "^8.5.3"
+    "@iobroker/adapter-react-v5": "^8.3.2",
+    "@iobroker/json-config": "^8.5.4"
   },
   "devDependencies": {
     "@alcalzone/release-script": "^5.2.1",
