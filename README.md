@@ -9,12 +9,13 @@ import React from 'react';
 import DeviceList from '@iobroker/dm-gui-components';
 
 //...
-render() {
-   return <DeviceList
-      socket={this.props.socket}
-      selectedInstance="matter.0"
-   />;
-}
+class Example extends React.Component {
+    render() {
+       return <DeviceList
+          socket={this.props.socket}
+          selectedInstance="matter.0"
+       />;
+    }
 ```
 
 ## Icon names
