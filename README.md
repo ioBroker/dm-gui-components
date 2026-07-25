@@ -86,6 +86,9 @@ Unrecognized FA names render a **QuestionMark** icon.
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+# (@GermanBluefox) Breaking: React 19, MUI 9, TS 6
+
 ### 9.1.12 (2026-07-24)
 - (@GermanBluefox) Updated packages
 
