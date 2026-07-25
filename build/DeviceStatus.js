@@ -1,4 +1,4 @@
-import { I18n } from '@iobroker/adapter-react-v5';
+import { I18n } from '@iobroker/gui-components';
 import { Battery20 as Battery20Icon, Battery30 as Battery30Icon, Battery50 as Battery50Icon, Battery60 as Battery60Icon, Battery80 as Battery80Icon, Battery90 as Battery90Icon, BatteryAlert as BatteryAlertIcon, BatteryCharging50 as BatteryCharging50Icon, BatteryFull as BatteryFullIcon, Bluetooth as IconConnectionBluetooth, Cable as IconConnectionLan, BluetoothDisabled as IconConnectionNoBluetooth, WifiOff as IconConnectionNoWifi, Wifi as IconConnectionWifi, Link as LinkIcon, LinkOff as LinkOffIcon, NetworkCheck as NetworkCheckIcon, SystemUpdateAlt as SystemUpdateAltIcon, Warning as WarningIcon, } from '@mui/icons-material';
 import { IconButton, Tooltip } from '@mui/material';
 import React, { useMemo } from 'react';
@@ -169,6 +169,16 @@ export default function DeviceStatus(props) {
         } },
         connectionSymbol,
         React.createElement("div", { style: { position: 'absolute', top: 0, left: 0, color: 'grey' } }, "*"))) : (React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } }, connectionSymbol)))) : (connectionSymbol);
+    // The battery indicator is wrapped into a button if the reserved "battery" action is provided by the backend,
+    // so the adapter can open its own dialog (e.g. battery history or battery type) on click.
+    const renderBattery = (content) => (React.createElement(Tooltip, { title: getTranslation('batteryTooltip') +
+            (props.batteryAction ? `. ${getTranslation(props.batteryAction.description || 'moreInformation')}` : ''), slotProps: { popper: { sx: styles.tooltip } } }, props.batteryAction ? (React.createElement(IconButton, { size: "small", style: { padding: 2, borderRadius: 4 }, onClick: e => {
+            if (props.batteryAction) {
+                e.stopPropagation();
+                props.deviceHandler(props.deviceId, props.batteryAction)();
+            }
+        } },
+        React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } }, content))) : (React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } }, content))));
     return (React.createElement("div", { style: {
             display: 'flex',
             alignItems: 'baseline',
@@ -181,20 +191,20 @@ export default function DeviceStatus(props) {
             React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
                 React.createElement(NetworkCheckIcon, { style: { color: rssiColor(rssi, props.theme.palette.mode) } }),
                 React.createElement("p", { style: { fontSize: 'small', margin: 0 } }, rssi)))),
-        typeof battery === 'number' && (React.createElement(Tooltip, { title: getTranslation('batteryTooltip'), slotProps: { popper: { sx: styles.tooltip } } },
-            React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
+        typeof battery === 'number' &&
+            renderBattery(React.createElement(React.Fragment, null,
                 batteryIconTooltip,
                 React.createElement("p", { style: { fontSize: 'small', margin: 0 } },
                     battery,
-                    "%")))),
-        typeof battery === 'string' && (React.createElement(Tooltip, { title: getTranslation('batteryTooltip'), slotProps: { popper: { sx: styles.tooltip } } },
-            React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
+                    "%"))),
+        typeof battery === 'string' &&
+            renderBattery(React.createElement(React.Fragment, null,
                 battery === 'charging' ? React.createElement(BatteryCharging50Icon, null) : React.createElement(BatteryFullIcon, null),
                 battery !== 'charging' ? (battery.includes('V') || battery.includes('mV') ? (React.createElement("p", { style: { fontSize: 'small', margin: 0 } }, battery)) : (React.createElement("p", { style: { fontSize: 'small', margin: 0 } },
                     React.createElement("span", { style: { marginRight: 4 } }, battery),
-                    "mV"))) : null))),
-        typeof battery === 'boolean' && (React.createElement(Tooltip, { title: getTranslation('batteryTooltip'), slotProps: { popper: { sx: styles.tooltip } } },
-            React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } }, battery ? (React.createElement(BatteryFullIcon, { style: iconStyleOK })) : (React.createElement(BatteryAlertIcon, { style: iconStyleNotOK }))))),
+                    "mV"))) : null)),
+        typeof battery === 'boolean' &&
+            renderBattery(battery ? React.createElement(BatteryFullIcon, { style: iconStyleOK }) : React.createElement(BatteryAlertIcon, { style: iconStyleNotOK })),
         warning ? (typeof warning === 'string' || typeof warning === 'object' ? (React.createElement(Tooltip, { title: getTranslation(warning), slotProps: { popper: { sx: styles.tooltip } } },
             React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
                 React.createElement(WarningIcon, { style: iconStyleWarning })))) : (React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },

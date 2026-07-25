@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Button, Fab, FormControl, InputLabel, MenuItem, Select, Switch, Slider, TextField, InputAdornment, FormControlLabel, Divider, } from '@mui/material';
-import { Icon } from '@iobroker/adapter-react-v5';
+import { Icon } from '@iobroker/gui-components';
 import { renderControlIcon, getTranslation } from './Utils';
 /**
  * Device Control component

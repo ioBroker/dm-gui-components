@@ -4,6 +4,9 @@ import type { ActionBase, ControlBase } from './protocol/api';
 import {
     Add,
     Article,
+    BatteryAlert,
+    BatteryChargingFull,
+    BatteryFull,
     Bluetooth,
     BluetoothDisabled,
     Delete,
@@ -35,7 +38,7 @@ import {
     Launch,
 } from '@mui/icons-material';
 
-import { I18n, Icon } from '@iobroker/adapter-react-v5';
+import { I18n, Icon } from '@iobroker/gui-components';
 
 /**
  * Get Icon by font-awesome name. Do not use these names, use names from getIconByName
@@ -150,10 +153,19 @@ function getFaIcon(icon: string, color?: string): React.JSX.Element | null {
  * - identify
  * - info
  * - lines
+ * - battery
+ * - batteryLow, batteryAlert
+ * - batteryCharging
  * @param altName icon name
  * @param color color of the icon
+ * @param noDefaultIcon if true, no "question mark" icon will be returned for unknown names
  */
-function getIconByName(name: string, altName?: string, color?: string): React.JSX.Element | null {
+function getIconByName(
+    name: string,
+    altName?: string,
+    color?: string,
+    noDefaultIcon?: boolean,
+): React.JSX.Element | null {
     if (name === 'edit' || name === 'rename' || altName === 'edit' || altName === 'rename') {
         return <Edit style={{ color }} />;
     }
@@ -236,6 +248,18 @@ function getIconByName(name: string, altName?: string, color?: string): React.JS
     if (name === 'web' || altName === 'web') {
         return <Launch style={{ color }} />;
     }
+    if (name === 'battery' || altName === 'battery') {
+        return <BatteryFull style={{ color }} />;
+    }
+    if (name === 'batteryLow' || name === 'batteryAlert' || altName === 'batteryLow' || altName === 'batteryAlert') {
+        return <BatteryAlert style={{ color }} />;
+    }
+    if (name === 'batteryCharging' || altName === 'batteryCharging') {
+        return <BatteryChargingFull style={{ color }} />;
+    }
+    if (noDefaultIcon) {
+        return null;
+    }
     return <QuestionMark style={{ color }} />;
 }
 
@@ -284,7 +308,7 @@ export function renderControlIcon(
     return null;
 }
 
-export function renderActionIcon(action: ActionBase): React.JSX.Element | null {
+export function renderActionIcon(action: ActionBase, noDefaultIcon?: boolean): React.JSX.Element | null {
     if (!action) {
         return null;
     }
@@ -300,7 +324,7 @@ export function renderActionIcon(action: ActionBase): React.JSX.Element | null {
             />
         );
     }
-    return getIconByName(action.id, action.icon, action.color);
+    return getIconByName(action.id, action.icon, action.color, noDefaultIcon);
 }
 
 let language: ioBroker.Languages;

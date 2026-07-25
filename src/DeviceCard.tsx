@@ -32,7 +32,7 @@ import {
     type ThemeName,
     type ThemeType,
     Icon,
-} from '@iobroker/adapter-react-v5';
+} from '@iobroker/gui-components';
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
@@ -63,6 +63,8 @@ const ACTIONS = {
     ENABLE_DISABLE: 'enable/disable',
     /** This action will be called when the user clicks on the update indicator. The update indicator is shown only if `DeviceInfo.update.available` is true */
     UPDATE: 'update',
+    /** This action will be called when the user clicks on the battery indicator. The battery indicator is shown only if the node status has the "battery" property */
+    BATTERY: 'battery',
 };
 
 const styles: Record<string, any> = {
@@ -546,7 +548,11 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
 
     renderActions(): JSX.Element[] | null {
         const actions = this.props.device.actions?.filter(
-            a => a.id !== ACTIONS.STATUS && a.id !== ACTIONS.ENABLE_DISABLE && a.id !== ACTIONS.UPDATE,
+            a =>
+                a.id !== ACTIONS.STATUS &&
+                a.id !== ACTIONS.ENABLE_DISABLE &&
+                a.id !== ACTIONS.UPDATE &&
+                a.id !== ACTIONS.BATTERY,
         );
 
         return actions?.length
@@ -649,6 +655,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             updateAction={
                                 i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined
                             }
+                            batteryAction={this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY)}
                             deviceHandler={this.props.deviceHandler}
                             theme={this.props.theme}
                             stateOrObjectHandler={this.stateOrObjectHandler}
@@ -850,6 +857,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             updateAction={
                                 i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined
                             }
+                            batteryAction={this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY)}
                             deviceHandler={this.props.deviceHandler}
                             theme={this.props.theme}
                             stateOrObjectHandler={this.stateOrObjectHandler}

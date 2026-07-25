@@ -1,4 +1,4 @@
-import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/adapter-react-v5';
+import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/gui-components';
 import React, { Component } from 'react';
 import type { ActionBase, ActionButton, CommunicationForm, ControlBase, ControlState, DeviceId, InstanceDetails, ProgressUpdate, DeviceInfo } from './protocol/api';
 import type { CommandName, LoadDevicesCallback, Message } from './protocol/DmProtocolBase';

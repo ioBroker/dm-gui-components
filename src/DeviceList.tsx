@@ -26,7 +26,7 @@ import {
     BatteryAlert,
 } from '@mui/icons-material';
 
-import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/adapter-react-v5';
+import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/gui-components';
 import type { DeviceId, DeviceInfo, DeviceStatus, InstanceDetails } from './protocol/api';
 
 import DeviceCard, { DeviceCardSkeleton, type DeviceFilterField } from './DeviceCard';
@@ -670,7 +670,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                 style={{ width: 130, flexShrink: 0 }}
                 value={current}
                 onChange={e => {
-                    const filterField = e.target.value as DeviceFilterField;
+                    const filterField = e.target.value;
                     this.setState({ filterField });
                     window.localStorage.setItem('dm_filterField', filterField);
                     // reset the current filter value when switching the field

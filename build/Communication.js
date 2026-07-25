@@ -1,6 +1,6 @@
-import { I18n, Icon, Utils, } from '@iobroker/adapter-react-v5';
+import { I18n, Icon, Utils, } from '@iobroker/gui-components';
 import { Check, Close, ContentCopy } from '@mui/icons-material';
-import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, FormControlLabel, Grid2, IconButton, Input, InputAdornment, InputLabel, LinearProgress, MenuItem, Select, Slider, Snackbar, TextField, ThemeProvider, Typography, } from '@mui/material';
+import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, Input, InputAdornment, InputLabel, LinearProgress, MenuItem, Select, Slider, Snackbar, TextField, ThemeProvider, Typography, } from '@mui/material';
 import React, { Component } from 'react';
 import JsonConfig from './JsonConfig';
 import { DmProtocolV1 } from './protocol/DmProtocolV1';
@@ -537,12 +537,12 @@ export default class Communication extends Component {
                     React.createElement(Select, { variant: "standard", value: this.state.inputValue, onChange: e => this.setState({ inputValue: e.target.value }) }, this.state.showInput.inputBefore.options?.map(item => (React.createElement(MenuItem, { key: item.value, value: item.value }, getTranslation(item.label))))))) : null,
                 this.state.showInput.inputBefore.type === 'slider' ? (React.createElement(Box, { sx: { width: '100%' } },
                     React.createElement(Typography, { gutterBottom: true }, getTranslation(this.state.showInput.inputBefore.label)),
-                    React.createElement(Grid2, { container: true, spacing: 2, alignItems: "center" },
-                        React.createElement(Grid2, null,
+                    React.createElement(Grid, { container: true, spacing: 2, sx: { alignItems: 'center' } },
+                        React.createElement(Grid, null,
                             React.createElement(Slider, { value: typeof this.state.inputValue === 'number' ? this.state.inputValue : 0, onChange: (_event, newValue) => this.setState({
                                     inputValue: Array.isArray(newValue) ? newValue[0] : newValue,
                                 }) })),
-                        React.createElement(Grid2, null,
+                        React.createElement(Grid, null,
                             React.createElement(Input, { value: this.state.inputValue, size: "small", onChange: e => this.setState({
                                     inputValue: e.target.value === '' ? 0 : Number(e.target.value),
                                 }), onBlur: () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Connection, ThemeName, ThemeType, IobTheme } from '@iobroker/adapter-react-v5';
+import type { Connection, ThemeName, ThemeType, IobTheme } from '@iobroker/gui-components';
 import { type ConfigItemPanel, type ConfigItemTabs } from '@iobroker/json-config';
 interface JsonConfigDmProps {
     instanceId: string;

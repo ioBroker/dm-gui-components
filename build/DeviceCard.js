@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon, ExpandMore, } from '@mui/icons-material';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, Paper, Skeleton, Tooltip, Typography, Accordion, AccordionSummary, AccordionDetails, } from '@mui/material';
-import { DeviceTypeIcon, I18n, Utils, Icon, } from '@iobroker/adapter-react-v5';
+import { DeviceTypeIcon, I18n, Utils, Icon, } from '@iobroker/gui-components';
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
@@ -17,6 +17,8 @@ const ACTIONS = {
     ENABLE_DISABLE: 'enable/disable',
     /** This action will be called when the user clicks on the update indicator. The update indicator is shown only if `DeviceInfo.update.available` is true */
     UPDATE: 'update',
+    /** This action will be called when the user clicks on the battery indicator. The battery indicator is shown only if the node status has the "battery" property */
+    BATTERY: 'battery',
 };
 const styles = {
     cardStyle: (theme) => ({
@@ -294,7 +296,10 @@ export default class DeviceCard extends Component {
         return null;
     }
     renderActions() {
-        const actions = this.props.device.actions?.filter(a => a.id !== ACTIONS.STATUS && a.id !== ACTIONS.ENABLE_DISABLE && a.id !== ACTIONS.UPDATE);
+        const actions = this.props.device.actions?.filter(a => a.id !== ACTIONS.STATUS &&
+            a.id !== ACTIONS.ENABLE_DISABLE &&
+            a.id !== ACTIONS.UPDATE &&
+            a.id !== ACTIONS.BATTERY);
         return actions?.length
             ? actions.map(a => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: a.id, deviceId: this.props.device.id, action: a, deviceHandler: this.props.deviceHandler })))
             : null;
@@ -325,7 +330,7 @@ export default class DeviceCard extends Component {
                         }
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
+            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body2", style: { ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' } },
                     this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
@@ -417,7 +422,7 @@ export default class DeviceCard extends Component {
                         }
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
+            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body1", style: styles.deviceInfoStyle },
                     this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard },

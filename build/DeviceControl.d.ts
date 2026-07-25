@@ -1,5 +1,5 @@
 import { Component, type JSX } from 'react';
-import { type Connection } from '@iobroker/adapter-react-v5';
+import { type Connection } from '@iobroker/gui-components';
 import type { DeviceId, ControlBase, ControlState, DeviceControl } from './protocol/api';
 interface DeviceControlProps {
     deviceId: DeviceId;

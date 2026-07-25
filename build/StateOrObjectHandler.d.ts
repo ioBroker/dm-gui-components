@@ -1,4 +1,4 @@
-import type { Connection } from '@iobroker/adapter-react-v5';
+import type { Connection } from '@iobroker/gui-components';
 import type { ValueOrStateOrObject } from '@iobroker/dm-utils';
 export interface StateOrObjectSubscription {
     unsubscribe: () => Promise<void> | void;

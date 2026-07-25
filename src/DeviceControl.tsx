@@ -14,7 +14,7 @@ import {
     Divider,
 } from '@mui/material';
 
-import { type Connection, Icon } from '@iobroker/adapter-react-v5';
+import { type Connection, Icon } from '@iobroker/gui-components';
 import type { DeviceId, ControlBase, ControlState, DeviceControl } from './protocol/api';
 
 import { renderControlIcon, getTranslation } from './Utils';
@@ -381,7 +381,7 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                     max={this.state.max}
                     step={this.state.step}
                     valueLabelDisplay="auto"
-                    onChange={(_e, value) => this.sendControl(this.props.deviceId, this.props.control, value as number)}
+                    onChange={(_e, value) => this.sendControl(this.props.deviceId, this.props.control, value)}
                 />
                 {this.props.control.iconOn ? (
                     <Icon

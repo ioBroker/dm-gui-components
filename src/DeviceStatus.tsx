@@ -1,5 +1,5 @@
-import { I18n } from '@iobroker/adapter-react-v5';
-import type { Connection, IobTheme, ThemeType } from '@iobroker/adapter-react-v5';
+import { I18n } from '@iobroker/gui-components';
+import type { Connection, IobTheme, ThemeType } from '@iobroker/gui-components';
 import {
     Battery20 as Battery20Icon,
     Battery30 as Battery30Icon,
@@ -140,6 +140,8 @@ interface DeviceStatusProps {
     update?: DeviceInfo['update'];
     /** Reserved "update" action. If provided, the update indicator becomes a clickable button */
     updateAction?: DeviceAction;
+    /** Reserved "battery" action. If provided, the battery indicator becomes a clickable button */
+    batteryAction?: DeviceAction;
     deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     theme: IobTheme;
     stateOrObjectHandler: StateOrObjectHandler;
@@ -369,6 +371,35 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
             connectionSymbol
         );
 
+    // The battery indicator is wrapped into a button if the reserved "battery" action is provided by the backend,
+    // so the adapter can open its own dialog (e.g. battery history or battery type) on click.
+    const renderBattery = (content: React.ReactNode): React.JSX.Element => (
+        <Tooltip
+            title={
+                getTranslation('batteryTooltip') +
+                (props.batteryAction ? `. ${getTranslation(props.batteryAction.description || 'moreInformation')}` : '')
+            }
+            slotProps={{ popper: { sx: styles.tooltip } }}
+        >
+            {props.batteryAction ? (
+                <IconButton
+                    size="small"
+                    style={{ padding: 2, borderRadius: 4 }}
+                    onClick={e => {
+                        if (props.batteryAction) {
+                            e.stopPropagation();
+                            props.deviceHandler(props.deviceId, props.batteryAction)();
+                        }
+                    }}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>{content}</div>
+                </IconButton>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>{content}</div>
+            )}
+        </Tooltip>
+    );
+
     return (
         <div
             style={{
@@ -393,24 +424,17 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
                 </Tooltip>
             )}
 
-            {typeof battery === 'number' && (
-                <Tooltip
-                    title={getTranslation('batteryTooltip')}
-                    slotProps={{ popper: { sx: styles.tooltip } }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {typeof battery === 'number' &&
+                renderBattery(
+                    <>
                         {batteryIconTooltip}
                         <p style={{ fontSize: 'small', margin: 0 }}>{battery}%</p>
-                    </div>
-                </Tooltip>
-            )}
+                    </>,
+                )}
 
-            {typeof battery === 'string' && (
-                <Tooltip
-                    title={getTranslation('batteryTooltip')}
-                    slotProps={{ popper: { sx: styles.tooltip } }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {typeof battery === 'string' &&
+                renderBattery(
+                    <>
                         {battery === 'charging' ? <BatteryCharging50Icon /> : <BatteryFullIcon />}
                         {battery !== 'charging' ? (
                             battery.includes('V') || battery.includes('mV') ? (
@@ -422,24 +446,13 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
                                 </p>
                             )
                         ) : null}
-                    </div>
-                </Tooltip>
-            )}
+                    </>,
+                )}
 
-            {typeof battery === 'boolean' && (
-                <Tooltip
-                    title={getTranslation('batteryTooltip')}
-                    slotProps={{ popper: { sx: styles.tooltip } }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        {battery ? (
-                            <BatteryFullIcon style={iconStyleOK} />
-                        ) : (
-                            <BatteryAlertIcon style={iconStyleNotOK} />
-                        )}
-                    </div>
-                </Tooltip>
-            )}
+            {typeof battery === 'boolean' &&
+                renderBattery(
+                    battery ? <BatteryFullIcon style={iconStyleOK} /> : <BatteryAlertIcon style={iconStyleNotOK} />,
+                )}
 
             {warning ? (
                 typeof warning === 'string' || typeof warning === 'object' ? (

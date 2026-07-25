@@ -6,7 +6,7 @@ import {
     type IobTheme,
     type ThemeName,
     type ThemeType,
-} from '@iobroker/adapter-react-v5';
+} from '@iobroker/gui-components';
 import { Check, Close, ContentCopy } from '@mui/icons-material';
 import {
     Backdrop,
@@ -21,7 +21,7 @@ import {
     DialogTitle,
     FormControl,
     FormControlLabel,
-    Grid2,
+    Grid,
     IconButton,
     Input,
     InputAdornment,
@@ -906,12 +906,12 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                             <Typography gutterBottom>
                                 {getTranslation(this.state.showInput.inputBefore.label)}
                             </Typography>
-                            <Grid2
+                            <Grid
                                 container
                                 spacing={2}
-                                alignItems="center"
+                                sx={{ alignItems: 'center' }}
                             >
-                                <Grid2>
+                                <Grid>
                                     <Slider
                                         value={typeof this.state.inputValue === 'number' ? this.state.inputValue : 0}
                                         onChange={(_event: Event, newValue: number | number[]) =>
@@ -920,8 +920,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                             })
                                         }
                                     />
-                                </Grid2>
-                                <Grid2>
+                                </Grid>
+                                <Grid>
                                     <Input
                                         value={this.state.inputValue}
                                         size="small"
@@ -963,8 +963,8 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                             type: 'number',
                                         }}
                                     />
-                                </Grid2>
-                            </Grid2>
+                                </Grid>
+                            </Grid>
                         </Box>
                     ) : null}
                 </DialogContent>

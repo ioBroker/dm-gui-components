@@ -1,6 +1,6 @@
 import React from 'react';
-import { Add, Article, Bluetooth, BluetoothDisabled, Delete, Edit, FastForward, FastRewind, Fluorescent, Group, Info, Lightbulb, Link as LinkIcon, LinkOff, NotListedLocation, Pause, Person, PlayArrow, Power, QrCode, QuestionMark, Refresh, Search, Settings, Stop, Visibility, Upgrade, WbIncandescent, Wifi, WifiOff, Launch, } from '@mui/icons-material';
-import { I18n, Icon } from '@iobroker/adapter-react-v5';
+import { Add, Article, BatteryAlert, BatteryChargingFull, BatteryFull, Bluetooth, BluetoothDisabled, Delete, Edit, FastForward, FastRewind, Fluorescent, Group, Info, Lightbulb, Link as LinkIcon, LinkOff, NotListedLocation, Pause, Person, PlayArrow, Power, QrCode, QuestionMark, Refresh, Search, Settings, Stop, Visibility, Upgrade, WbIncandescent, Wifi, WifiOff, Launch, } from '@mui/icons-material';
+import { I18n, Icon } from '@iobroker/gui-components';
 /**
  * Get Icon by font-awesome name. Do not use these names, use names from getIconByName
  *
@@ -112,10 +112,14 @@ function getFaIcon(icon, color) {
  * - identify
  * - info
  * - lines
+ * - battery
+ * - batteryLow, batteryAlert
+ * - batteryCharging
  * @param altName icon name
  * @param color color of the icon
+ * @param noDefaultIcon if true, no "question mark" icon will be returned for unknown names
  */
-function getIconByName(name, altName, color) {
+function getIconByName(name, altName, color, noDefaultIcon) {
     if (name === 'edit' || name === 'rename' || altName === 'edit' || altName === 'rename') {
         return React.createElement(Edit, { style: { color } });
     }
@@ -196,6 +200,18 @@ function getIconByName(name, altName, color) {
     if (name === 'web' || altName === 'web') {
         return React.createElement(Launch, { style: { color } });
     }
+    if (name === 'battery' || altName === 'battery') {
+        return React.createElement(BatteryFull, { style: { color } });
+    }
+    if (name === 'batteryLow' || name === 'batteryAlert' || altName === 'batteryLow' || altName === 'batteryAlert') {
+        return React.createElement(BatteryAlert, { style: { color } });
+    }
+    if (name === 'batteryCharging' || altName === 'batteryCharging') {
+        return React.createElement(BatteryChargingFull, { style: { color } });
+    }
+    if (noDefaultIcon) {
+        return null;
+    }
     return React.createElement(QuestionMark, { style: { color } });
 }
 export function renderControlIcon(action, colors, value, noDefaultIcon) {
@@ -225,7 +241,7 @@ export function renderControlIcon(action, colors, value, noDefaultIcon) {
     }
     return null;
 }
-export function renderActionIcon(action) {
+export function renderActionIcon(action, noDefaultIcon) {
     if (!action) {
         return null;
     }
@@ -235,7 +251,7 @@ export function renderActionIcon(action) {
     if (action.icon?.startsWith('data:image')) {
         return (React.createElement(Icon, { src: action.icon, style: { color: action.color } }));
     }
-    return getIconByName(action.id, action.icon, action.color);
+    return getIconByName(action.id, action.icon, action.color, noDefaultIcon);
 }
 let language;
 /**

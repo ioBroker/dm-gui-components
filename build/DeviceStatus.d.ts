@@ -1,4 +1,4 @@
-import type { Connection, IobTheme } from '@iobroker/adapter-react-v5';
+import type { Connection, IobTheme } from '@iobroker/gui-components';
 import React, { type CSSProperties, type MouseEvent } from 'react';
 import type { ActionBase, ConfigConnectionType, DeviceAction, DeviceId, DeviceInfo, DeviceStatus } from './protocol/api';
 import type { StateOrObjectHandler } from './StateOrObjectHandler';
@@ -33,6 +33,8 @@ interface DeviceStatusProps {
     update?: DeviceInfo['update'];
     /** Reserved "update" action. If provided, the update indicator becomes a clickable button */
     updateAction?: DeviceAction;
+    /** Reserved "battery" action. If provided, the battery indicator becomes a clickable button */
+    batteryAction?: DeviceAction;
     deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     theme: IobTheme;
     stateOrObjectHandler: StateOrObjectHandler;

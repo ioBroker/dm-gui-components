@@ -1,7 +1,7 @@
 import React from 'react';
 import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Box, Card, CardActionArea, CardContent, Typography, } from '@mui/material';
 import { ArrowBack, Clear, QuestionMark, Refresh, FilterAlt, FilterAltOff, SystemUpdateAlt, BatteryAlert, } from '@mui/icons-material';
-import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/adapter-react-v5';
+import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/gui-components';
 import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
 import { getTranslation } from './Utils';
 import Communication from './Communication';

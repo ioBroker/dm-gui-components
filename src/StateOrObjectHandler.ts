@@ -1,4 +1,4 @@
-import type { Connection, ObjectChangeHandler } from '@iobroker/adapter-react-v5';
+import type { Connection, ObjectChangeHandler } from '@iobroker/gui-components';
 import type { ValueOrStateOrObject } from '@iobroker/dm-utils';
 
 type ObjectSubscriptionNotifier = (obj?: ioBroker.Object | null) => void;

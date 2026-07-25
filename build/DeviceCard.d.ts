@@ -1,5 +1,5 @@
 import React, { Component, type JSX } from 'react';
-import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/adapter-react-v5';
+import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/gui-components';
 import type { ActionBase, ControlBase, ControlState, DeviceDetails, DeviceControl, DeviceInfo, DeviceId, ConfigConnectionType } from './protocol/api';
 /** Device fields that can be used for the text filter */
 export type DeviceFilterField = 'name' | 'identifier' | 'manufacturer' | 'model';

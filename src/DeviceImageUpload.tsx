@@ -1,5 +1,5 @@
 import React, { type ChangeEvent, type ChangeEventHandler } from 'react';
-import type { Connection } from '@iobroker/adapter-react-v5';
+import type { Connection } from '@iobroker/gui-components';
 import type { DeviceId } from './protocol/api';
 
 interface DeviceImageUploadProps {
