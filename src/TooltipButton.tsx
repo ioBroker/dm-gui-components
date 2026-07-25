@@ -19,7 +19,8 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
         <Typography
             variant="button"
             sx={props.style}
-            style={{ marginLeft: 4 }}
+            // The gap is only required if an icon is shown in front of the text
+            style={{ marginLeft: Icon ? 4 : undefined }}
         >
             {label}
         </Typography>
