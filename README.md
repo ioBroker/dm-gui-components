@@ -80,12 +80,128 @@ These names are supported for backward compatibility. Prefer the names from the 
 
 Unrecognized FA names render a **QuestionMark** icon.
 
+## Status line
+
+The status line at the top of a device card shows the built-in indicators (connection, RSSI, battery,
+warning, update, enabled). Two mechanisms let an adapter add its own entries there.
+
+> **Note:** the types are defined in `@iobroker/dm-utils` from version 3.2.0 on
+> (`StatusIndicator`, `StatusIndicatorLevel`, `IndicatorColor`, `ActionPlacement`) and are only
+> re-exported here. See the README of `dm-utils` for the adapter side.
+
+### Actions in the status line
+
+Any action can be moved from the button row at the bottom of the card into the status line with
+`placement: 'status'`:
+
+```js
+const actions = [{ id: 'openLog', icon: 'lines', placement: 'status', handler: openLogHandler }];
+```
+
+The action keeps all its features (`icon`, `color`, `title`, `confirmation`, `inputBefore`, `url`, …)
+and is not rendered a second time in the footer.
+
+### Custom indicators
+
+`DeviceInfo.indicators` (device card) and `InstanceDetails.indicators` (toolbar) describe indicators
+whose appearance follows a state or object value live. Every visual property accepts either a literal
+value or a `{ stateId }` / `{ objectId, property }` reference.
+
+| Property         | Description                                                                                                |
+| ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| `id`             | Unique ID within the device / instance                                                                       |
+| `value`          | Live value. Controls visibility, `iconOn`/`colorOn` and the matching `levels` entry                          |
+| `icon`           | Icon name (see above), `fa-*`, `data:image/...`, URL or path                                                  |
+| `iconOn`         | Icon used while the value is truthy                                                                           |
+| `color`          | `ok`, `warning`, `error`, `info`, `inactive`, `primary`, `secondary` or a CSS color                           |
+| `colorOn`        | Color used while the value is truthy                                                                          |
+| `text`           | Text below the icon                                                                                           |
+| `showValue`      | Show the value as text below the icon                                                                         |
+| `unit`           | Appended to the text                                                                                          |
+| `tooltip`        | Tooltip                                                                                                       |
+| `levels`         | Value ranges mapped to `icon` / `color` / `text` / `tooltip`. First match wins                                 |
+| `actionId`       | ID of an action of the same device/instance. Makes the indicator clickable                                    |
+| `hideIfEmpty`    | Hide while the value is `undefined`, `null`, `''` or `false` (default `true`; the number `0` stays visible)    |
+| `order`          | Sort order in the line (default 100)                                                                          |
+| `configurable`   | Let the user show or hide this indicator in the toolbar                                                       |
+| `defaultVisible` | Visibility of a configurable indicator until the user decides otherwise (default `true`)                      |
+| `label`          | Name in the visibility settings. Falls back to `tooltip` and then to `id`                                     |
+
+A `levels` entry matches by exact `value`, by `min`/`max` (both inclusive, numeric values only) or,
+if it defines no condition at all, as a catch-all — put such an entry last.
+
+If `actionId` is given, a click triggers that action through the normal device/instance action flow,
+including `confirmation`, `inputBefore`, `url`, the progress dialog and the `refresh` handling. The
+referenced action is then not rendered as a normal button anymore.
+
+```js
+const deviceInfo = {
+    id: 'sensor-1',
+    name: 'Window sensor kitchen',
+    actions: [{ id: 'openLog', icon: 'lines', description: { en: 'Open device log' }, handler: openLogHandler }],
+    status: { connection: { stateId: 'zigbee.0.abc.available', mapping: { true: 'connected', false: 'disconnected' } } },
+    indicators: [
+        {
+            id: 'linkQuality',
+            value: { stateId: 'zigbee.0.abc.link_quality' },
+            icon: 'fa-wifi',
+            showValue: true,
+            unit: 'lqi',
+            tooltip: { en: 'Link quality', de: 'Verbindungsqualität' },
+            levels: [
+                { max: 50, color: 'error' },
+                { max: 100, color: 'warning' },
+                { color: 'ok' },
+            ],
+            actionId: 'openLog',
+        },
+        {
+            id: 'tamper',
+            value: { stateId: 'zigbee.0.abc.tamper' },
+            icon: 'fa-eye',
+            colorOn: 'error',
+            tooltip: { en: 'Tamper contact triggered' },
+        },
+    ],
+};
+```
+
+The indicator line wraps if it does not fit on one line, so the number of indicators is not limited.
+
+### Indicators the user can switch off
+
+An indicator marked with `configurable: true` can be shown or hidden by the user through the
+sliders button in the toolbar. The choice is stored in the browser (`localStorage`, one entry per
+instance) and never reaches the backend. `defaultVisible: false` starts with a hidden indicator, so
+rarely needed information does not clutter the cards of everybody.
+
+Indicators with the same `id` — typically the same indicator on many devices — are configured
+together. If a hidden indicator references an action, that action is hidden as well and does not
+reappear as a button in the footer.
+
+```js
+const indicator = {
+    id: 'tamper',
+    value: { stateId: 'zigbee.0.abc.tamper' },
+    icon: 'fa-eye',
+    colorOn: 'error',
+    label: { en: 'Tamper contact', de: 'Sabotagekontakt' },
+    configurable: true,
+    defaultVisible: false,
+};
+```
+
 <!--
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Added custom status indicators for devices and instances
+- (@GermanBluefox) Added `placement: 'status'` for device actions
+- (@GermanBluefox) Added user-configurable visibility of indicators
+
 ### 10.0.3 (2026-07-25)
 # (@GermanBluefox) Breaking: React 19, MUI 9, TS 6
 

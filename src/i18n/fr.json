@@ -13,6 +13,8 @@
     "disconnectedIconTooltip": "Débranché",
     "enableIconTooltip": "Activer l'appareil",
     "filterLabelText": "Filtrer",
+    "indicatorsTitle": "Indicateurs",
+    "indicatorsTooltip": "Afficher ou masquer les indicateurs",
     "instanceLabelText": "Exemple",
     "instanceNotAlive": "L'instance n'est pas vivante",
     "manufacturer": "Fabricant",

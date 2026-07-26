@@ -241,6 +241,62 @@ export function renderControlIcon(action, colors, value, noDefaultIcon) {
     }
     return null;
 }
+/**
+ * Render an icon that is given as a plain name (and not as a part of an action or control)
+ *
+ * @param icon `fa-*` name, `data:image/...` string, URL or one of the names supported by `getIconByName`
+ * @param color color of the icon
+ * @param noDefaultIcon if true, no "question mark" icon will be returned for unknown or missing names
+ */
+export function renderIcon(icon, color, noDefaultIcon) {
+    if (!icon) {
+        return noDefaultIcon ? null : React.createElement(QuestionMark, { style: { color } });
+    }
+    if (icon.startsWith('fa-') || icon.startsWith('fas')) {
+        return getFaIcon(icon, color);
+    }
+    if (icon.startsWith('data:image') ||
+        icon.startsWith('http://') ||
+        icon.startsWith('https://') ||
+        icon.includes('/') ||
+        /\.(png|jpe?g|svg|gif|webp|ico)$/i.test(icon)) {
+        return (React.createElement(Icon, { src: icon, style: { color } }));
+    }
+    return getIconByName(icon, undefined, color, noDefaultIcon);
+}
+/**
+ * Resolve the color of a status indicator.
+ *
+ * The semantic tokens use the same colors as the built-in status icons, but adapted to the theme,
+ * so custom indicators do not look foreign next to connection, battery, warning and update.
+ *
+ * @param color semantic token, `primary`, `secondary` or an explicit CSS color
+ * @param theme current theme
+ */
+export function getIndicatorColor(color, theme) {
+    if (!color) {
+        return undefined;
+    }
+    const dark = theme.palette.mode === 'dark';
+    switch (color) {
+        case 'ok':
+            return dark ? '#5cff5c' : '#00ac00';
+        case 'warning':
+            return dark ? '#ffa733' : '#da8200';
+        case 'error':
+            return dark ? '#ff5c5c' : '#ff0000';
+        case 'info':
+            return dark ? '#64b5f6' : '#2196f3';
+        case 'inactive':
+            return '#8a8a8a';
+        case 'primary':
+            return theme.palette.primary.main;
+        case 'secondary':
+            return theme.palette.secondary.main;
+        default:
+            return color;
+    }
+}
 export function renderActionIcon(action, noDefaultIcon) {
     if (!action) {
         return null;

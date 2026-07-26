@@ -7,6 +7,7 @@ import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
 import DeviceStatusComponent from './DeviceStatus';
 import JsonConfig from './JsonConfig';
+import { StatusIndicators } from './StatusIndicator';
 import { getTranslation } from './Utils';
 import { StateOrObjectHandler } from './StateOrObjectHandler';
 /** Reserved action names (this is copied from https://github.com/ioBroker/dm-utils/blob/main/src/types/base.ts as we can only have type references to dm-utils) */
@@ -75,7 +76,8 @@ const styles = {
     },
     statusStyle: {
         padding: '15px 25px 0 15px',
-        height: 41,
+        // The line may grow if the device provides custom indicators, so only the minimum is fixed
+        minHeight: 41,
     },
 };
 function NoImageIcon(props) {
@@ -295,11 +297,62 @@ export default class DeviceCard extends Component {
         }
         return null;
     }
+    /**
+     * IDs of all actions that are not rendered as a normal button in the footer, because they
+     * already have their place in the status line: the reserved actions, the actions with
+     * `placement: 'status'` and the actions referenced by a custom indicator.
+     */
+    getStatusActionIds() {
+        const ids = new Set([ACTIONS.STATUS, ACTIONS.ENABLE_DISABLE, ACTIONS.UPDATE, ACTIONS.BATTERY]);
+        for (const indicator of this.props.device.indicators || []) {
+            if (indicator.actionId) {
+                ids.add(indicator.actionId);
+            }
+        }
+        for (const action of this.props.device.actions || []) {
+            if (action.placement === 'status') {
+                ids.add(action.id);
+            }
+        }
+        return ids;
+    }
+    /** True if at least one action is left for the button row at the bottom of the card */
+    hasFooterActions() {
+        const statusActionIds = this.getStatusActionIds();
+        return !!this.props.device.actions?.some(action => !statusActionIds.has(action.id));
+    }
+    /** Resolve how a custom indicator behaves on click by looking up the referenced action */
+    resolveIndicatorAction = (actionId) => {
+        const action = this.props.device.actions?.find(a => a.id === actionId);
+        if (!action) {
+            console.warn(`Indicator of device ${JSON.stringify(this.props.device.id)} references the unknown action "${actionId}"`);
+            return undefined;
+        }
+        if ('url' in action && action.url) {
+            return { url: getTranslation(action.url), disabled: action.disabled };
+        }
+        return {
+            onClick: this.props.deviceHandler(this.props.device.id, action),
+            disabled: action.disabled,
+        };
+    };
+    /** Custom indicators and the actions that requested to be shown in the status line */
+    renderIndicators(small) {
+        const reserved = [ACTIONS.STATUS, ACTIONS.ENABLE_DISABLE, ACTIONS.UPDATE, ACTIONS.BATTERY];
+        const statusActions = this.props.device.actions?.filter(a => a.placement === 'status' && !reserved.includes(a.id)) || [];
+        // An indicator switched off by the user is not shown at all. An action referenced by it stays
+        // out of the footer too, as hiding the indicator was an explicit decision of the user.
+        const indicators = this.props.hiddenIndicators?.length
+            ? this.props.device.indicators?.filter(indicator => !this.props.hiddenIndicators.includes(indicator.id))
+            : this.props.device.indicators;
+        if (!indicators?.length && !statusActions.length) {
+            return null;
+        }
+        return (React.createElement(StatusIndicators, { indicators: indicators, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler, disabled: !this.props.alive, resolveAction: this.resolveIndicatorAction, style: { marginTop: small ? 2 : 4 } }, statusActions.map(action => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: action.id, deviceId: this.props.device.id, action: action, deviceHandler: this.props.deviceHandler })))));
+    }
     renderActions() {
-        const actions = this.props.device.actions?.filter(a => a.id !== ACTIONS.STATUS &&
-            a.id !== ACTIONS.ENABLE_DISABLE &&
-            a.id !== ACTIONS.UPDATE &&
-            a.id !== ACTIONS.BATTERY);
+        const statusActionIds = this.getStatusActionIds();
+        const actions = this.props.device.actions?.filter(a => !statusActionIds.has(a.id));
         return actions?.length
             ? actions.map(a => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: a.id, deviceId: this.props.device.id, action: a, deviceHandler: this.props.deviceHandler })))
             : null;
@@ -330,7 +383,9 @@ export default class DeviceCard extends Component {
                         }
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
+            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } },
+                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler }))),
+                this.renderIndicators(true)),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body2", style: { ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' } },
                     this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
@@ -346,7 +401,7 @@ export default class DeviceCard extends Component {
                     React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
                             /* ignore */
                         }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,
-                !!(this.props.device.actions?.length || this.props.device.controls?.length) && (React.createElement("div", { style: {
+                !!(this.hasFooterActions() || this.props.device.controls?.length) && (React.createElement("div", { style: {
                         marginTop: 'auto',
                         display: 'flex',
                         gap: 4,
@@ -422,7 +477,9 @@ export default class DeviceCard extends Component {
                         }
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: styles.statusStyle }, status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler })))),
+            React.createElement("div", { style: styles.statusStyle },
+                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler }))),
+                this.renderIndicators()),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body1", style: styles.deviceInfoStyle },
                     this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard },
@@ -444,7 +501,7 @@ export default class DeviceCard extends Component {
                     React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
                             /* ignore */
                         }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,
-                !!(this.props.device.actions?.length || this.props.device.controls?.length) && (React.createElement("div", { style: {
+                !!(this.hasFooterActions() || this.props.device.controls?.length) && (React.createElement("div", { style: {
                         marginTop: 'auto',
                         display: 'flex',
                         gap: 8,

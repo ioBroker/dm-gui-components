@@ -2,6 +2,7 @@ import type { api } from '@iobroker/dm-utils';
 
 export type {
     ActionButton,
+    ActionPlacement,
     ConfigConnectionType,
     ControlBase,
     ControlState,
@@ -9,8 +10,13 @@ export type {
     DeviceId,
     DeviceStatus,
     ErrorResponse,
+    IndicatorColor,
     JsonFormSchema,
     ProgressUpdate,
+    StatusIndicator,
+    StatusIndicatorLevel,
+    ValueOrState,
+    ValueOrStateOrObject,
 } from '@iobroker/dm-utils';
 
 export type ActionBase = api.ActionBase;

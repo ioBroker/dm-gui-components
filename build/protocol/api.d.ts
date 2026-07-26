@@ -1,5 +1,5 @@
 import type { api } from '@iobroker/dm-utils';
-export type { ActionButton, ConfigConnectionType, ControlBase, ControlState, DeviceDetails, DeviceId, DeviceStatus, ErrorResponse, JsonFormSchema, ProgressUpdate, } from '@iobroker/dm-utils';
+export type { ActionButton, ActionPlacement, ConfigConnectionType, ControlBase, ControlState, DeviceDetails, DeviceId, DeviceStatus, ErrorResponse, IndicatorColor, JsonFormSchema, ProgressUpdate, StatusIndicator, StatusIndicatorLevel, ValueOrState, ValueOrStateOrObject, } from '@iobroker/dm-utils';
 export type ActionBase = api.ActionBase;
 export type CommunicationForm = api.CommunicationForm;
 export type DeviceAction = api.DeviceAction;

@@ -13,6 +13,8 @@
     "disconnectedIconTooltip": "Desconectado",
     "enableIconTooltip": "Habilitar dispositivo",
     "filterLabelText": "Filtrar",
+    "indicatorsTitle": "Indicadores",
+    "indicatorsTooltip": "Mostrar ou ocultar indicadores",
     "instanceLabelText": "Instância",
     "instanceNotAlive": "A instância não está ativa",
     "manufacturer": "Fabricante",

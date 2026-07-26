@@ -38,11 +38,13 @@ import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
 import DeviceStatusComponent from './DeviceStatus';
 import JsonConfig from './JsonConfig';
+import { StatusIndicators } from './StatusIndicator';
 import type {
     ActionBase,
     ControlBase,
     ControlState,
     DeviceDetails,
+    DeviceAction,
     DeviceControl,
     DeviceInfo,
     DeviceId,
@@ -122,7 +124,8 @@ const styles: Record<string, any> = {
     },
     statusStyle: {
         padding: '15px 25px 0 15px',
-        height: 41,
+        // The line may grow if the device provides custom indicators, so only the minimum is fixed
+        minHeight: 41,
     },
 };
 
@@ -173,6 +176,8 @@ interface DeviceCardProps {
     onlyBatteryProblem?: boolean;
     /** Device field the text filter applies to. Default `name` */
     filterField?: DeviceFilterField;
+    /** IDs of configurable indicators the user has switched off */
+    hiddenIndicators?: string[];
     /** Reports the resolved model value of this device up to the list (used to build the model filter dropdown) */
     onModel?: (deviceId: DeviceId, model: string | undefined) => void;
 }
@@ -546,14 +551,97 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
         return null;
     }
 
-    renderActions(): JSX.Element[] | null {
-        const actions = this.props.device.actions?.filter(
-            a =>
-                a.id !== ACTIONS.STATUS &&
-                a.id !== ACTIONS.ENABLE_DISABLE &&
-                a.id !== ACTIONS.UPDATE &&
-                a.id !== ACTIONS.BATTERY,
+    /**
+     * IDs of all actions that are not rendered as a normal button in the footer, because they
+     * already have their place in the status line: the reserved actions, the actions with
+     * `placement: 'status'` and the actions referenced by a custom indicator.
+     */
+    private getStatusActionIds(): Set<string> {
+        const ids = new Set<string>([ACTIONS.STATUS, ACTIONS.ENABLE_DISABLE, ACTIONS.UPDATE, ACTIONS.BATTERY]);
+
+        for (const indicator of this.props.device.indicators || []) {
+            if (indicator.actionId) {
+                ids.add(indicator.actionId);
+            }
+        }
+        for (const action of this.props.device.actions || []) {
+            if (action.placement === 'status') {
+                ids.add(action.id);
+            }
+        }
+
+        return ids;
+    }
+
+    /** True if at least one action is left for the button row at the bottom of the card */
+    private hasFooterActions(): boolean {
+        const statusActionIds = this.getStatusActionIds();
+        return !!this.props.device.actions?.some(action => !statusActionIds.has(action.id));
+    }
+
+    /** Resolve how a custom indicator behaves on click by looking up the referenced action */
+    private resolveIndicatorAction = (
+        actionId: string,
+    ): { onClick?: () => void; url?: string; disabled?: boolean } | undefined => {
+        const action = this.props.device.actions?.find(a => a.id === actionId);
+        if (!action) {
+            console.warn(
+                `Indicator of device ${JSON.stringify(this.props.device.id)} references the unknown action "${actionId}"`,
+            );
+            return undefined;
+        }
+
+        if ('url' in action && action.url) {
+            return { url: getTranslation(action.url), disabled: action.disabled };
+        }
+
+        return {
+            onClick: this.props.deviceHandler(this.props.device.id, action),
+            disabled: action.disabled,
+        };
+    };
+
+    /** Custom indicators and the actions that requested to be shown in the status line */
+    renderIndicators(small?: boolean): JSX.Element | null {
+        const reserved: string[] = [ACTIONS.STATUS, ACTIONS.ENABLE_DISABLE, ACTIONS.UPDATE, ACTIONS.BATTERY];
+        const statusActions: DeviceAction[] =
+            this.props.device.actions?.filter(a => a.placement === 'status' && !reserved.includes(a.id)) || [];
+
+        // An indicator switched off by the user is not shown at all. An action referenced by it stays
+        // out of the footer too, as hiding the indicator was an explicit decision of the user.
+        const indicators = this.props.hiddenIndicators?.length
+            ? this.props.device.indicators?.filter(indicator => !this.props.hiddenIndicators!.includes(indicator.id))
+            : this.props.device.indicators;
+
+        if (!indicators?.length && !statusActions.length) {
+            return null;
+        }
+
+        return (
+            <StatusIndicators
+                indicators={indicators}
+                theme={this.props.theme}
+                stateOrObjectHandler={this.stateOrObjectHandler}
+                disabled={!this.props.alive}
+                resolveAction={this.resolveIndicatorAction}
+                style={{ marginTop: small ? 2 : 4 }}
+            >
+                {statusActions.map(action => (
+                    <DeviceActionButton
+                        disabled={!this.props.alive}
+                        key={action.id}
+                        deviceId={this.props.device.id}
+                        action={action}
+                        deviceHandler={this.props.deviceHandler}
+                    />
+                ))}
+            </StatusIndicators>
         );
+    }
+
+    renderActions(): JSX.Element[] | null {
+        const statusActionIds = this.getStatusActionIds();
+        const actions = this.props.device.actions?.filter(a => !statusActionIds.has(a.id));
 
         return actions?.length
             ? actions.map(a => (
@@ -661,6 +749,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             stateOrObjectHandler={this.stateOrObjectHandler}
                         />
                     ))}
+                    {this.renderIndicators(true)}
                 </div>
                 {/* Body */}
                 <div style={styles.bodyStyle}>
@@ -713,7 +802,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         </div>
                     ) : null}
                     {/* Footer */}
-                    {!!(this.props.device.actions?.length || this.props.device.controls?.length) && (
+                    {!!(this.hasFooterActions() || this.props.device.controls?.length) && (
                         <div
                             style={{
                                 marginTop: 'auto',
@@ -863,6 +952,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                             stateOrObjectHandler={this.stateOrObjectHandler}
                         />
                     ))}
+                    {this.renderIndicators()}
                 </div>
                 <div style={styles.bodyStyle}>
                     <Typography
@@ -907,7 +997,7 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         </div>
                     ) : null}
                     {/* Footer */}
-                    {!!(this.props.device.actions?.length || this.props.device.controls?.length) && (
+                    {!!(this.hasFooterActions() || this.props.device.controls?.length) && (
                         <div
                             style={{
                                 marginTop: 'auto',

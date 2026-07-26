@@ -13,6 +13,8 @@
     "disconnectedIconTooltip": "Отключено",
     "enableIconTooltip": "Активировать устройство",
     "filterLabelText": "Фильтр",
+    "indicatorsTitle": "Индикаторы",
+    "indicatorsTooltip": "Индикаторы показать или скрыть",
     "instanceLabelText": "Екземпляр",
     "instanceNotAlive": "Экземпляр не жив",
     "manufacturer": "Производитель",

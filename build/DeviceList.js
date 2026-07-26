@@ -1,11 +1,13 @@
 import React from 'react';
-import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Box, Card, CardActionArea, CardContent, Typography, } from '@mui/material';
-import { ArrowBack, Clear, QuestionMark, Refresh, FilterAlt, FilterAltOff, SystemUpdateAlt, BatteryAlert, } from '@mui/icons-material';
+import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Box, Card, CardActionArea, CardContent, Typography, Menu, Checkbox, ListSubheader, } from '@mui/material';
+import { ArrowBack, Clear, QuestionMark, Refresh, FilterAlt, FilterAltOff, SystemUpdateAlt, BatteryAlert, Tune, } from '@mui/icons-material';
 import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/gui-components';
 import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
-import { getTranslation } from './Utils';
+import { getTranslation, renderIcon } from './Utils';
 import Communication from './Communication';
 import InstanceActionButton from './InstanceActionButton';
+import { StatusIndicators } from './StatusIndicator';
+import { StateOrObjectHandler } from './StateOrObjectHandler';
 import de from './i18n/de.json';
 import en from './i18n/en.json';
 import ru from './i18n/ru.json';
@@ -44,8 +46,11 @@ export default class DeviceList extends Communication {
     /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */
     modelValues = new Map();
     language = I18n.getLanguage();
+    /** Subscriptions for the instance-wide indicators in the toolbar */
+    stateOrObjectHandler;
     constructor(props) {
         super(props);
+        this.stateOrObjectHandler = new StateOrObjectHandler(this.props.socket);
         if (!DeviceList.i18nInitialized) {
             DeviceList.i18nInitialized = true;
             I18n.extendTranslations({
@@ -77,11 +82,17 @@ export default class DeviceList extends Communication {
             onlyBatteryProblem: window.localStorage.getItem('dm_onlyBatteryProblem') === 'true',
             filterField: window.localStorage.getItem('dm_filterField') || 'name',
             modelOptions: [],
+            indicatorVisibility: {},
+            indicatorsAnchor: null,
         };
         if (this.props.selectedInstance === undefined) {
             // Start with the root page that shows all instances as cards
             this.state = { ...this.state, selectedInstance: this.props.instance ?? '' };
         }
+        this.state = {
+            ...this.state,
+            indicatorVisibility: DeviceList.loadIndicatorVisibility(this.state.selectedInstance),
+        };
         this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
     }
@@ -470,6 +481,106 @@ export default class DeviceList extends Communication {
                 color: this.props.theme.palette.text.primary,
             } }, I18n.t('rootInfoText')));
     }
+    /** Key of the stored indicator visibility of one instance */
+    static indicatorStorageKey(instanceId) {
+        return `dm_indicators_${instanceId}`;
+    }
+    /** Read the visibility the user has explicitly chosen for the configurable indicators of an instance */
+    static loadIndicatorVisibility(instanceId) {
+        if (!instanceId) {
+            return {};
+        }
+        try {
+            const stored = window.localStorage.getItem(DeviceList.indicatorStorageKey(instanceId));
+            return stored ? JSON.parse(stored) : {};
+        }
+        catch (error) {
+            console.error(error);
+            return {};
+        }
+    }
+    /**
+     * All configurable indicators of the instance and of the loaded devices, unique by ID.
+     * Indicators with the same ID on different devices are configured together.
+     */
+    getConfigurableIndicators() {
+        const result = [];
+        const seen = new Set();
+        const collect = (indicators) => {
+            for (const indicator of indicators || []) {
+                if (indicator.configurable && !seen.has(indicator.id)) {
+                    seen.add(indicator.id);
+                    result.push(indicator);
+                }
+            }
+        };
+        collect(this.state.instanceInfo?.indicators);
+        for (const device of this.state.devices) {
+            collect(device.indicators);
+        }
+        return result;
+    }
+    /** True if the given configurable indicator is currently shown */
+    isIndicatorVisible(indicator) {
+        if (!indicator.configurable) {
+            return true;
+        }
+        return this.state.indicatorVisibility[indicator.id] ?? indicator.defaultVisible !== false;
+    }
+    /** IDs of the configurable indicators the user has switched off */
+    getHiddenIndicators() {
+        return this.getConfigurableIndicators()
+            .filter(indicator => !this.isIndicatorVisible(indicator))
+            .map(indicator => indicator.id);
+    }
+    toggleIndicator(indicator) {
+        const indicatorVisibility = {
+            ...this.state.indicatorVisibility,
+            [indicator.id]: !this.isIndicatorVisible(indicator),
+        };
+        this.setState({ indicatorVisibility });
+        window.localStorage.setItem(DeviceList.indicatorStorageKey(this.state.selectedInstance), JSON.stringify(indicatorVisibility));
+    }
+    /** The toolbar button that lets the user show or hide the configurable indicators */
+    renderIndicatorSettings() {
+        const configurable = this.getConfigurableIndicators();
+        if (!configurable.length) {
+            return null;
+        }
+        return (React.createElement(React.Fragment, null,
+            React.createElement(Tooltip, { title: getTranslation('indicatorsTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+                React.createElement(IconButton, { size: "small", onClick: e => this.setState({ indicatorsAnchor: e.currentTarget }) },
+                    React.createElement(Tune, null))),
+            React.createElement(Menu, { open: !!this.state.indicatorsAnchor, anchorEl: this.state.indicatorsAnchor, onClose: () => this.setState({ indicatorsAnchor: null }) },
+                React.createElement(ListSubheader, { style: { lineHeight: '32px' } }, getTranslation('indicatorsTitle')),
+                configurable.map(indicator => (React.createElement(MenuItem, { key: indicator.id, onClick: () => this.toggleIndicator(indicator) },
+                    React.createElement(Checkbox, { edge: "start", size: "small", checked: this.isIndicatorVisible(indicator) }),
+                    typeof indicator.icon === 'string' ? (React.createElement("span", { style: { display: 'inline-flex', marginRight: 8 } }, renderIcon(indicator.icon, undefined, true))) : null,
+                    this.getText(indicator.label || indicator.tooltip || indicator.id)))))));
+    }
+    /** Resolve how an instance indicator behaves on click by looking up the referenced instance action */
+    resolveInstanceIndicatorAction = (actionId) => {
+        const action = this.state.instanceInfo?.actions?.find(a => a.id === actionId);
+        if (!action) {
+            console.warn(`Indicator of instance ${this.state.selectedInstance} references unknown action "${actionId}"`);
+            return undefined;
+        }
+        if ('url' in action && action.url) {
+            return { url: getTranslation(action.url), disabled: action.disabled };
+        }
+        return { onClick: this.instanceHandler(action), disabled: action.disabled };
+    };
+    /** Instance actions in the toolbar. An action referenced by an indicator is not rendered twice */
+    renderInstanceActions() {
+        const referenced = new Set((this.state.instanceInfo?.indicators || [])
+            .map(indicator => indicator.actionId)
+            .filter((actionId) => !!actionId));
+        const actions = this.state.instanceInfo?.actions?.filter(action => !referenced.has(action.id));
+        if (!actions?.length) {
+            return null;
+        }
+        return (React.createElement("div", { style: { marginLeft: 20 } }, actions.map(action => (React.createElement(InstanceActionButton, { key: action.id, action: action, instanceHandler: this.instanceHandler })))));
+    }
     renderContent() {
         const emptyStyle = {
             padding: 25,
@@ -482,6 +593,11 @@ export default class DeviceList extends Communication {
         if (this.lastInstance !== this.state.selectedInstance) {
             this.lastInstance = this.state.selectedInstance;
             setTimeout(async () => {
+                // The indicator visibility is stored per instance
+                this.setState({
+                    indicatorVisibility: DeviceList.loadIndicatorVisibility(this.state.selectedInstance),
+                    indicatorsAnchor: null,
+                });
                 if (this.state.selectedInstance) {
                     try {
                         await this.loadAllData();
@@ -564,7 +680,8 @@ export default class DeviceList extends Communication {
                 }
             }
             if (this.state.selectedInstance) {
-                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat, onlyUpdatable: this.state.onlyUpdatable, onlyBatteryProblem: this.state.onlyBatteryProblem, filterField: this.props.embedded ? undefined : this.getEffectiveFilterField(), onModel: this.reportModel })));
+                const hiddenIndicators = this.getHiddenIndicators();
+                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat, onlyUpdatable: this.state.onlyUpdatable, onlyBatteryProblem: this.state.onlyBatteryProblem, filterField: this.props.embedded ? undefined : this.getEffectiveFilterField(), hiddenIndicators: hiddenIndicators, onModel: this.reportModel })));
                 if (this.state.loading) {
                     const skeletons = (this.state.totalDevices ?? list.length + 1) - list.length;
                     for (let i = 0; i < skeletons; i++) {
@@ -619,7 +736,8 @@ export default class DeviceList extends Communication {
                     React.createElement("span", null,
                         React.createElement(IconButton, { onClick: () => this.loadAllData(), disabled: !this.state.alive || this.state.apiVersionError, size: "small" },
                             React.createElement(Refresh, null))))) : null,
-                !this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.actions?.length ? (React.createElement("div", { style: { marginLeft: 20 } }, this.state.instanceInfo.actions.map(action => (React.createElement(InstanceActionButton, { key: action.id, action: action, instanceHandler: this.instanceHandler }))))) : null,
+                !this.state.apiVersionError && this.state.alive && this.renderInstanceActions(),
+                !this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.indicators?.length ? (React.createElement(StatusIndicators, { indicators: this.state.instanceInfo.indicators.filter(indicator => this.isIndicatorVisible(indicator)), theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler, resolveAction: this.resolveInstanceIndicatorAction, defaultColor: "#fff", style: { marginLeft: 20 } })) : null,
                 React.createElement("div", { style: { flexGrow: 1 } }),
                 !this.state.apiVersionError && this.renderGroups(deviceGroups),
                 !this.state.apiVersionError &&
@@ -640,6 +758,7 @@ export default class DeviceList extends Communication {
                             window.localStorage.setItem('dm_onlyBatteryProblem', onlyBatteryProblem ? 'true' : 'false');
                         }, size: "small" },
                         React.createElement(BatteryAlert, null)))) : null,
+                !this.state.apiVersionError && this.state.alive ? this.renderIndicatorSettings() : null,
                 !this.state.apiVersionError && this.state.alive ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
                     React.createElement(FilterAlt, { style: { color: '#fff' } }),
                     this.renderFilterFields(),

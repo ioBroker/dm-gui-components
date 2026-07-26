@@ -27,6 +27,8 @@ interface DeviceCardProps {
     onlyBatteryProblem?: boolean;
     /** Device field the text filter applies to. Default `name` */
     filterField?: DeviceFilterField;
+    /** IDs of configurable indicators the user has switched off */
+    hiddenIndicators?: string[];
     /** Reports the resolved model value of this device up to the list (used to build the model filter dropdown) */
     onModel?: (deviceId: DeviceId, model: string | undefined) => void;
 }
@@ -85,6 +87,18 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     }, parentGroupId?: string): JSX.Element[];
     renderControlDialog(): JSX.Element | null;
     renderControls(): JSX.Element | null;
+    /**
+     * IDs of all actions that are not rendered as a normal button in the footer, because they
+     * already have their place in the status line: the reserved actions, the actions with
+     * `placement: 'status'` and the actions referenced by a custom indicator.
+     */
+    private getStatusActionIds;
+    /** True if at least one action is left for the button row at the bottom of the card */
+    private hasFooterActions;
+    /** Resolve how a custom indicator behaves on click by looking up the referenced action */
+    private resolveIndicatorAction;
+    /** Custom indicators and the actions that requested to be shown in the status line */
+    renderIndicators(small?: boolean): JSX.Element | null;
     renderActions(): JSX.Element[] | null;
     renderSmall(): JSX.Element;
     getCardHeaderStyle(theme: IobTheme, maxWidth?: number): React.CSSProperties;

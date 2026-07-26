@@ -13,6 +13,8 @@
     "disconnectedIconTooltip": "Losgekoppeld",
     "enableIconTooltip": "Apparaat inschakelen",
     "filterLabelText": "Filteren",
+    "indicatorsTitle": "Indicatoren",
+    "indicatorsTooltip": "Indicatoren tonen of verbergen",
     "instanceLabelText": "Voorbeeld",
     "instanceNotAlive": "Instantie leeft niet",
     "manufacturer": "Fabrikant",

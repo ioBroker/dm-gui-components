@@ -13,6 +13,8 @@
     "disconnectedIconTooltip": "Disconnected",
     "enableIconTooltip": "Enable device",
     "filterLabelText": "Filter",
+    "indicatorsTitle": "Indicators",
+    "indicatorsTooltip": "Show or hide indicators",
     "instanceLabelText": "Instance",
     "instanceNotAlive": "Instance is not alive",
     "manufacturer": "Manufacturer",

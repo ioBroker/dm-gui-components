@@ -13,6 +13,9 @@ import {
     CardActionArea,
     CardContent,
     Typography,
+    Menu,
+    Checkbox,
+    ListSubheader,
 } from '@mui/material';
 
 import {
@@ -24,15 +27,18 @@ import {
     FilterAltOff,
     SystemUpdateAlt,
     BatteryAlert,
+    Tune,
 } from '@mui/icons-material';
 
 import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/gui-components';
-import type { DeviceId, DeviceInfo, DeviceStatus, InstanceDetails } from './protocol/api';
+import type { DeviceId, DeviceInfo, DeviceStatus, InstanceDetails, StatusIndicator } from './protocol/api';
 
 import DeviceCard, { DeviceCardSkeleton, type DeviceFilterField } from './DeviceCard';
-import { getTranslation } from './Utils';
+import { getTranslation, renderIcon } from './Utils';
 import Communication, { type CommunicationProps, type CommunicationState } from './Communication';
 import InstanceActionButton from './InstanceActionButton';
+import { StatusIndicators } from './StatusIndicator';
+import { StateOrObjectHandler } from './StateOrObjectHandler';
 
 import de from './i18n/de.json';
 import en from './i18n/en.json';
@@ -92,6 +98,10 @@ interface DeviceListState extends CommunicationState {
     filterField: DeviceFilterField;
     /** Distinct resolved model values across the loaded devices (for the model filter dropdown) */
     modelOptions: string[];
+    /** Visibility of the configurable indicators, as explicitly chosen by the user for this instance */
+    indicatorVisibility: Record<string, boolean>;
+    /** Anchor of the indicator visibility menu */
+    indicatorsAnchor: HTMLElement | null;
 }
 
 /**
@@ -121,8 +131,13 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
     private readonly language: ioBroker.Languages = I18n.getLanguage();
 
+    /** Subscriptions for the instance-wide indicators in the toolbar */
+    private readonly stateOrObjectHandler: StateOrObjectHandler;
+
     constructor(props: DeviceListProps) {
         super(props);
+
+        this.stateOrObjectHandler = new StateOrObjectHandler(this.props.socket);
 
         if (!DeviceList.i18nInitialized) {
             DeviceList.i18nInitialized = true;
@@ -156,12 +171,19 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             onlyBatteryProblem: window.localStorage.getItem('dm_onlyBatteryProblem') === 'true',
             filterField: (window.localStorage.getItem('dm_filterField') as DeviceFilterField) || 'name',
             modelOptions: [],
+            indicatorVisibility: {},
+            indicatorsAnchor: null,
         };
 
         if (this.props.selectedInstance === undefined) {
             // Start with the root page that shows all instances as cards
             this.state = { ...this.state, selectedInstance: this.props.instance ?? '' };
         }
+
+        this.state = {
+            ...this.state,
+            indicatorVisibility: DeviceList.loadIndicatorVisibility(this.state.selectedInstance),
+        };
 
         this.lastInstance = this.state.selectedInstance;
         this.lastTriggerLoad = this.props.triggerLoad || 0;
@@ -768,6 +790,172 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         );
     }
 
+    /** Key of the stored indicator visibility of one instance */
+    private static indicatorStorageKey(instanceId: string): string {
+        return `dm_indicators_${instanceId}`;
+    }
+
+    /** Read the visibility the user has explicitly chosen for the configurable indicators of an instance */
+    private static loadIndicatorVisibility(instanceId: string): Record<string, boolean> {
+        if (!instanceId) {
+            return {};
+        }
+        try {
+            const stored = window.localStorage.getItem(DeviceList.indicatorStorageKey(instanceId));
+            return stored ? (JSON.parse(stored) as Record<string, boolean>) : {};
+        } catch (error) {
+            console.error(error);
+            return {};
+        }
+    }
+
+    /**
+     * All configurable indicators of the instance and of the loaded devices, unique by ID.
+     * Indicators with the same ID on different devices are configured together.
+     */
+    private getConfigurableIndicators(): StatusIndicator[] {
+        const result: StatusIndicator[] = [];
+        const seen = new Set<string>();
+
+        const collect = (indicators?: StatusIndicator[]): void => {
+            for (const indicator of indicators || []) {
+                if (indicator.configurable && !seen.has(indicator.id)) {
+                    seen.add(indicator.id);
+                    result.push(indicator);
+                }
+            }
+        };
+
+        collect(this.state.instanceInfo?.indicators);
+        for (const device of this.state.devices) {
+            collect(device.indicators);
+        }
+
+        return result;
+    }
+
+    /** True if the given configurable indicator is currently shown */
+    private isIndicatorVisible(indicator: StatusIndicator): boolean {
+        if (!indicator.configurable) {
+            return true;
+        }
+        return this.state.indicatorVisibility[indicator.id] ?? indicator.defaultVisible !== false;
+    }
+
+    /** IDs of the configurable indicators the user has switched off */
+    private getHiddenIndicators(): string[] {
+        return this.getConfigurableIndicators()
+            .filter(indicator => !this.isIndicatorVisible(indicator))
+            .map(indicator => indicator.id);
+    }
+
+    private toggleIndicator(indicator: StatusIndicator): void {
+        const indicatorVisibility = {
+            ...this.state.indicatorVisibility,
+            [indicator.id]: !this.isIndicatorVisible(indicator),
+        };
+        this.setState({ indicatorVisibility });
+        window.localStorage.setItem(
+            DeviceList.indicatorStorageKey(this.state.selectedInstance),
+            JSON.stringify(indicatorVisibility),
+        );
+    }
+
+    /** The toolbar button that lets the user show or hide the configurable indicators */
+    renderIndicatorSettings(): JSX.Element | null {
+        const configurable = this.getConfigurableIndicators();
+        if (!configurable.length) {
+            return null;
+        }
+
+        return (
+            <>
+                <Tooltip
+                    title={getTranslation('indicatorsTooltip')}
+                    slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
+                >
+                    <IconButton
+                        size="small"
+                        onClick={e => this.setState({ indicatorsAnchor: e.currentTarget })}
+                    >
+                        <Tune />
+                    </IconButton>
+                </Tooltip>
+                <Menu
+                    open={!!this.state.indicatorsAnchor}
+                    anchorEl={this.state.indicatorsAnchor}
+                    onClose={() => this.setState({ indicatorsAnchor: null })}
+                >
+                    <ListSubheader style={{ lineHeight: '32px' }}>{getTranslation('indicatorsTitle')}</ListSubheader>
+                    {configurable.map(indicator => (
+                        <MenuItem
+                            key={indicator.id}
+                            onClick={() => this.toggleIndicator(indicator)}
+                        >
+                            <Checkbox
+                                edge="start"
+                                size="small"
+                                checked={this.isIndicatorVisible(indicator)}
+                            />
+                            {/* Only a literal icon can be shown here, a state-bound one has no value without a device */}
+                            {typeof indicator.icon === 'string' ? (
+                                <span style={{ display: 'inline-flex', marginRight: 8 }}>
+                                    {renderIcon(indicator.icon, undefined, true)}
+                                </span>
+                            ) : null}
+                            {this.getText(indicator.label || indicator.tooltip || indicator.id)}
+                        </MenuItem>
+                    ))}
+                </Menu>
+            </>
+        );
+    }
+
+    /** Resolve how an instance indicator behaves on click by looking up the referenced instance action */
+    private resolveInstanceIndicatorAction = (
+        actionId: string,
+    ): { onClick?: () => void; url?: string; disabled?: boolean } | undefined => {
+        const action = this.state.instanceInfo?.actions?.find(a => a.id === actionId);
+        if (!action) {
+            console.warn(
+                `Indicator of instance ${this.state.selectedInstance} references unknown action "${actionId}"`,
+            );
+            return undefined;
+        }
+
+        if ('url' in action && action.url) {
+            return { url: getTranslation(action.url), disabled: action.disabled };
+        }
+
+        return { onClick: this.instanceHandler(action), disabled: action.disabled };
+    };
+
+    /** Instance actions in the toolbar. An action referenced by an indicator is not rendered twice */
+    renderInstanceActions(): JSX.Element | null {
+        const referenced = new Set(
+            (this.state.instanceInfo?.indicators || [])
+                .map(indicator => indicator.actionId)
+                .filter((actionId): actionId is string => !!actionId),
+        );
+        const actions = this.state.instanceInfo?.actions?.filter(action => !referenced.has(action.id));
+
+        if (!actions?.length) {
+            return null;
+        }
+
+        return (
+            <div style={{ marginLeft: 20 }}>
+                {actions.map(action => (
+                    <InstanceActionButton
+                        key={action.id}
+                        action={action}
+                        instanceHandler={this.instanceHandler}
+                    />
+                ))}
+            </div>
+        );
+    }
+
     renderContent(): JSX.Element | JSX.Element[] | null {
         const emptyStyle: React.CSSProperties = {
             padding: 25,
@@ -782,6 +970,11 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         if (this.lastInstance !== this.state.selectedInstance) {
             this.lastInstance = this.state.selectedInstance;
             setTimeout(async (): Promise<void> => {
+                // The indicator visibility is stored per instance
+                this.setState({
+                    indicatorVisibility: DeviceList.loadIndicatorVisibility(this.state.selectedInstance),
+                    indicatorsAnchor: null,
+                });
                 if (this.state.selectedInstance) {
                     try {
                         await this.loadAllData();
@@ -871,6 +1064,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             }
 
             if (this.state.selectedInstance) {
+                const hiddenIndicators = this.getHiddenIndicators();
                 list = filteredDevices.map(device => (
                     <DeviceCard
                         key={JSON.stringify(device.id)}
@@ -894,6 +1088,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                         onlyUpdatable={this.state.onlyUpdatable}
                         onlyBatteryProblem={this.state.onlyBatteryProblem}
                         filterField={this.props.embedded ? undefined : this.getEffectiveFilterField()}
+                        hiddenIndicators={hiddenIndicators}
                         onModel={this.reportModel}
                     />
                 ));
@@ -1018,16 +1213,18 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             </span>
                         </Tooltip>
                     ) : null}
-                    {!this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.actions?.length ? (
-                        <div style={{ marginLeft: 20 }}>
-                            {this.state.instanceInfo.actions.map(action => (
-                                <InstanceActionButton
-                                    key={action.id}
-                                    action={action}
-                                    instanceHandler={this.instanceHandler}
-                                />
-                            ))}
-                        </div>
+                    {!this.state.apiVersionError && this.state.alive && this.renderInstanceActions()}
+                    {!this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.indicators?.length ? (
+                        <StatusIndicators
+                            indicators={this.state.instanceInfo.indicators.filter(indicator =>
+                                this.isIndicatorVisible(indicator),
+                            )}
+                            theme={this.props.theme}
+                            stateOrObjectHandler={this.stateOrObjectHandler}
+                            resolveAction={this.resolveInstanceIndicatorAction}
+                            defaultColor="#fff"
+                            style={{ marginLeft: 20 }}
+                        />
                     ) : null}
 
                     <div style={{ flexGrow: 1 }} />
@@ -1076,6 +1273,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             </IconButton>
                         </Tooltip>
                     ) : null}
+                    {!this.state.apiVersionError && this.state.alive ? this.renderIndicatorSettings() : null}
                     {!this.state.apiVersionError && this.state.alive ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <FilterAlt style={{ color: '#fff' }} />

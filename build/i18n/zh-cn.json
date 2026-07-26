@@ -13,6 +13,8 @@
     "disconnectedIconTooltip": "已断开连接",
     "enableIconTooltip": "启用设备",
     "filterLabelText": "筛选",
+    "indicatorsTitle": "指示器",
+    "indicatorsTooltip": "显示或隐藏指示器",
     "instanceLabelText": "实例",
     "instanceNotAlive": "实例不存在",
     "manufacturer": "制造商",

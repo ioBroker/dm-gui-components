@@ -44,6 +44,10 @@ interface DeviceListState extends CommunicationState {
     filterField: DeviceFilterField;
     /** Distinct resolved model values across the loaded devices (for the model filter dropdown) */
     modelOptions: string[];
+    /** Visibility of the configurable indicators, as explicitly chosen by the user for this instance */
+    indicatorVisibility: Record<string, boolean>;
+    /** Anchor of the indicator visibility menu */
+    indicatorsAnchor: HTMLElement | null;
 }
 /**
  * Device List Component
@@ -64,6 +68,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */
     private readonly modelValues;
     private readonly language;
+    /** Subscriptions for the instance-wide indicators in the toolbar */
+    private readonly stateOrObjectHandler;
     constructor(props: DeviceListProps);
     setStateAsync(state: Partial<DeviceListState>): Promise<void>;
     private loadAdapters;
@@ -98,6 +104,26 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     /** The filter value input: a model dropdown for the `model` field, a free-text field otherwise */
     renderFilterValue(): React.JSX.Element;
     renderRootInfo(): React.JSX.Element;
+    /** Key of the stored indicator visibility of one instance */
+    private static indicatorStorageKey;
+    /** Read the visibility the user has explicitly chosen for the configurable indicators of an instance */
+    private static loadIndicatorVisibility;
+    /**
+     * All configurable indicators of the instance and of the loaded devices, unique by ID.
+     * Indicators with the same ID on different devices are configured together.
+     */
+    private getConfigurableIndicators;
+    /** True if the given configurable indicator is currently shown */
+    private isIndicatorVisible;
+    /** IDs of the configurable indicators the user has switched off */
+    private getHiddenIndicators;
+    private toggleIndicator;
+    /** The toolbar button that lets the user show or hide the configurable indicators */
+    renderIndicatorSettings(): JSX.Element | null;
+    /** Resolve how an instance indicator behaves on click by looking up the referenced instance action */
+    private resolveInstanceIndicatorAction;
+    /** Instance actions in the toolbar. An action referenced by an indicator is not rendered twice */
+    renderInstanceActions(): JSX.Element | null;
     renderContent(): JSX.Element | JSX.Element[] | null;
 }
 export {};
