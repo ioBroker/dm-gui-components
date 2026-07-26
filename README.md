@@ -197,7 +197,7 @@ const indicator = {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 10.0.4 (2026-07-26)
 - (@GermanBluefox) Added custom status indicators for devices and instances
 - (@GermanBluefox) Added `placement: 'status'` for device actions
 - (@GermanBluefox) Added user-configurable visibility of indicators
