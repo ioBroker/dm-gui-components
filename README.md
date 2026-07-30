@@ -197,7 +197,7 @@ const indicator = {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 10.0.11 (2026-07-30)
 - (@GermanBluefox) Improvement I18n
 
 ### 10.0.8 (2026-07-27)
