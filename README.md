@@ -197,7 +197,7 @@ const indicator = {
 -->
 
 ## Changelog
-### 10.0.12 (2026-07-31)
+### **WORK IN PROGRESS**
 - (@GermanBluefox) Updated packages
 
 ### 10.0.11 (2026-07-30)
