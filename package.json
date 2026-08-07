@@ -52,10 +52,10 @@
   },
   "homepage": "https://github.com/ioBroker/dm-gui-components#readme",
   "dependencies": {
-    "@iobroker/gui-components": "^10.0.12",
-    "@iobroker/json-config": "^9.0.16",
-    "@mui/icons-material": "^9.2.0",
-    "@mui/material": "^9.2.0"
+    "@iobroker/gui-components": "^10.0.14",
+    "@iobroker/json-config": "^9.0.17",
+    "@mui/icons-material": "^9.3.1",
+    "@mui/material": "^9.3.1"
   },
   "devDependencies": {
     "@alcalzone/release-script": "^5.2.1",
