@@ -197,6 +197,11 @@ const indicator = {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+(@krobipd) Corrected: the object browser stayed empty after closing the object customization dialog if any object was changed while the dialog was open (ioBroker/ioBroker.admin#3391)
+(@krobipd) Changed: `ObjectBrowserClass.subscribes` and `.recordStates` are Sets instead of arrays now
+(@krobipd) Improved: object browser performance on large installations — bursts of object changes cause one tree rebuild instead of several, state-change echoes no longer trigger redraws, subscription bookkeeping is no longer quadratic, and rows outside the viewport skip layout and paint
+
 ### 10.0.18 (2026-08-07)
 - (@GermanBluefox) Updated packages
 
