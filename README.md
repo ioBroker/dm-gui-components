@@ -197,7 +197,7 @@ const indicator = {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 10.0.20 (2026-08-28)
 - (@GermanBluefox) Changed the card layout
 
 ### 10.0.19 (2026-08-27)
