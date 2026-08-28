@@ -397,7 +397,7 @@ export default class DeviceCard extends Component {
                         React.createElement("div", null, this.state.manufacturer))) : null,
                     this.state.model ? (React.createElement(Tooltip, { title: getTranslation('model'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                         React.createElement("div", null, this.state.model))) : null),
-                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 10px' } },
+                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 10px 10px' } },
                     React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
                             /* ignore */
                         }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,
@@ -497,7 +497,7 @@ export default class DeviceCard extends Component {
                             getTranslation('model'),
                             ":"),
                         this.state.model)) : null),
-                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 16px' } },
+                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 16px 16px' } },
                     React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
                             /* ignore */
                         }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,

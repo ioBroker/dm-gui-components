@@ -357,14 +357,22 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                 style={{
                     width: '100%',
                     minWidth: 300,
-                    paddingTop: 8,
+                    // Room for the value label above the thumb. It is drawn ~28px above the track,
+                    // and `overflow: visible` here does not save it: the dialog content around us
+                    // scrolls, so anything reaching above this box is clipped by that ancestor and
+                    // the bubble arrives as a flat grey bar with its digits cut off.
+                    paddingTop: 30,
                     marginBottom: 8,
                     overflow: 'visible',
                     display: 'flex',
+                    // Without this the flex default stretches label and track to different heights
+                    // and their centres no longer line up.
+                    alignItems: 'center',
+                    gap: 8,
                 }}
             >
                 {this.props.control.label ? (
-                    <div style={{ color: this.props.control.color, marginBottom: 4, whiteSpace: 'nowrap' }}>
+                    <div style={{ color: this.props.control.color, whiteSpace: 'nowrap' }}>
                         {getTranslation(this.props.control.label)}
                     </div>
                 ) : null}
@@ -410,6 +418,9 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                 onChange={(e): Promise<void> =>
                     this.sendControl(this.props.deviceId, this.props.control, e.target.value)
                 }
+                // Same reason as in `renderNumber`: a colour input always paints its swatch, so an
+                // unshrunk label would sit on top of it.
+                slotProps={{ inputLabel: { shrink: true } }}
                 variant="standard"
             />
         );
@@ -449,6 +460,10 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                             <InputAdornment position="end">{this.state.unit}</InputAdornment>
                         ) : undefined,
                     },
+                    // A field with an adornment never counts as empty, so the label has to be told
+                    // to shrink — otherwise it stays over the input and is drawn on top of the
+                    // value ("92" and "SET" in the same place).
+                    inputLabel: { shrink: true },
                 }}
                 variant="standard"
             />

@@ -784,7 +784,10 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         ) : null}
                     </Typography>
                     {this.props.device.customInfo ? (
-                        <div style={{ padding: '0 10px' }}>
+                        // The bottom padding is not symmetry for its own sake: the footer below is
+                        // only rendered when the device has actions or controls, so without it the
+                        // last row would sit flush on the card's lower edge.
+                        <div style={{ padding: '0 10px 10px' }}>
                             <JsonConfig
                                 instanceId={this.props.instanceId}
                                 socket={this.props.socket}
@@ -979,7 +982,9 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
                         ) : null}
                     </Typography>
                     {this.props.device.customInfo ? (
-                        <div style={{ padding: '0 16px' }}>
+                        // See the compact card above — the footer that used to provide the gap is
+                        // conditional, so the padding has to be here.
+                        <div style={{ padding: '0 16px 16px' }}>
                             <JsonConfig
                                 instanceId={this.props.instanceId}
                                 socket={this.props.socket}

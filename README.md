@@ -197,6 +197,9 @@ const indicator = {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Changed the card layout
+
 ### 10.0.19 (2026-08-27)
 (@krobipd) Corrected: the object browser stayed empty after closing the object customization dialog if any object was changed while the dialog was open (ioBroker/ioBroker.admin#3391)
 (@krobipd) Changed: `ObjectBrowserClass.subscribes` and `.recordStates` are Sets instead of arrays now

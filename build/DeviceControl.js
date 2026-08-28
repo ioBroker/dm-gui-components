@@ -210,19 +210,30 @@ export default class DeviceControlComponent extends Component {
         return (React.createElement("div", { style: {
                 width: '100%',
                 minWidth: 300,
-                paddingTop: 8,
+                // Room for the value label above the thumb. It is drawn ~28px above the track,
+                // and `overflow: visible` here does not save it: the dialog content around us
+                // scrolls, so anything reaching above this box is clipped by that ancestor and
+                // the bubble arrives as a flat grey bar with its digits cut off.
+                paddingTop: 30,
                 marginBottom: 8,
                 overflow: 'visible',
                 display: 'flex',
+                // Without this the flex default stretches label and track to different heights
+                // and their centres no longer line up.
+                alignItems: 'center',
+                gap: 8,
             } },
-            this.props.control.label ? (React.createElement("div", { style: { color: this.props.control.color, marginBottom: 4, whiteSpace: 'nowrap' } }, getTranslation(this.props.control.label))) : null,
+            this.props.control.label ? (React.createElement("div", { style: { color: this.props.control.color, whiteSpace: 'nowrap' } }, getTranslation(this.props.control.label))) : null,
             this.props.control.icon ? (React.createElement(Icon, { style: { color: this.props.control.color }, src: this.props.control.icon })) : null,
             React.createElement(Slider, { style: { flexGrow: 1 }, value: parseFloat(this.state.value || '0'), min: this.state.min, max: this.state.max, step: this.state.step, valueLabelDisplay: "auto", onChange: (_e, value) => this.sendControl(this.props.deviceId, this.props.control, value) }),
             this.props.control.iconOn ? (React.createElement(Icon, { style: { color: this.props.control.colorOn || this.props.control.color }, src: this.props.control.iconOn })) : null,
             this.props.control.labelOn ? (React.createElement("div", { style: { color: this.props.control.colorOn || this.props.control.color, whiteSpace: 'nowrap' } }, getTranslation(this.props.control.labelOn))) : null));
     }
     renderColor() {
-        return (React.createElement(TextField, { fullWidth: true, label: this.props.control.label ? getTranslation(this.props.control.label) : undefined, type: "color", value: this.state.value, onChange: (e) => this.sendControl(this.props.deviceId, this.props.control, e.target.value), variant: "standard" }));
+        return (React.createElement(TextField, { fullWidth: true, label: this.props.control.label ? getTranslation(this.props.control.label) : undefined, type: "color", value: this.state.value, onChange: (e) => this.sendControl(this.props.deviceId, this.props.control, e.target.value), 
+            // Same reason as in `renderNumber`: a colour input always paints its swatch, so an
+            // unshrunk label would sit on top of it.
+            slotProps: { inputLabel: { shrink: true } }, variant: "standard" }));
     }
     renderText() {
         return (React.createElement(TextField, { fullWidth: true, label: this.props.control.label ? getTranslation(this.props.control.label) : undefined, value: this.state.value, onChange: (e) => this.sendControl(this.props.deviceId, this.props.control, e.target.value), variant: "standard" }));
@@ -238,6 +249,10 @@ export default class DeviceControlComponent extends Component {
                 input: {
                     endAdornment: this.state.unit ? (React.createElement(InputAdornment, { position: "end" }, this.state.unit)) : undefined,
                 },
+                // A field with an adornment never counts as empty, so the label has to be told
+                // to shrink — otherwise it stays over the input and is drawn on top of the
+                // value ("92" and "SET" in the same place).
+                inputLabel: { shrink: true },
             }, variant: "standard" }));
     }
     renderIcon() {

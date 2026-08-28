@@ -54,8 +54,8 @@
   "dependencies": {
     "@iobroker/gui-components": "^10.2.0",
     "@iobroker/json-config": "^9.0.23",
-    "@mui/icons-material": "^9.3.1",
-    "@mui/material": "^9.3.1"
+    "@mui/icons-material": "^9.4.0",
+    "@mui/material": "^9.4.0"
   },
   "devDependencies": {
     "@alcalzone/release-script": "^5.2.1",
