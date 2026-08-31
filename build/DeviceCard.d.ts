@@ -1,13 +1,31 @@
-import React, { Component, type JSX } from 'react';
+import React, { PureComponent, type JSX } from 'react';
 import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/gui-components';
-import type { ActionBase, ControlBase, ControlState, DeviceDetails, DeviceControl, DeviceInfo, DeviceId, ConfigConnectionType } from './protocol/api';
-/** Device fields that can be used for the text filter */
-export type DeviceFilterField = 'name' | 'identifier' | 'manufacturer' | 'model';
+import type { ActionBase, ControlBase, ControlState, DeviceDetails, DeviceControl, DeviceInfo, DeviceId } from './protocol/api';
+import type { StateOrObjectHandler } from './StateOrObjectHandler';
+import type { ResolvedDeviceFields } from './DeviceFields';
+export type { DeviceFilterField } from './DeviceFields';
+/**
+ * Footprint of a card. The list needs it to give a not yet rendered card a placeholder of exactly
+ * the same size, so that neither the layout nor the length of the scrollbar changes.
+ */
+export declare const CARD_WIDTH = 300;
+export declare const CARD_MIN_HEIGHT = 280;
+export declare const CARD_MARGIN = 10;
+export declare const SMALL_CARD_WIDTH = 200;
+export declare const SMALL_CARD_MIN_HEIGHT = 200;
+export declare const SMALL_CARD_MARGIN = 5;
 interface DeviceCardProps {
-    filter?: string;
     id: DeviceId;
     identifierLabel: ioBroker.StringOrTranslated;
     device: DeviceInfo;
+    /**
+     * The device fields resolved by the list. They may be bound to a state or an object, and the
+     * list resolves them centrally: a card that is not rendered cannot resolve its own name, and
+     * the filter of the list needs the values of all devices, not only of the rendered ones.
+     */
+    fields: ResolvedDeviceFields;
+    /** Handler of the whole list, so that identical states/objects are only subscribed once */
+    stateOrObjectHandler: StateOrObjectHandler;
     instanceId: string;
     socket: Connection;
     uploadImagesToInstance?: string;
@@ -15,63 +33,47 @@ interface DeviceCardProps {
     controlHandler: (deviceId: DeviceId, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
     controlStateHandler: (deviceId: DeviceId, control: ControlBase) => () => Promise<ioBroker.State | null>;
     smallCards?: boolean;
+    /** The card is rendered inside a container that already has the footprint of a card */
+    fillContainer?: boolean;
     alive: boolean;
     themeName: ThemeName;
     themeType: ThemeType;
     theme: IobTheme;
     isFloatComma: boolean;
     dateFormat: string;
-    /** If true, only devices that have an available update are shown */
-    onlyUpdatable?: boolean;
-    /** If true, only devices that have a battery problem (empty/low battery) are shown */
-    onlyBatteryProblem?: boolean;
-    /** Device field the text filter applies to. Default `name` */
-    filterField?: DeviceFilterField;
     /** IDs of configurable indicators the user has switched off */
     hiddenIndicators?: string[];
-    /** Reports the resolved model value of this device up to the list (used to build the model filter dropdown) */
-    onModel?: (deviceId: DeviceId, model: string | undefined) => void;
 }
 interface DeviceCardState {
     open: boolean;
     details: DeviceDetails | null;
     data: Record<string, any>;
     showControlDialog: boolean;
-    name?: string;
-    identifier?: string;
-    hasDetails?: boolean;
-    icon?: string;
-    backgroundColor?: string;
-    color?: string;
-    manufacturer?: string;
-    model?: string;
-    connectionType?: ConfigConnectionType;
-    enabled?: boolean;
-    updateAvailable?: boolean;
-    batteryProblem?: boolean;
+    /** Icon read from the file storage or picked by the user. Overrides `fields.icon` */
+    localIcon?: string;
 }
 /**
- * Device Card Component
+ * Device Card Component.
+ *
+ * A `PureComponent`: the list re-renders on every loading step, on every filter change and on every
+ * resolved device value. Without the shallow property comparison all cards would be re-rendered
+ * every time, so all properties the list passes down are kept stable there.
  */
-export default class DeviceCard extends Component<DeviceCardProps, DeviceCardState> {
-    private readonly stateOrObjectHandler;
-    private readonly subscriptions;
-    /** Separate subscription for the nested `device.update.available` field (used for the update indicator and the "only updatable" filter) */
-    private updateAvailableSubscription?;
-    /** Separate subscription for the nested battery status (used for the "battery problem" filter) */
-    private batteryProblemSubscription?;
+export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCardState> {
+    /** True as long as the component is mounted; guards the asynchronous icon loading */
+    private mounted;
     constructor(props: DeviceCardProps);
+    /**
+     * Key of the icon in the file storage, or `null` if the device brings its own icon.
+     *
+     * The file is named after manufacturer and model, both of which may be bound to a state or an
+     * object and therefore arrive only after the first render.
+     */
+    private static iconCacheKey;
     fetchIcon(): Promise<void>;
-    componentDidMount(): Promise<void>;
-    private subscribeUpdateAvailable;
-    /** Extract the battery value (literal or state/object reference) from the device status */
-    private getBatteryItem;
-    /** A battery problem is an explicit battery warning (`false`) or a charge level below 30 % */
-    private static isBatteryProblem;
-    private subscribeBatteryProblem;
-    private addStateOrObjectListener;
-    componentDidUpdate(prevProps: DeviceCardProps, prevState: DeviceCardState): Promise<void>;
-    componentWillUnmount(): Promise<void>;
+    componentDidMount(): void;
+    componentDidUpdate(prevProps: DeviceCardProps): void;
+    componentWillUnmount(): void;
     /**
      * Load the device details
      */
@@ -106,10 +108,9 @@ export default class DeviceCard extends Component<DeviceCardProps, DeviceCardSta
     render(): JSX.Element;
 }
 type DeviceCardSkeletonProps = Pick<DeviceCardProps, 'smallCards' | 'theme'>;
-export declare class DeviceCardSkeleton extends Component<DeviceCardSkeletonProps> {
+export declare class DeviceCardSkeleton extends PureComponent<DeviceCardSkeletonProps> {
     render(): JSX.Element;
     renderSmall(): JSX.Element;
     renderBig(): JSX.Element;
     getCardHeaderStyle(theme: IobTheme, maxWidth?: number): React.CSSProperties;
 }
-export {};

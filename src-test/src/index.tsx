@@ -15,7 +15,6 @@ declare global {
 }
 
 window.adapterName = 'echarts-preview';
-// window.sentryDSN = 'https://cf39325071144219aa91bb3510addcdf@sentry.iobroker.net/95';
 
 console.log(`iobroker.${window.adapterName}@${pack.version}`);
 

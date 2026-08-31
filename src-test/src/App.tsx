@@ -1,36 +1,14 @@
 import React, { Component } from 'react';
 import { ThemeProvider, StyledEngineProvider } from '@mui/material/styles';
 
-import {
-    Breadcrumbs,
-    Link,
-    Toolbar,
-    AppBar,
-    IconButton,
-    Stack,
-    Slider,
-    Snackbar,
-    Menu,
-    MenuItem,
-    Box,
-    LinearProgress,
-} from '@mui/material';
+import { IconButton, Snackbar, CssBaseline } from '@mui/material';
 
 import DeviceList from '../../src/DeviceList';
+import { installMockDeviceManager } from './mockDevices';
+
+import { Close as IconClose } from '@mui/icons-material';
 
 import {
-    ImageNotSupported,
-    KeyboardReturn,
-    Photo,
-    AddPhotoAlternate,
-    ContentCopy,
-    Refresh,
-    ArrowCircleLeft,
-    Close as IconClose,
-} from '@mui/icons-material';
-
-import {
-    Loader,
     I18n,
     Utils,
     Error as DialogError,
@@ -40,22 +18,23 @@ import {
     type IobTheme,
     type ThemeType,
     type ThemeName,
-} from '@iobroker/adapter-react-v5';
+    Loader,
+    ScrollbarStyles,
+} from '@iobroker/gui-components';
 
-import '@iobroker/adapter-react-v5/build/index.css';
-import logo from './assets/echarts.svg';
+import '@iobroker/gui-components/index.css';
 
-import enGlobLang from '@iobroker/adapter-react-v5/i18n/en.json';
-import deGlobLang from '@iobroker/adapter-react-v5/i18n/de.json';
-import ruGlobLang from '@iobroker/adapter-react-v5/i18n/ru.json';
-import ptGlobLang from '@iobroker/adapter-react-v5/i18n/pt.json';
-import nlGlobLang from '@iobroker/adapter-react-v5/i18n/nl.json';
-import frGlobLang from '@iobroker/adapter-react-v5/i18n/fr.json';
-import itGlobLang from '@iobroker/adapter-react-v5/i18n/it.json';
-import esGlobLang from '@iobroker/adapter-react-v5/i18n/es.json';
-import plGlobLang from '@iobroker/adapter-react-v5/i18n/pl.json';
-import ukGlobLang from '@iobroker/adapter-react-v5/i18n/uk.json';
-import zhGlobLang from '@iobroker/adapter-react-v5/i18n/zh-cn.json';
+import enGlobLang from '@iobroker/gui-components/i18n/en.json';
+import deGlobLang from '@iobroker/gui-components/i18n/de.json';
+import ruGlobLang from '@iobroker/gui-components/i18n/ru.json';
+import ptGlobLang from '@iobroker/gui-components/i18n/pt.json';
+import nlGlobLang from '@iobroker/gui-components/i18n/nl.json';
+import frGlobLang from '@iobroker/gui-components/i18n/fr.json';
+import itGlobLang from '@iobroker/gui-components/i18n/it.json';
+import esGlobLang from '@iobroker/gui-components/i18n/es.json';
+import plGlobLang from '@iobroker/gui-components/i18n/pl.json';
+import ukGlobLang from '@iobroker/gui-components/i18n/uk.json';
+import zhGlobLang from '@iobroker/gui-components/i18n/zh-cn.json';
 
 const styles: Record<string, any> = {
     root: {
@@ -84,7 +63,7 @@ interface AppState {
     errorText: string | null;
 }
 
-class App extends Component<object, AppState> {
+export default class App extends Component<object, AppState> {
     private adminCorrectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     private readonly socket: Connection;
@@ -126,9 +105,9 @@ class App extends Component<object, AppState> {
             'zh-cn': zhGlobLang,
         };
 
-        I18n.setTranslations(translations);
+        I18n.extendTranslations(translations);
 
-        if (window.socketUrl && window.socketUrl.startsWith(':')) {
+        if (window.socketUrl?.startsWith(':')) {
             window.socketUrl = `${window.location.protocol}//${window.location.hostname}${window.socketUrl}`;
         }
 
@@ -150,7 +129,7 @@ class App extends Component<object, AppState> {
                     this.setState({ connected: true });
                 }
             },
-            onReady: async () => {
+            onReady: (): void => {
                 if (this.adminCorrectTimeout) {
                     clearTimeout(this.adminCorrectTimeout);
                     this.adminCorrectTimeout = null;
@@ -163,6 +142,13 @@ class App extends Component<object, AppState> {
                 this.showError(err);
             },
         });
+
+        // `?mock=<count>` replaces the device manager backend with synthetic devices, to test the
+        // list with a device count no adapter on a development machine provides
+        const mockCount = parseInt(new URLSearchParams(window.location.search).get('mock') || '', 10);
+        if (mockCount > 0) {
+            installMockDeviceManager(this.socket, mockCount);
+        }
     }
 
     /**
@@ -242,7 +228,11 @@ class App extends Component<object, AppState> {
                 open={true}
                 autoHideDuration={6000}
                 onClose={() => this.setState({ toast: '' })}
-                ContentProps={{ 'aria-describedby': 'message-id' }}
+                slotProps={{
+                    content: {
+                        'aria-describedby': 'message-id',
+                    },
+                }}
                 message={<span id="message-id">{this.state.toast}</span>}
                 action={[
                     <IconButton
@@ -264,6 +254,7 @@ class App extends Component<object, AppState> {
             return (
                 <StyledEngineProvider injectFirst>
                     <ThemeProvider theme={this.state.theme}>
+                        <CssBaseline />
                         <Loader themeType={this.state.themeType} />
                     </ThemeProvider>
                 </StyledEngineProvider>
@@ -273,6 +264,8 @@ class App extends Component<object, AppState> {
         return (
             <StyledEngineProvider injectFirst>
                 <ThemeProvider theme={this.state.theme}>
+                    <CssBaseline />
+                    <ScrollbarStyles theme={this.state.theme} />
                     <div style={styles.root}>
                         <DeviceList
                             socket={this.socket}
@@ -290,5 +283,3 @@ class App extends Component<object, AppState> {
         );
     }
 }
-
-export default App;

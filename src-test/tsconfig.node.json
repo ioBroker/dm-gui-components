@@ -1,0 +1,14 @@
+{
+    // The vite config runs in node, not in the browser - it needs other libs and types than the app.
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "moduleResolution": "Bundler",
+        "module": "esnext",
+        "target": "esnext",
+        "lib": ["es2023"],
+        "types": ["node"],
+        "noEmit": true,
+        "strict": true
+    },
+    "include": ["./vite.config.mts"]
+}

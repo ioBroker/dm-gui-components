@@ -2,9 +2,28 @@ import { useEffect, useState } from 'react';
 export function useStateOrObject(item, stateOrObjectHandler) {
     const [value, setValue] = useState();
     useEffect(() => {
-        let subscription = undefined;
-        void stateOrObjectHandler.addListener(item, value => setValue(value)).then(sub => (subscription = sub));
-        return () => void subscription?.unsubscribe();
+        // `addListener` is asynchronous. If the effect is cleaned up before it settles, `subscription`
+        // is still undefined and the plain `subscription?.unsubscribe()` of a naive cleanup would leak
+        // the socket subscription and keep calling `setValue` on an unmounted component. The flag makes
+        // both cases safe: the value is dropped and the late subscription is unsubscribed at once.
+        let cancelled = false;
+        let subscription;
+        void stateOrObjectHandler
+            .addListener(item, newValue => {
+            if (!cancelled) {
+                setValue(newValue);
+            }
+        })
+            .then(sub => {
+            subscription = sub;
+            if (cancelled) {
+                void sub.unsubscribe();
+            }
+        });
+        return () => {
+            cancelled = true;
+            void subscription?.unsubscribe();
+        };
     }, [stateOrObjectHandler, item]);
     return value;
 }

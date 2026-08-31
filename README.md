@@ -197,6 +197,13 @@ const indicator = {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Improved: device list performance with many devices (ioBroker/ioBroker.matter#864) — cards are only rendered while they are near the viewport, a reload no longer unmounts and remounts the whole list, and a second load requested while one is running is no longer executed in parallel
+- (@GermanBluefox) Changed: filtering moved from the cards into the list, so filtered out devices no longer stay mounted with all their subscriptions
+- (@GermanBluefox) Changed: the device fields that may be bound to a state or an object are resolved centrally through one shared subscription handler instead of one handler per card
+- (@GermanBluefox) Corrected: subscriptions leaked if a component was unmounted while `addListener` was still pending
+- (@GermanBluefox) Corrected: the device list triggered reloads and state changes as a side effect of `render()`
+
 ### 10.0.20 (2026-08-28)
 - (@GermanBluefox) Changed the card layout
 

@@ -13,7 +13,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Lint:** `npm run lint`
 - **Release:** `npm run release-patch`, `npm run release-minor`, `npm run release-major` (uses `@alcalzone/release-script`; the release config runs `npm run build` before commit)
 
-There are no tests in this project.
+There are no automated tests in this project.
+
+### Manual testing
+
+`src-test/` is a small vite app that renders `DeviceList` from `../../src` against a running ioBroker
+admin (expected on `localhost:8081`). In that directory: `npm run start` (dev server on port 3000),
+`npm run build`, `npm run check-ts`, `npm run lint`. The vite config is `vite.config.mts`, type
+checked by `tsconfig.node.json`; the app itself by `tsconfig.json`.
+
+Add `?mock=<count>` to the URL (e.g. `http://localhost:3000/?mock=120`) to replace the device manager
+backend with that many synthetic devices (`src-test/src/mockDevices.ts`). No adapter on a development
+machine has the few hundred devices needed to check the lazy rendering of the list, the filters or an
+incremental load, so this is the way to test those.
 
 ## Architecture
 
@@ -47,7 +59,7 @@ DmProtocolBase (abstract)       src/protocol/DmProtocolBase.ts
 ### Key Patterns
 
 - **Class components** throughout (not functional). `Communication` and `DeviceList` are class-based with typed state/props generics.
-- **`@iobroker/adapter-react-v5`** provides `Connection` (socket), `I18n`, `Icon`, theme types, and `DeviceTypeIcon`.
+- **`@iobroker/gui-components`** provides `Connection` (socket), `I18n`, `Icon`, theme types, and `DeviceTypeIcon`.
 - **`@iobroker/json-config`** renders dynamic forms from JSON schemas via `JsonConfigComponent`, wrapped in `src/JsonConfig.tsx`.
 - **i18n**: 11 language files in `src/i18n/`. Translations are loaded once via `I18n.extendTranslations()` in `DeviceList` constructor. The `getTranslation()` helper in `Utils.tsx` handles `StringOrTranslated` objects.
 - **`StateOrObjectHandler`** (`src/StateOrObjectHandler.ts`) manages subscriptions to ioBroker states and objects with ref-counted shared subscriptions and a `useStateOrObject` hook (`src/hooks.ts`).

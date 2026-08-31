@@ -411,3 +411,18 @@ export function getTranslation(
 
     return noTranslation ? text : I18n.t(text);
 }
+
+/**
+ * Resolve a possibly translated text into the current language.
+ *
+ * Unlike `getTranslation`, a plain string is returned untouched: device names, models and
+ * manufacturers are data, not keys of the i18n dictionary.
+ */
+export function getText(text: ioBroker.StringOrTranslated | undefined): string | undefined {
+    if (typeof text === 'object') {
+        language ||= I18n.getLanguage();
+        return text[language] || text.en;
+    }
+
+    return text;
+}

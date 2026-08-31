@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react';
 import type { DeviceId, DeviceInfo, InstanceDetails } from './protocol/api';
-import { type DeviceFilterField } from './DeviceCard';
 import Communication, { type CommunicationProps, type CommunicationState } from './Communication';
+import { type DeviceFilterField } from './DeviceFields';
 interface DeviceListProps extends CommunicationProps {
     /** Instance to upload images to, like `adapterName.X` */
     uploadImagesToInstance?: string;
@@ -48,6 +48,8 @@ interface DeviceListState extends CommunicationState {
     indicatorVisibility: Record<string, boolean>;
     /** Anchor of the indicator visibility menu */
     indicatorsAnchor: HTMLElement | null;
+    /** Increased whenever a device field bound to a state or an object changed, to trigger a re-render */
+    fieldsVersion: number;
 }
 /**
  * Device List Component
@@ -65,11 +67,28 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     private alive;
     private lastTriggerLoad;
     private filterTimeout;
-    /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */
-    private readonly modelValues;
     private readonly language;
-    /** Subscriptions for the instance-wide indicators in the toolbar */
+    /**
+     * One handler for the toolbar indicators and for all cards, so that several devices referring to
+     * the same object or state share a single subscription on the socket.
+     */
     private readonly stateOrObjectHandler;
+    /** Resolves the device fields that may be bound to a state or an object (name, model, ...) */
+    private readonly fieldsResolver;
+    /** One `IntersectionObserver` for all cards: only what is near the viewport is really rendered */
+    private readonly lazyObserver;
+    /** The scrolling container of the card list; it is the root of `lazyObserver` */
+    private readonly containerRef;
+    /** A load is running. A second one must not tear down the same list in parallel */
+    private loadingDevices;
+    /** A load was requested while another one was still running */
+    private reloadRequested;
+    /** Devices of the running initial load that are not published to the state yet */
+    private pendingDevices;
+    private pendingTotal;
+    private flushTimer;
+    /** Memoized result of `getHiddenIndicators`, so that all cards keep getting the same array */
+    private hiddenIndicatorsCache;
     constructor(props: DeviceListProps);
     setStateAsync(state: Partial<DeviceListState>): Promise<void>;
     private loadAdapters;
@@ -78,11 +97,38 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     private refreshInstanceList;
     componentDidMount(): Promise<void>;
     componentWillUnmount(): void;
+    /**
+     * The side effects that used to be triggered from `render()`. A render must not have any, and
+     * the `setTimeout` there was executed on every single render.
+     */
+    componentDidUpdate(): void;
+    /**
+     * A value bound to a state or an object arrived. The cards are `PureComponent`s and receive the
+     * values through their `fields` property, so the list only has to trigger a re-render.
+     */
+    private onFieldsChanged;
+    /**
+     * Publish a new device list.
+     *
+     * The resolver is updated *before* the state, because it resolves literal values synchronously -
+     * the cards and the filter therefore already have their values on the very first render.
+     */
+    private applyDevices;
+    /**
+     * Publish the devices loaded so far, but at most every 100 ms: a fast backend delivers a dozen
+     * batches in a row, and every single one of them would otherwise re-render the complete list.
+     */
+    private scheduleDeviceFlush;
+    private cancelDeviceFlush;
     aliveHandler: ioBroker.StateChangeHandler;
     loadAllData(): Promise<void>;
     loadInstanceInfos(): Promise<InstanceDetails>;
     /**
-     * Load devices
+     * Load devices.
+     *
+     * The list is deliberately *not* emptied first: as long as the keys stay the same React keeps the
+     * existing cards, so a reload - the matter adapter triggers one on every `updateController`
+     * message - no longer unmounts and remounts a few hundred cards with all their subscriptions.
      */
     loadDeviceList(): void;
     updateDevice(update: DeviceInfo): void;
@@ -96,8 +142,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         icon?: React.JSX.Element | string | null;
     }[] | undefined): React.JSX.Element | null;
     renderInstanceCards(): React.JSX.Element[];
-    /** Collects the resolved model values reported by the cards and keeps the distinct, sorted list in state */
-    private reportModel;
+    /**
+     * Apply the text filter and the "only updatable" / "only battery problem" filters.
+     *
+     * This used to be done by every card for itself. A filtered out card stayed mounted with all its
+     * subscriptions and only rendered nothing, so filtering did not reduce the load at all - and a
+     * card that is not rendered cannot filter itself in the first place.
+     */
+    private filterDevices;
     /** The selected filter field, falling back to `name` if the stored field is not available (e.g. no models found) */
     private getEffectiveFilterField;
     renderFilterFields(): React.JSX.Element | null;

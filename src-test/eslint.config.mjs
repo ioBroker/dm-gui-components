@@ -5,8 +5,10 @@ export default [
     {
         languageOptions: {
             parserOptions: {
-                allowDefaultProject: {
-                    allow: ['*.js', '*.mjs'],
+                projectService: {
+                    // vite.config.mts is type checked by tsconfig.node.json, which the project
+                    // service does not find on its own - it only looks for a tsconfig.json
+                    allowDefaultProject: ['*.js', '*.mjs', '*.mts'],
                 },
                 tsconfigRootDir: import.meta.dirname,
             },

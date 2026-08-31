@@ -1,13 +1,15 @@
 import React from 'react';
-import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Box, Card, CardActionArea, CardContent, Typography, Menu, Checkbox, ListSubheader, } from '@mui/material';
+import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Card, CardActionArea, CardContent, Typography, Menu, Checkbox, ListSubheader, } from '@mui/material';
 import { ArrowBack, Clear, QuestionMark, Refresh, FilterAlt, FilterAltOff, SystemUpdateAlt, BatteryAlert, Tune, } from '@mui/icons-material';
 import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/gui-components';
-import DeviceCard, { DeviceCardSkeleton } from './DeviceCard';
+import DeviceCard, { DeviceCardSkeleton, CARD_WIDTH, CARD_MIN_HEIGHT, CARD_MARGIN, SMALL_CARD_WIDTH, SMALL_CARD_MIN_HEIGHT, SMALL_CARD_MARGIN, } from './DeviceCard';
 import { getTranslation, renderIcon } from './Utils';
 import Communication from './Communication';
 import InstanceActionButton from './InstanceActionButton';
 import { StatusIndicators } from './StatusIndicator';
 import { StateOrObjectHandler } from './StateOrObjectHandler';
+import { DeviceFieldsResolver } from './DeviceFields';
+import { LazyRender, LazyRenderObserver } from './LazyRender';
 import de from './i18n/de.json';
 import en from './i18n/en.json';
 import ru from './i18n/ru.json';
@@ -19,6 +21,25 @@ import es from './i18n/es.json';
 import pl from './i18n/pl.json';
 import uk from './i18n/uk.json';
 import zhCn from './i18n/zh-cn.json';
+/**
+ * The key of a device. It is used as React key, for the resolved fields and for the filter, so it is
+ * computed on every render for every device. `JSON.stringify` adds up noticeably with a few hundred
+ * devices, therefore the result is cached per device object.
+ */
+const deviceKeys = new WeakMap();
+function deviceKey(device) {
+    let key = deviceKeys.get(device);
+    if (key === undefined) {
+        key = JSON.stringify(device.id);
+        deviceKeys.set(device, key);
+    }
+    return key;
+}
+/**
+ * How many skeletons are shown at most while loading. They stand for devices that are not there yet,
+ * and a few hundred pulsing placeholders cost more than the cards they are waiting for.
+ */
+const MAX_SKELETONS = 12;
 /** Returns true if any of the device status objects carries a battery value */
 function hasBatteryStatus(status) {
     if (!status || typeof status === 'string') {
@@ -43,14 +64,32 @@ export default class DeviceList extends Communication {
     alive = null;
     lastTriggerLoad = 0;
     filterTimeout = null;
-    /** Resolved model value per device (stringified id -> model), reported by the cards to build the model dropdown */
-    modelValues = new Map();
     language = I18n.getLanguage();
-    /** Subscriptions for the instance-wide indicators in the toolbar */
+    /**
+     * One handler for the toolbar indicators and for all cards, so that several devices referring to
+     * the same object or state share a single subscription on the socket.
+     */
     stateOrObjectHandler;
+    /** Resolves the device fields that may be bound to a state or an object (name, model, ...) */
+    fieldsResolver;
+    /** One `IntersectionObserver` for all cards: only what is near the viewport is really rendered */
+    lazyObserver = new LazyRenderObserver();
+    /** The scrolling container of the card list; it is the root of `lazyObserver` */
+    containerRef = React.createRef();
+    /** A load is running. A second one must not tear down the same list in parallel */
+    loadingDevices = false;
+    /** A load was requested while another one was still running */
+    reloadRequested = false;
+    /** Devices of the running initial load that are not published to the state yet */
+    pendingDevices = null;
+    pendingTotal;
+    flushTimer = null;
+    /** Memoized result of `getHiddenIndicators`, so that all cards keep getting the same array */
+    hiddenIndicatorsCache = null;
     constructor(props) {
         super(props);
         this.stateOrObjectHandler = new StateOrObjectHandler(this.props.socket);
+        this.fieldsResolver = new DeviceFieldsResolver(this.stateOrObjectHandler, this.onFieldsChanged);
         if (!DeviceList.i18nInitialized) {
             DeviceList.i18nInitialized = true;
             I18n.extendTranslations({
@@ -84,6 +123,7 @@ export default class DeviceList extends Communication {
             modelOptions: [],
             indicatorVisibility: {},
             indicatorsAnchor: null,
+            fieldsVersion: 0,
         };
         if (this.props.selectedInstance === undefined) {
             // Start with the root page that shows all instances as cards
@@ -153,9 +193,8 @@ export default class DeviceList extends Communication {
         window.localStorage.removeItem('dmSelectedInstance');
         this.props.onInstanceChanged?.('');
         this.alive = null;
-        this.setState({
+        this.applyDevices([], {
             selectedInstance: '',
-            devices: [],
             totalDevices: undefined,
             instanceInfo: null,
             alive: null,
@@ -169,6 +208,7 @@ export default class DeviceList extends Communication {
         this.setState({ dmInstances: null }, () => this.loadAdapters().catch(console.error));
     }
     async componentDidMount() {
+        this.lazyObserver.setRoot(this.containerRef.current);
         let alive = false;
         // If an instance selector must be shown
         if (this.props.selectedInstance === undefined) {
@@ -207,9 +247,97 @@ export default class DeviceList extends Communication {
         }
     }
     componentWillUnmount() {
+        super.componentWillUnmount();
+        this.cancelDeviceFlush();
+        this.fieldsResolver.destroy();
+        this.stateOrObjectHandler.destroy();
+        this.lazyObserver.destroy();
+        if (this.filterTimeout) {
+            clearTimeout(this.filterTimeout);
+            this.filterTimeout = null;
+        }
         if (this.state.selectedInstance) {
             this.props.socket.unsubscribeState(`system.adapter.${this.state.selectedInstance}.alive`, this.aliveHandler);
         }
+    }
+    /**
+     * The side effects that used to be triggered from `render()`. A render must not have any, and
+     * the `setTimeout` there was executed on every single render.
+     */
+    componentDidUpdate() {
+        // The scrolling container only exists after the first render
+        this.lazyObserver.setRoot(this.containerRef.current);
+        if ((this.props.triggerLoad || 0) !== this.lastTriggerLoad) {
+            this.lastTriggerLoad = this.props.triggerLoad || 0;
+            this.loadDeviceList();
+        }
+        // if instance changed
+        if (this.lastInstance !== this.state.selectedInstance) {
+            this.lastInstance = this.state.selectedInstance;
+            // The indicator visibility is stored per instance
+            this.setState({
+                indicatorVisibility: DeviceList.loadIndicatorVisibility(this.state.selectedInstance),
+                indicatorsAnchor: null,
+            });
+            if (this.state.selectedInstance) {
+                this.loadAllData().catch(error => console.error(error));
+            }
+            else {
+                this.loadDeviceList();
+            }
+        }
+        if (this.props.selectedInstance && this.props.selectedInstance !== this.state.selectedInstance) {
+            this.setState({ selectedInstance: this.props.selectedInstance });
+        }
+    }
+    /**
+     * A value bound to a state or an object arrived. The cards are `PureComponent`s and receive the
+     * values through their `fields` property, so the list only has to trigger a re-render.
+     */
+    onFieldsChanged = () => {
+        const modelOptions = this.fieldsResolver.getModels();
+        const modelsChanged = modelOptions.length !== this.state.modelOptions.length ||
+            modelOptions.some((model, i) => model !== this.state.modelOptions[i]);
+        this.setState({
+            fieldsVersion: this.state.fieldsVersion + 1,
+            modelOptions: modelsChanged ? modelOptions : this.state.modelOptions,
+        });
+    };
+    /**
+     * Publish a new device list.
+     *
+     * The resolver is updated *before* the state, because it resolves literal values synchronously -
+     * the cards and the filter therefore already have their values on the very first render.
+     */
+    applyDevices(devices, state) {
+        this.fieldsResolver.setDevices(devices.map(device => ({ key: deviceKey(device), device })));
+        this.setState({ ...state, devices });
+    }
+    /**
+     * Publish the devices loaded so far, but at most every 100 ms: a fast backend delivers a dozen
+     * batches in a row, and every single one of them would otherwise re-render the complete list.
+     */
+    scheduleDeviceFlush(devices, total) {
+        this.pendingDevices = devices;
+        this.pendingTotal = total;
+        if (this.flushTimer) {
+            return;
+        }
+        this.flushTimer = setTimeout(() => {
+            this.flushTimer = null;
+            const pending = this.pendingDevices;
+            if (pending) {
+                this.pendingDevices = null;
+                this.applyDevices(pending, { loading: true, totalDevices: this.pendingTotal });
+            }
+        }, 100);
+    }
+    cancelDeviceFlush() {
+        if (this.flushTimer) {
+            clearTimeout(this.flushTimer);
+            this.flushTimer = null;
+        }
+        this.pendingDevices = null;
     }
     aliveHandler = (id, state) => {
         if (this.state.selectedInstance && id === `system.adapter.${this.state.selectedInstance}.alive`) {
@@ -237,9 +365,20 @@ export default class DeviceList extends Communication {
         return new Promise(resolve => this.setState({ instanceInfo, apiVersionError: !['v1', 'v2', 'v3'].includes(instanceInfo.apiVersion) }, () => resolve(instanceInfo)));
     }
     /**
-     * Load devices
+     * Load devices.
+     *
+     * The list is deliberately *not* emptied first: as long as the keys stay the same React keeps the
+     * existing cards, so a reload - the matter adapter triggers one on every `updateController`
+     * message - no longer unmounts and remounts a few hundred cards with all their subscriptions.
      */
     loadDeviceList() {
+        if (this.loadingDevices) {
+            // Remember the request and repeat the load once the running one has finished, instead of
+            // running two loads over the same list at the same time.
+            this.reloadRequested = true;
+            return;
+        }
+        this.loadingDevices = true;
         this.setState({ loading: true }, async () => {
             console.log(`Loading devices for ${this.state.selectedInstance}...`);
             let alive = this.alive;
@@ -268,14 +407,20 @@ export default class DeviceList extends Communication {
                     alive = false;
                 }
             }
+            // Only the very first load shows the devices step by step (with skeletons for the ones
+            // that are still missing). A reload keeps the current list until the new one is complete,
+            // so the already rendered cards survive.
+            const incremental = !this.state.devices.length;
             let devices = [];
             try {
                 this.alive = alive;
-                this.setState({ devices, loading: !!alive, alive });
+                this.setState({ loading: !!alive, alive });
                 if (alive) {
                     await this.loadDevices((batch, total) => {
                         devices = devices.concat(batch);
-                        this.setState({ devices, loading: true, totalDevices: total });
+                        if (incremental) {
+                            this.scheduleDeviceFlush(devices, total);
+                        }
                         console.log(`Loaded ${devices.length} of ${total} devices...`);
                     });
                 }
@@ -284,21 +429,27 @@ export default class DeviceList extends Communication {
                 console.error(error);
                 devices = [];
             }
-            this.setState({ devices, loading: false, totalDevices: devices.length });
+            this.cancelDeviceFlush();
+            this.applyDevices(devices, { loading: false, totalDevices: devices.length });
             console.log(`Loaded ${devices.length} devices for ${this.state.selectedInstance}`);
+            this.loadingDevices = false;
+            if (this.reloadRequested) {
+                this.reloadRequested = false;
+                setTimeout(() => this.loadDeviceList(), 0);
+            }
         });
     }
     updateDevice(update) {
         const updateId = JSON.stringify(update.id);
-        this.setState({ devices: this.state.devices.map(d => (JSON.stringify(d.id) === updateId ? update : d)) });
+        this.applyDevices(this.state.devices.map(d => (deviceKey(d) === updateId ? update : d)), {});
     }
     deleteDevice(deviceId) {
         const deleteId = JSON.stringify(deviceId);
-        const devices = this.state.devices.filter(d => JSON.stringify(d.id) !== deleteId);
+        const devices = this.state.devices.filter(d => deviceKey(d) !== deleteId);
         const totalDevices = this.state.totalDevices && devices.length < this.state.devices.length
             ? this.state.totalDevices - 1
             : undefined;
-        this.setState({ devices, totalDevices });
+        this.applyDevices(devices, { totalDevices });
     }
     getText(text) {
         if (typeof text === 'object') {
@@ -388,27 +539,38 @@ export default class DeviceList extends Communication {
                         info.title ? (React.createElement(Typography, { variant: "body2", color: "textSecondary", style: { textAlign: 'center' } }, info.title)) : null))));
         });
     }
-    /** Collects the resolved model values reported by the cards and keeps the distinct, sorted list in state */
-    reportModel = (deviceId, model) => {
-        const key = JSON.stringify(deviceId);
-        if (model) {
-            if (this.modelValues.get(key) === model) {
-                return;
+    /**
+     * Apply the text filter and the "only updatable" / "only battery problem" filters.
+     *
+     * This used to be done by every card for itself. A filtered out card stayed mounted with all its
+     * subscriptions and only rendered nothing, so filtering did not reduce the load at all - and a
+     * card that is not rendered cannot filter itself in the first place.
+     */
+    filterDevices(devices) {
+        const filter = (this.props.embedded ? this.props.filter : this.state.filter)?.toLowerCase();
+        const field = this.props.embedded ? 'name' : this.getEffectiveFilterField();
+        const onlyUpdatable = !this.props.embedded && this.state.onlyUpdatable;
+        const onlyBatteryProblem = !this.props.embedded && this.state.onlyBatteryProblem;
+        if (!filter && !onlyUpdatable && !onlyBatteryProblem) {
+            return devices;
+        }
+        return devices.filter(device => {
+            const fields = this.fieldsResolver.getValues(deviceKey(device));
+            if (filter &&
+                !String(fields[field] ?? '')
+                    .toLowerCase()
+                    .includes(filter)) {
+                return false;
             }
-            this.modelValues.set(key, model);
-        }
-        else if (this.modelValues.has(key)) {
-            this.modelValues.delete(key);
-        }
-        else {
-            return;
-        }
-        const modelOptions = Array.from(new Set(this.modelValues.values())).sort();
-        if (modelOptions.length !== this.state.modelOptions.length ||
-            modelOptions.some((model, i) => model !== this.state.modelOptions[i])) {
-            this.setState({ modelOptions });
-        }
-    };
+            if (onlyUpdatable && !fields.updateAvailable) {
+                return false;
+            }
+            if (onlyBatteryProblem && !fields.batteryProblem) {
+                return false;
+            }
+            return true;
+        });
+    }
     /** The selected filter field, falling back to `name` if the stored field is not available (e.g. no models found) */
     getEffectiveFilterField() {
         const field = this.state.filterField;
@@ -529,9 +691,16 @@ export default class DeviceList extends Communication {
     }
     /** IDs of the configurable indicators the user has switched off */
     getHiddenIndicators() {
-        return this.getConfigurableIndicators()
+        const hidden = this.getConfigurableIndicators()
             .filter(indicator => !this.isIndicatorVisible(indicator))
             .map(indicator => indicator.id);
+        // The array is handed to every card. A new array on every render would defeat the shallow
+        // property comparison of `DeviceCard`.
+        const key = hidden.join(',');
+        if (!this.hiddenIndicatorsCache || this.hiddenIndicatorsCache.key !== key) {
+            this.hiddenIndicatorsCache = { key, value: hidden };
+        }
+        return this.hiddenIndicatorsCache.value;
     }
     toggleIndicator(indicator) {
         const indicatorVisibility = {
@@ -585,35 +754,6 @@ export default class DeviceList extends Communication {
         const emptyStyle = {
             padding: 25,
         };
-        if ((this.props.triggerLoad || 0) !== this.lastTriggerLoad) {
-            this.lastTriggerLoad = this.props.triggerLoad || 0;
-            setTimeout(() => this.loadDeviceList(), 50);
-        }
-        // if instance changed
-        if (this.lastInstance !== this.state.selectedInstance) {
-            this.lastInstance = this.state.selectedInstance;
-            setTimeout(async () => {
-                // The indicator visibility is stored per instance
-                this.setState({
-                    indicatorVisibility: DeviceList.loadIndicatorVisibility(this.state.selectedInstance),
-                    indicatorsAnchor: null,
-                });
-                if (this.state.selectedInstance) {
-                    try {
-                        await this.loadAllData();
-                    }
-                    catch (error) {
-                        console.error(error);
-                    }
-                }
-                else {
-                    this.loadDeviceList();
-                }
-            }, 50);
-        }
-        if (this.props.selectedInstance && this.props.selectedInstance !== this.state.selectedInstance) {
-            setTimeout(() => this.setState({ selectedInstance: this.props.selectedInstance }), 50);
-        }
         const deviceGroups = [];
         const showRootPage = !this.props.embedded && this.props.selectedInstance === undefined && !this.state.selectedInstance;
         let list;
@@ -680,21 +820,37 @@ export default class DeviceList extends Communication {
                 }
             }
             if (this.state.selectedInstance) {
+                const selectedInstance = this.state.selectedInstance;
                 const hiddenIndicators = this.getHiddenIndicators();
-                list = filteredDevices.map(device => (React.createElement(DeviceCard, { key: JSON.stringify(device.id), smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, filter: this.props.embedded ? this.props.filter : this.state.filter, alive: !!this.state.alive, id: device.id, identifierLabel: this.state.instanceInfo?.identifierLabel ?? 'ID', device: device, instanceId: this.state.selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat, onlyUpdatable: this.state.onlyUpdatable, onlyBatteryProblem: this.state.onlyBatteryProblem, filterField: this.props.embedded ? undefined : this.getEffectiveFilterField(), hiddenIndicators: hiddenIndicators, onModel: this.reportModel })));
+                const smallCards = this.props.smallCards ?? this.state.instanceInfo?.smallCards;
+                const identifierLabel = this.state.instanceInfo?.identifierLabel ?? 'ID';
+                const cardWidth = smallCards ? SMALL_CARD_WIDTH : CARD_WIDTH;
+                const cardMinHeight = smallCards ? SMALL_CARD_MIN_HEIGHT : CARD_MIN_HEIGHT;
+                const cardMargin = smallCards ? SMALL_CARD_MARGIN : CARD_MARGIN;
+                const visibleDevices = this.filterDevices(filteredDevices);
+                // Every card is wrapped in a `LazyRender`: the placeholder always occupies the full
+                // footprint of a card, but the card itself is only built while it is near the visible
+                // area. Without that, 80 devices mean thousands of DOM nodes and several hundred MUI
+                // tooltips and buttons at once - which is what makes Safari (and especially iPadOS)
+                // hang and finally kill the tab.
+                list = visibleDevices.map(device => {
+                    const key = deviceKey(device);
+                    return (React.createElement(LazyRender, { key: key, observer: this.lazyObserver, width: cardWidth, minHeight: cardMinHeight, margin: cardMargin }, () => (React.createElement(DeviceCard, { fillContainer: true, smallCards: smallCards, alive: !!this.state.alive, id: device.id, identifierLabel: identifierLabel, device: device, fields: this.fieldsResolver.getValues(key), stateOrObjectHandler: this.stateOrObjectHandler, instanceId: selectedInstance, uploadImagesToInstance: this.props.uploadImagesToInstance, deviceHandler: this.deviceHandler, controlHandler: this.controlHandler, controlStateHandler: this.controlStateHandler, socket: this.props.socket, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat, hiddenIndicators: hiddenIndicators }))));
+                });
                 if (this.state.loading) {
-                    const skeletons = (this.state.totalDevices ?? list.length + 1) - list.length;
+                    // How many devices are still missing - deliberately not derived from `list`,
+                    // which only contains the devices that pass the filter
+                    const loaded = this.state.devices.length;
+                    const missing = (this.state.totalDevices ?? loaded + 1) - loaded;
+                    const skeletons = Math.min(missing, MAX_SKELETONS);
                     for (let i = 0; i < skeletons; i++) {
-                        list.push(React.createElement(DeviceCardSkeleton, { key: `skeleton-${i}`, smallCards: this.props.smallCards ?? this.state.instanceInfo?.smallCards, theme: this.props.theme }));
+                        list.push(React.createElement(DeviceCardSkeleton, { key: `skeleton-${i}`, smallCards: smallCards, theme: this.props.theme }));
                     }
                 }
-                else if (this.state.devices.length > 0) {
-                    list.push(React.createElement(Box, { key: "filtered", sx: {
-                            padding: '25px',
-                            '&:not(:first-child)': {
-                                display: 'none',
-                            },
-                        } },
+                else if (!visibleDevices.length && this.state.devices.length > 0) {
+                    // The filter is applied here now, so the list knows that nothing is left instead
+                    // of having to hide the message with a CSS rule
+                    list.push(React.createElement("div", { style: emptyStyle, key: "filtered" },
                         React.createElement("span", null, getTranslation('allDevicesFilteredOut'))));
                 }
             }
@@ -769,7 +925,7 @@ export default class DeviceList extends Communication {
                         whiteSpace: 'nowrap',
                         color: '#fff',
                     } }, "Config-Manager")),
-            React.createElement("div", { style: {
+            React.createElement("div", { ref: this.containerRef, style: {
                     width: '100%',
                     flex: 1,
                     minHeight: 0,

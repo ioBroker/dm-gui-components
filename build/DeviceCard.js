@@ -1,15 +1,14 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon, ExpandMore, } from '@mui/icons-material';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, Paper, Skeleton, Tooltip, Typography, Accordion, AccordionSummary, AccordionDetails, } from '@mui/material';
-import { DeviceTypeIcon, I18n, Utils, Icon, } from '@iobroker/gui-components';
+import { DeviceTypeIcon, Utils, Icon, } from '@iobroker/gui-components';
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
 import DeviceStatusComponent from './DeviceStatus';
 import JsonConfig from './JsonConfig';
 import { StatusIndicators } from './StatusIndicator';
-import { getTranslation } from './Utils';
-import { StateOrObjectHandler } from './StateOrObjectHandler';
+import { getText, getTranslation } from './Utils';
 /** Reserved action names (this is copied from https://github.com/ioBroker/dm-utils/blob/main/src/types/base.ts as we can only have type references to dm-utils) */
 const ACTIONS = {
     /** This action will be called when the user clicks on the connection icon */
@@ -21,11 +20,33 @@ const ACTIONS = {
     /** This action will be called when the user clicks on the battery indicator. The battery indicator is shown only if the node status has the "battery" property */
     BATTERY: 'battery',
 };
+/**
+ * Footprint of a card. The list needs it to give a not yet rendered card a placeholder of exactly
+ * the same size, so that neither the layout nor the length of the scrollbar changes.
+ */
+export const CARD_WIDTH = 300;
+export const CARD_MIN_HEIGHT = 280;
+export const CARD_MARGIN = 10;
+export const SMALL_CARD_WIDTH = 200;
+export const SMALL_CARD_MIN_HEIGHT = 200;
+export const SMALL_CARD_MARGIN = 5;
+const cardSize = { width: CARD_WIDTH, minHeight: CARD_MIN_HEIGHT, margin: CARD_MARGIN };
+const smallCardSize = {
+    width: SMALL_CARD_WIDTH,
+    minHeight: SMALL_CARD_MIN_HEIGHT,
+    margin: SMALL_CARD_MARGIN,
+};
+/** A card that sits in a container which already has the footprint of a card */
+const filledCardSize = { width: '100%', margin: 0 };
+/**
+ * Icons read from the file storage of the adapter, keyed by `<instance>/<file>`.
+ *
+ * A card is unmounted and mounted again while scrolling, and without this cache every one of those
+ * would repeat the `readFile` round trip for an icon that is very often not there at all.
+ */
+const fileIconCache = new Map();
 const styles = {
     cardStyle: (theme) => ({
-        width: 300,
-        minHeight: 280,
-        margin: '10px',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -84,46 +105,62 @@ function NoImageIcon(props) {
     return (React.createElement("svg", { viewBox: "0 0 24 24", width: "24", height: "24", style: props.style, className: props.className },
         React.createElement("path", { fill: "currentColor", d: "M21.9,21.9l-8.49-8.49l0,0L3.59,3.59l0,0L2.1,2.1L0.69,3.51L3,5.83V19c0,1.1,0.9,2,2,2h13.17l2.31,2.31L21.9,21.9z M5,18 l3.5-4.5l2.5,3.01L12.17,15l3,3H5z M21,18.17L5.83,3H19c1.1,0,2,0.9,2,2V18.17z" })));
 }
-function getText(text) {
-    if (typeof text === 'object') {
-        return text[I18n.getLanguage()] || text.en;
-    }
-    return text;
-}
 /**
- * Device Card Component
+ * Device Card Component.
+ *
+ * A `PureComponent`: the list re-renders on every loading step, on every filter change and on every
+ * resolved device value. Without the shallow property comparison all cards would be re-rendered
+ * every time, so all properties the list passes down are kept stable there.
  */
-export default class DeviceCard extends Component {
-    stateOrObjectHandler;
-    subscriptions = new Map();
-    /** Separate subscription for the nested `device.update.available` field (used for the update indicator and the "only updatable" filter) */
-    updateAvailableSubscription;
-    /** Separate subscription for the nested battery status (used for the "battery problem" filter) */
-    batteryProblemSubscription;
+export default class DeviceCard extends PureComponent {
+    /** True as long as the component is mounted; guards the asynchronous icon loading */
+    mounted = false;
     constructor(props) {
         super(props);
+        const cacheKey = DeviceCard.iconCacheKey(props);
         this.state = {
             open: false,
             details: null,
             data: {},
             showControlDialog: false,
+            // Take a known icon over directly, so a card that is scrolled back into view does not flicker
+            localIcon: cacheKey ? fileIconCache.get(cacheKey) : undefined,
         };
-        this.stateOrObjectHandler = new StateOrObjectHandler(this.props.socket);
+    }
+    /**
+     * Key of the icon in the file storage, or `null` if the device brings its own icon.
+     *
+     * The file is named after manufacturer and model, both of which may be bound to a state or an
+     * object and therefore arrive only after the first render.
+     */
+    static iconCacheKey(props) {
+        if (props.device.icon) {
+            return null;
+        }
+        const manufacturer = props.fields.manufacturer;
+        const model = props.fields.model;
+        const fileName = `${manufacturer ? `${manufacturer}_` : ''}${model || JSON.stringify(props.device.id)}`;
+        return `${props.instanceId.replace('system.adapter.', '')}/${fileName}.webp`;
     }
     async fetchIcon() {
-        if (!this.props.device.icon) {
-            const manufacturer = this.state.manufacturer;
-            const model = this.state.model;
-            // try to load the icon from file storage
-            const fileName = `${manufacturer ? `${manufacturer}_` : ''}${model || JSON.stringify(this.props.device.id)}`;
+        const cacheKey = DeviceCard.iconCacheKey(this.props);
+        if (cacheKey) {
+            const cached = fileIconCache.get(cacheKey);
+            if (cached !== undefined) {
+                if (this.state.localIcon !== cached) {
+                    this.setState({ localIcon: cached });
+                }
+                return;
+            }
+            const [adapter, ...rest] = cacheKey.split('/');
             try {
-                const file = await this.props.socket.readFile(this.props.instanceId.replace('system.adapter.', ''), `${fileName}.webp`, true);
-                if (file) {
-                    this.setState({ icon: `data:${file.mimeType};base64,${file.file}` });
+                const file = await this.props.socket.readFile(adapter, rest.join('/'), true);
+                const localIcon = file ? `data:${file.mimeType};base64,${file.file}` : '';
+                fileIconCache.set(cacheKey, localIcon);
+                if (!this.mounted) {
+                    return;
                 }
-                else {
-                    this.setState({ icon: '' });
-                }
+                this.setState({ localIcon });
                 // const response = await fetch(url);
                 // if (response.ok) {
                 //     const blob = await response.blob();
@@ -137,89 +174,28 @@ export default class DeviceCard extends Component {
                 // }
             }
             catch {
-                if (this.state.icon) {
-                    this.setState({ icon: '' });
+                fileIconCache.set(cacheKey, '');
+                if (this.mounted && this.state.localIcon) {
+                    this.setState({ localIcon: '' });
                 }
             }
         }
     }
-    async componentDidMount() {
-        await this.addStateOrObjectListener('name', getText);
-        await this.addStateOrObjectListener('identifier');
-        await this.addStateOrObjectListener('hasDetails');
-        await this.addStateOrObjectListener('icon');
-        await this.addStateOrObjectListener('backgroundColor');
-        await this.addStateOrObjectListener('color');
-        await this.addStateOrObjectListener('manufacturer', getText);
-        await this.addStateOrObjectListener('model', getText);
-        await this.addStateOrObjectListener('connectionType');
-        await this.addStateOrObjectListener('enabled');
-        await this.subscribeUpdateAvailable();
-        await this.subscribeBatteryProblem();
-        await this.fetchIcon().catch(e => console.error(e));
+    componentDidMount() {
+        this.mounted = true;
+        void this.fetchIcon().catch(e => console.error(e));
     }
-    async subscribeUpdateAvailable() {
-        this.updateAvailableSubscription = await this.stateOrObjectHandler.addListener(this.props.device.update?.available, value => this.setState({ updateAvailable: !!value }));
-    }
-    /** Extract the battery value (literal or state/object reference) from the device status */
-    getBatteryItem() {
-        const status = this.props.device.status;
-        if (!status || typeof status === 'string') {
-            return undefined;
-        }
-        const list = Array.isArray(status) ? status : [status];
-        for (const entry of list) {
-            if (typeof entry !== 'string' && entry.battery !== undefined) {
-                return entry.battery;
-            }
-        }
-        return undefined;
-    }
-    /** A battery problem is an explicit battery warning (`false`) or a charge level below 30 % */
-    static isBatteryProblem(value) {
-        if (value === false) {
-            return true;
-        }
-        return typeof value === 'number' && value < 30;
-    }
-    async subscribeBatteryProblem() {
-        this.batteryProblemSubscription = await this.stateOrObjectHandler.addListener(this.getBatteryItem(), value => this.setState({ batteryProblem: DeviceCard.isBatteryProblem(value) }));
-    }
-    async addStateOrObjectListener(key, transform) {
-        const sub = await this.stateOrObjectHandler.addListener(this.props.device[key], value => this.setState({ [key]: transform ? transform(value) : value }));
-        this.subscriptions.set(key, { subscription: sub, transform });
-    }
-    async componentDidUpdate(prevProps, prevState) {
-        if (prevState.model !== this.state.model) {
-            this.props.onModel?.(this.props.device.id, this.state.model);
-        }
-        for (const [key, { subscription, transform }] of [...this.subscriptions]) {
-            const newItem = this.props.device[key];
-            const prevItem = prevProps.device[key];
-            if (newItem !== prevItem) {
-                console.log(`${key} of device ${JSON.stringify(this.props.device.id)} updated`, prevItem, newItem);
-                this.subscriptions.delete(key);
-                await this.addStateOrObjectListener(key, transform);
-                await subscription.unsubscribe();
-            }
-        }
-        if (this.props.device.update?.available !== prevProps.device.update?.available) {
-            await this.updateAvailableSubscription?.unsubscribe();
-            await this.subscribeUpdateAvailable();
-        }
-        if (this.props.device.status !== prevProps.device.status) {
-            await this.batteryProblemSubscription?.unsubscribe();
-            await this.subscribeBatteryProblem();
+    componentDidUpdate(prevProps) {
+        // The icon is looked up in the file storage under `<manufacturer>_<model>`. Both may be bound
+        // to a state or an object and therefore arrive only after the first render.
+        if (prevProps.fields.manufacturer !== this.props.fields.manufacturer ||
+            prevProps.fields.model !== this.props.fields.model ||
+            prevProps.device.icon !== this.props.device.icon) {
+            void this.fetchIcon().catch(e => console.error(e));
         }
     }
-    async componentWillUnmount() {
-        for (const [, { subscription }] of this.subscriptions) {
-            await subscription.unsubscribe();
-        }
-        this.subscriptions.clear();
-        await this.updateAvailableSubscription?.unsubscribe();
-        await this.batteryProblemSubscription?.unsubscribe();
-        this.props.onModel?.(this.props.device.id, undefined);
+    componentWillUnmount() {
+        this.mounted = false;
     }
     /**
      * Load the device details
@@ -234,7 +210,7 @@ export default class DeviceCard extends Component {
      * Copy the device ID to the clipboard
      */
     copyToClipboard = () => {
-        const textToCopy = this.state.identifier;
+        const textToCopy = this.props.fields.identifier;
         if (!textToCopy) {
             return;
         }
@@ -275,7 +251,7 @@ export default class DeviceCard extends Component {
         const allControls = this.props.device.controls || [];
         return (React.createElement(Dialog, { open: !0, onClose: () => this.setState({ showControlDialog: false }) },
             React.createElement(DialogTitle, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
-                this.state.name,
+                this.props.fields.name,
                 React.createElement(IconButton, { onClick: () => this.setState({ showControlDialog: false }) },
                     React.createElement(CloseIcon, null))),
             React.createElement(DialogContent, { style: { display: 'flex', flexDirection: 'column' } }, this.renderControlItems(allControls, allControls, colors))));
@@ -348,7 +324,7 @@ export default class DeviceCard extends Component {
         if (!indicators?.length && !statusActions.length) {
             return null;
         }
-        return (React.createElement(StatusIndicators, { indicators: indicators, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler, disabled: !this.props.alive, resolveAction: this.resolveIndicatorAction, style: { marginTop: small ? 2 : 4 } }, statusActions.map(action => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: action.id, deviceId: this.props.device.id, action: action, deviceHandler: this.props.deviceHandler })))));
+        return (React.createElement(StatusIndicators, { indicators: indicators, theme: this.props.theme, stateOrObjectHandler: this.props.stateOrObjectHandler, disabled: !this.props.alive, resolveAction: this.resolveIndicatorAction, style: { marginTop: small ? 2 : 4 } }, statusActions.map(action => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: action.id, deviceId: this.props.device.id, action: action, deviceHandler: this.props.deviceHandler })))));
     }
     renderActions() {
         const statusActionIds = this.getStatusActionIds();
@@ -363,20 +339,21 @@ export default class DeviceCard extends Component {
             : Array.isArray(this.props.device.status)
                 ? this.props.device.status
                 : [this.props.device.status];
-        const icon = this.state.icon ? (React.createElement(DeviceTypeIcon, { src: this.state.icon, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
+        const iconSrc = this.state.localIcon || this.props.fields.icon;
+        const icon = iconSrc ? (React.createElement(DeviceTypeIcon, { src: iconSrc, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
         const title = this.state.details?.data?.name || this.props.device.name || '';
-        return (React.createElement(Paper, { style: { width: 200, minHeight: 200, margin: 5 }, sx: styles.cardStyle, key: JSON.stringify(this.props.id) },
+        return (React.createElement(Paper, { style: this.props.fillContainer ? filledCardSize : smallCardSize, sx: styles.cardStyle },
             React.createElement(Box, { sx: headerStyle, style: { ...styles.headerStyle, minHeight: 48 } },
                 React.createElement("div", { style: { ...styles.imgAreaStyle, height: 32, width: 32 } },
-                    this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.state.manufacturer, model: this.state.model, onImageSelect: (imageData) => {
+                    this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.props.fields.manufacturer, model: this.props.fields.model, onImageSelect: (imageData) => {
                             if (imageData) {
-                                this.setState({ icon: imageData });
+                                this.setState({ localIcon: imageData });
                             }
                         }, socket: this.props.socket })) : null,
                     icon),
-                React.createElement(Box, { style: { ...styles.titleStyle, fontSize: 14 }, title: title.length > 15 ? title : undefined, sx: theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText }) }, this.state.details?.data?.name || this.state.name),
-                this.state.hasDetails ? (React.createElement(Fab, { disabled: !this.props.alive, size: "small", style: styles.detailsButtonStyle, onClick: () => {
+                React.createElement(Box, { style: { ...styles.titleStyle, fontSize: 14 }, title: title.length > 15 ? title : undefined, sx: theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText }) }, this.state.details?.data?.name || this.props.fields.name),
+                this.props.fields.hasDetails ? (React.createElement(Fab, { disabled: !this.props.alive, size: "small", style: styles.detailsButtonStyle, onClick: () => {
                         if (!this.state.open) {
                             this.loadDetails().catch(console.error);
                             this.setState({ open: true });
@@ -384,19 +361,19 @@ export default class DeviceCard extends Component {
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
             React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } },
-                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler }))),
+                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.props.fields.connectionType, status: s, enabled: this.props.fields.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.props.stateOrObjectHandler }))),
                 this.renderIndicators(true)),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body2", style: { ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' } },
-                    this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
+                    this.props.fields.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
                         React.createElement("b", null,
                             getText(this.props.identifierLabel),
                             ":"),
-                        React.createElement("span", { style: { marginLeft: 4 } }, this.state.identifier))) : null,
-                    this.state.manufacturer ? (React.createElement(Tooltip, { title: getTranslation('manufacturer'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
-                        React.createElement("div", null, this.state.manufacturer))) : null,
-                    this.state.model ? (React.createElement(Tooltip, { title: getTranslation('model'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
-                        React.createElement("div", null, this.state.model))) : null),
+                        React.createElement("span", { style: { marginLeft: 4 } }, this.props.fields.identifier))) : null,
+                    this.props.fields.manufacturer ? (React.createElement(Tooltip, { title: getTranslation('manufacturer'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+                        React.createElement("div", null, this.props.fields.manufacturer))) : null,
+                    this.props.fields.model ? (React.createElement(Tooltip, { title: getTranslation('model'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+                        React.createElement("div", null, this.props.fields.model))) : null),
                 this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 10px 10px' } },
                     React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
                             /* ignore */
@@ -417,28 +394,30 @@ export default class DeviceCard extends Component {
             this.renderControlDialog()));
     }
     getCardHeaderStyle(theme, maxWidth) {
-        const backgroundColor = this.state.backgroundColor === 'primary'
+        const backgroundColor = this.props.fields.backgroundColor === 'primary'
             ? theme.palette.primary.main
-            : this.state.backgroundColor === 'secondary'
+            : this.props.fields.backgroundColor === 'secondary'
                 ? theme.palette.secondary.main
-                : this.state.backgroundColor || theme.palette.secondary.main;
+                : this.props.fields.backgroundColor || theme.palette.secondary.main;
         let color;
-        if (this.state.color && this.state.color !== 'primary' && this.state.color !== 'secondary') {
+        if (this.props.fields.color &&
+            this.props.fields.color !== 'primary' &&
+            this.props.fields.color !== 'secondary') {
             // Color was directly defined
-            color = this.state.color;
+            color = this.props.fields.color;
         }
-        else if (this.state.color === 'primary') {
+        else if (this.props.fields.color === 'primary') {
             color = theme.palette.primary.main;
         }
-        else if (this.state.color === 'secondary') {
+        else if (this.props.fields.color === 'secondary') {
             color = theme.palette.secondary.main;
         }
         else {
             // Color was not defined
-            if (this.state.backgroundColor === 'primary') {
+            if (this.props.fields.backgroundColor === 'primary') {
                 color = theme.palette.primary.contrastText;
             }
-            else if (this.state.backgroundColor === 'secondary' || !this.state.backgroundColor) {
+            else if (this.props.fields.backgroundColor === 'secondary' || !this.props.fields.backgroundColor) {
                 color = theme.palette.secondary.contrastText;
             }
             else {
@@ -457,20 +436,21 @@ export default class DeviceCard extends Component {
             : Array.isArray(this.props.device.status)
                 ? this.props.device.status
                 : [this.props.device.status];
-        const icon = this.state.icon ? (React.createElement(DeviceTypeIcon, { src: this.state.icon, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
+        const iconSrc = this.state.localIcon || this.props.fields.icon;
+        const icon = iconSrc ? (React.createElement(DeviceTypeIcon, { src: iconSrc, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
         const title = this.state.details?.data?.name || this.props.device.name || '';
-        return (React.createElement(Paper, { sx: styles.cardStyle, key: JSON.stringify(this.props.id) },
+        return (React.createElement(Paper, { style: this.props.fillContainer ? filledCardSize : cardSize, sx: styles.cardStyle },
             React.createElement(Box, { sx: headerStyle, style: styles.headerStyle },
                 React.createElement("div", { style: styles.imgAreaStyle },
-                    this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.state.manufacturer, model: this.state.model, onImageSelect: (imageData) => {
+                    this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.props.fields.manufacturer, model: this.props.fields.model, onImageSelect: (imageData) => {
                             if (imageData) {
-                                this.setState({ icon: imageData });
+                                this.setState({ localIcon: imageData });
                             }
                         }, socket: this.props.socket })) : null,
                     icon),
-                React.createElement(Box, { style: styles.titleStyle, title: title.length > 20 ? title : undefined, sx: theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText }) }, this.state.details?.data?.name || this.state.name),
-                this.state.hasDetails ? (React.createElement(Fab, { disabled: !this.props.alive, size: "small", style: styles.detailsButtonStyle, onClick: () => {
+                React.createElement(Box, { style: styles.titleStyle, title: title.length > 20 ? title : undefined, sx: theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText }) }, this.state.details?.data?.name || this.props.fields.name),
+                this.props.fields.hasDetails ? (React.createElement(Fab, { disabled: !this.props.alive, size: "small", style: styles.detailsButtonStyle, onClick: () => {
                         if (!this.state.open) {
                             this.loadDetails().catch(console.error);
                             this.setState({ open: true });
@@ -478,25 +458,25 @@ export default class DeviceCard extends Component {
                     }, color: "primary" },
                     React.createElement(MoreVertIcon, null))) : null),
             React.createElement("div", { style: styles.statusStyle },
-                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.state.connectionType, status: s, enabled: this.state.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler }))),
+                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.props.fields.connectionType, status: s, enabled: this.props.fields.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.props.stateOrObjectHandler }))),
                 this.renderIndicators()),
             React.createElement("div", { style: styles.bodyStyle },
                 React.createElement(Typography, { variant: "body1", style: styles.deviceInfoStyle },
-                    this.state.identifier ? (React.createElement("div", { onClick: this.copyToClipboard },
+                    this.props.fields.identifier ? (React.createElement("div", { onClick: this.copyToClipboard },
                         React.createElement("b", { style: { marginRight: 4 } },
                             getText(this.props.identifierLabel),
                             ":"),
-                        this.state.identifier)) : null,
-                    this.state.manufacturer ? (React.createElement("div", null,
+                        this.props.fields.identifier)) : null,
+                    this.props.fields.manufacturer ? (React.createElement("div", null,
                         React.createElement("b", { style: { marginRight: 4 } },
                             getTranslation('manufacturer'),
                             ":"),
-                        this.state.manufacturer)) : null,
-                    this.state.model ? (React.createElement("div", null,
+                        this.props.fields.manufacturer)) : null,
+                    this.props.fields.model ? (React.createElement("div", null,
                         React.createElement("b", { style: { marginRight: 4 } },
                             getTranslation('model'),
                             ":"),
-                        this.state.model)) : null),
+                        this.props.fields.model)) : null),
                 this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 16px 16px' } },
                     React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
                             /* ignore */
@@ -517,26 +497,13 @@ export default class DeviceCard extends Component {
             this.renderControlDialog()));
     }
     render() {
-        if (this.props.filter) {
-            const field = this.props.filterField ?? 'name';
-            const value = String(this.state[field] ?? '').toLowerCase();
-            if (!value.includes(this.props.filter.toLowerCase())) {
-                return React.createElement(React.Fragment, null);
-            }
-        }
-        if (this.props.onlyUpdatable && !this.state.updateAvailable) {
-            return React.createElement(React.Fragment, null);
-        }
-        if (this.props.onlyBatteryProblem && !this.state.batteryProblem) {
-            return React.createElement(React.Fragment, null);
-        }
         if (this.props.smallCards) {
             return this.renderSmall();
         }
         return this.renderBig();
     }
 }
-export class DeviceCardSkeleton extends Component {
+export class DeviceCardSkeleton extends PureComponent {
     render() {
         if (this.props.smallCards) {
             return this.renderSmall();
@@ -545,7 +512,7 @@ export class DeviceCardSkeleton extends Component {
     }
     renderSmall() {
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
-        return (React.createElement(Paper, { sx: styles.cardStyle, style: { width: 200, minHeight: 200, margin: 5 } },
+        return (React.createElement(Paper, { sx: styles.cardStyle, style: smallCardSize },
             React.createElement(Box, { sx: headerStyle, style: { ...styles.headerStyle, minHeight: 48 } },
                 React.createElement("div", { style: { ...styles.imgAreaStyle, height: 32, width: 32 } },
                     React.createElement(Skeleton, { variant: "rounded", width: 24, height: 24 })),
@@ -565,7 +532,7 @@ export class DeviceCardSkeleton extends Component {
     }
     renderBig() {
         const headerStyle = this.getCardHeaderStyle(this.props.theme);
-        return (React.createElement(Paper, { sx: styles.cardStyle },
+        return (React.createElement(Paper, { sx: styles.cardStyle, style: cardSize },
             React.createElement(Box, { sx: headerStyle, style: styles.headerStyle },
                 React.createElement("div", { style: styles.imgAreaStyle },
                     React.createElement(Skeleton, { variant: "rounded", width: 24, height: 24 })),

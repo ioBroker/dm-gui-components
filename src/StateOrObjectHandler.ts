@@ -9,6 +9,8 @@ interface ObjectSubscription {
     unsubscribe: (notifier: ObjectSubscriptionNotifier) => Promise<void>;
     loaded: boolean;
     cached: ioBroker.Object | null | undefined;
+    /** Set while the subscription is waiting for the grace period after its last notifier left */
+    lingerTimer?: ReturnType<typeof setTimeout>;
 }
 
 type StateSubscriptionNotifier = (state?: ioBroker.State | null) => void;
@@ -19,6 +21,8 @@ interface StateSubscription {
     unsubscribe: (notifier: StateSubscriptionNotifier) => void;
     loaded: boolean;
     cached: ioBroker.State | null | undefined;
+    /** Set while the subscription is waiting for the grace period after its last notifier left */
+    lingerTimer?: ReturnType<typeof setTimeout>;
 }
 
 export interface StateOrObjectSubscription {
@@ -29,11 +33,44 @@ const emptySubscription: StateOrObjectSubscription = {
     unsubscribe: () => {},
 };
 
+/**
+ * How long a subscription without any listener is kept before it is really unsubscribed.
+ *
+ * The cards of the device list are mounted and unmounted while scrolling. Without this grace period
+ * every card that scrolls in and out again would cause a new `getObject`/`getState` round trip plus
+ * a new subscription on the socket.
+ */
+const UNSUBSCRIBE_GRACE_MS = 10_000;
+
 export class StateOrObjectHandler {
     private readonly objectSubs = new Map<string, ObjectSubscription>();
     private readonly stateSubs = new Map<string, StateSubscription>();
 
+    private destroyed = false;
+
     constructor(private readonly socket: Connection) {}
+
+    /** Unsubscribe everything. To be called when the component owning this handler is unmounted */
+    public destroy(): void {
+        this.destroyed = true;
+        for (const [objectId, sub] of this.objectSubs) {
+            if (sub.lingerTimer) {
+                clearTimeout(sub.lingerTimer);
+            }
+            sub.notifiers.length = 0;
+            void this.socket.unsubscribeObject(objectId, sub.handler);
+        }
+        this.objectSubs.clear();
+
+        for (const [stateId, sub] of this.stateSubs) {
+            if (sub.lingerTimer) {
+                clearTimeout(sub.lingerTimer);
+            }
+            sub.notifiers.length = 0;
+            this.socket.unsubscribeState(stateId, sub.handler);
+        }
+        this.stateSubs.clear();
+    }
 
     public async addListener<T extends ioBroker.StringOrTranslated | number | boolean>(
         item: ValueOrStateOrObject<T> | undefined,
@@ -96,6 +133,11 @@ export class StateOrObjectHandler {
 
         const existing = this.objectSubs.get(objectId);
         if (existing) {
+            if (existing.lingerTimer) {
+                // The subscription was about to be dropped - take it over instead
+                clearTimeout(existing.lingerTimer);
+                existing.lingerTimer = undefined;
+            }
             existing.notifiers.push(notifyValue);
             if (existing.loaded) {
                 // Already have the value — notify immediately without re-fetching
@@ -120,15 +162,21 @@ export class StateOrObjectHandler {
                 n(obj);
             }
         };
-        sub.unsubscribe = async notifier => {
+        sub.unsubscribe = notifier => {
             const index = sub.notifiers.indexOf(notifier);
             if (index !== -1) {
                 sub.notifiers.splice(index, 1);
             }
-            if (sub.notifiers.length === 0) {
-                this.objectSubs.delete(objectId);
-                await this.socket.unsubscribeObject(objectId, sub.handler);
+            if (sub.notifiers.length === 0 && !sub.lingerTimer && !this.destroyed) {
+                sub.lingerTimer = setTimeout(() => {
+                    sub.lingerTimer = undefined;
+                    if (sub.notifiers.length === 0 && this.objectSubs.get(objectId) === sub) {
+                        this.objectSubs.delete(objectId);
+                        void this.socket.unsubscribeObject(objectId, sub.handler);
+                    }
+                }, UNSUBSCRIBE_GRACE_MS);
             }
+            return Promise.resolve();
         };
 
         const obj = await this.socket.getObject(objectId);
@@ -167,6 +215,11 @@ export class StateOrObjectHandler {
 
         const existing = this.stateSubs.get(stateId);
         if (existing) {
+            if (existing.lingerTimer) {
+                // The subscription was about to be dropped - take it over instead
+                clearTimeout(existing.lingerTimer);
+                existing.lingerTimer = undefined;
+            }
             existing.notifiers.push(notifyValue);
             if (existing.loaded) {
                 // Already have the value — notify immediately without re-fetching
@@ -196,9 +249,14 @@ export class StateOrObjectHandler {
             if (index !== -1) {
                 sub.notifiers.splice(index, 1);
             }
-            if (sub.notifiers.length === 0) {
-                this.stateSubs.delete(stateId);
-                this.socket.unsubscribeState(stateId, sub.handler);
+            if (sub.notifiers.length === 0 && !sub.lingerTimer && !this.destroyed) {
+                sub.lingerTimer = setTimeout(() => {
+                    sub.lingerTimer = undefined;
+                    if (sub.notifiers.length === 0 && this.stateSubs.get(stateId) === sub) {
+                        this.stateSubs.delete(stateId);
+                        this.socket.unsubscribeState(stateId, sub.handler);
+                    }
+                }, UNSUBSCRIBE_GRACE_MS);
             }
         };
 

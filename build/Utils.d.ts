@@ -30,3 +30,10 @@ export declare function renderActionIcon(action: ActionBase, noDefaultIcon?: boo
 export declare function getTranslation(
 /** Text to translate */
 text: ioBroker.StringOrTranslated, noTranslation?: boolean): string;
+/**
+ * Resolve a possibly translated text into the current language.
+ *
+ * Unlike `getTranslation`, a plain string is returned untouched: device names, models and
+ * manufacturers are data, not keys of the i18n dictionary.
+ */
+export declare function getText(text: ioBroker.StringOrTranslated | undefined): string | undefined;

@@ -4,17 +4,17 @@
         "moduleResolution": "Bundler",
         "module": "esnext",
         "target": "esnext",
-        "baseUrl": ".",
         "checkJs": false,
         "allowJs": true,
-        "noEmit": false,
-        "outDir": "./build",
-        "sourceMap": true,
-        "sourceRoot": "./src",
+        // The test app is built by vite (`npm run build`), tsc is only used for type checking.
+        // It also has to type check `../../src`, which no `rootDir` could cover.
+        "noEmit": true,
         "noImplicitAny": true,
-        "lib": ["es2018", "DOM"],
+        "lib": ["es2018", "DOM", "DOM.Iterable"],
         "jsx": "react",
-        "types": ["@iobroker/types"],
+        // `vite/client` declares the CSS/asset imports and `import.meta.env`
+        "types": ["@iobroker/types", "vite/client"]
     },
-    "include": ["./**/*"]
+    // Only the sources - `./**/*` would pull vite.config.mjs and eslint.config.mjs into the program
+    "include": ["./src/**/*"]
 }
