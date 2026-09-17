@@ -168,7 +168,7 @@ export default function StatusIndicator(props: StatusIndicatorProps): React.JSX.
 
     return (
         <Tooltip
-            title={tooltip}
+            title={<span style={{ whiteSpace: 'pre-line' }}>{tooltip}</span>}
             slotProps={{ popper: { sx: styles.tooltip } }}
         >
             <span style={{ display: 'inline-flex' }}>{element}</span>
