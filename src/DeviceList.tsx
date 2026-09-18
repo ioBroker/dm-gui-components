@@ -1496,7 +1496,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             color: '#fff',
                         }}
                     >
-                        Config-Manager
+                        {I18n.t('configManager')}
                     </Typography>
                 </Toolbar>
                 <div

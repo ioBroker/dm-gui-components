@@ -6,6 +6,7 @@
     "batteryTooltip": "Battery",
     "cancelButtonText": "Cancel",
     "closeButtonText": "Close",
+    "configManager": "Config manager",
     "connectedIconTooltip": "Connected",
     "copied": "Copied",
     "ctcButtonText": "Copy to clipboard",
