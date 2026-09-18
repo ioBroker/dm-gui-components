@@ -83,6 +83,27 @@ function deviceKey(device: DeviceInfo): string {
  */
 const MAX_SKELETONS = 12;
 
+/**
+ * The toolbar is grey in both themes, so its content is always white. Buttons and inputs bring their own
+ * colors (primary blue, the text color of the theme), which are hard to read on grey and are overridden here.
+ */
+const TOOLBAR_SX = {
+    backgroundColor: '#777',
+    color: '#fff',
+    '& .MuiButtonBase-root.Mui-disabled': { color: 'rgba(255, 255, 255, 0.4)' },
+    '& .MuiInputBase-root, & .MuiSelect-icon': { color: 'inherit' },
+    '& .MuiInputBase-input::placeholder': { opacity: 0.7 },
+    '& .MuiInput-underline::before': { borderBottomColor: 'rgba(255, 255, 255, 0.7)' },
+    '& .MuiInput-underline:hover:not(.Mui-disabled, .Mui-error)::before': { borderBottomColor: '#fff' },
+    '& .MuiInput-underline::after': { borderBottomColor: '#fff' },
+};
+
+/** Marks an active toggle button in the toolbar, as the primary color is not readable there */
+const TOOLBAR_TOGGLE_ACTIVE_SX = {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.35)' },
+};
+
 /** Returns true if any of the device status objects carries a battery value */
 function hasBatteryStatus(status?: DeviceStatus | DeviceStatus[]): boolean {
     if (!status || typeof status === 'string') {
@@ -956,6 +977,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                 <IconButton
                                     tabIndex={-1}
                                     onClick={() => this.handleFilterChange('')}
+                                    color="inherit"
                                     edge="end"
                                 >
                                     <Clear />
@@ -1085,6 +1107,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                 >
                     <IconButton
                         size="small"
+                        color="inherit"
                         onClick={e => this.setState({ indicatorsAnchor: e.currentTarget })}
                     >
                         <Tune />
@@ -1351,8 +1374,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             >
                 <Toolbar
                     variant="dense"
+                    sx={TOOLBAR_SX}
                     style={{
-                        backgroundColor: '#777',
                         display: 'flex',
                         flexWrap: 'wrap',
                         rowGap: 4,
@@ -1372,6 +1395,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                 >
                                     <IconButton
                                         onClick={() => this.backToInstancesList()}
+                                        color="inherit"
                                         size="small"
                                     >
                                         <ArrowBack />
@@ -1396,6 +1420,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                 <IconButton
                                     onClick={() => this.refreshInstanceList()}
                                     disabled={!this.state.dmInstances}
+                                    color="inherit"
                                     size="small"
                                 >
                                     <Refresh />
@@ -1412,6 +1437,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                 <IconButton
                                     onClick={() => this.loadAllData()}
                                     disabled={!this.state.alive || this.state.apiVersionError}
+                                    color="inherit"
                                     size="small"
                                 >
                                     <Refresh />
@@ -1444,7 +1470,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
                         >
                             <IconButton
-                                color={this.state.onlyUpdatable ? 'primary' : 'default'}
+                                color="inherit"
+                                sx={this.state.onlyUpdatable ? TOOLBAR_TOGGLE_ACTIVE_SX : undefined}
                                 onClick={() => {
                                     const onlyUpdatable = !this.state.onlyUpdatable;
                                     this.setState({ onlyUpdatable });
@@ -1464,7 +1491,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
                         >
                             <IconButton
-                                color={this.state.onlyBatteryProblem ? 'primary' : 'default'}
+                                color="inherit"
+                                sx={this.state.onlyBatteryProblem ? TOOLBAR_TOGGLE_ACTIVE_SX : undefined}
                                 onClick={() => {
                                     const onlyBatteryProblem = !this.state.onlyBatteryProblem;
                                     this.setState({ onlyBatteryProblem });
@@ -1482,7 +1510,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     {!this.state.apiVersionError && this.state.alive ? this.renderIndicatorSettings() : null}
                     {!this.state.apiVersionError && this.state.alive ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <FilterAlt style={{ color: '#fff' }} />
+                            <FilterAlt />
                             {this.renderFilterFields()}
                             {this.renderFilterValue()}
                         </div>
@@ -1493,7 +1521,6 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                             marginLeft: 16,
                             fontWeight: 'bold',
                             whiteSpace: 'nowrap',
-                            color: '#fff',
                         }}
                     >
                         {I18n.t('configManager')}

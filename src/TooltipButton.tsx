@@ -9,11 +9,13 @@ interface TooltipButtonProps {
     onClick?: () => void;
     url?: string;
     variant?: 'text' | 'outlined' | 'contained';
+    /** `inherit` takes the text color of the parent, e.g. on a colored toolbar. Default is the primary color */
+    color?: 'inherit' | 'primary';
     style?: Record<string, any>;
 }
 
 export default function TooltipButton(props: TooltipButtonProps): React.JSX.Element {
-    const { tooltip, label, disabled, Icon, onClick, url } = props;
+    const { tooltip, label, disabled, Icon, onClick, url, color } = props;
 
     const text = label ? (
         <Typography
@@ -26,7 +28,7 @@ export default function TooltipButton(props: TooltipButtonProps): React.JSX.Elem
         </Typography>
     ) : null;
 
-    const btnProps = url ? { href: url, disabled, target: '_blank' } : { onClick, disabled };
+    const btnProps = url ? { href: url, disabled, target: '_blank', color } : { onClick, disabled, color };
 
     if (tooltip) {
         return (

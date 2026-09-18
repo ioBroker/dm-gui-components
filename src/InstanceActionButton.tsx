@@ -24,6 +24,8 @@ export default function InstanceActionButton(params: InstanceActionButtonProps):
         <TooltipButton
             style={action.style}
             variant={action.variant}
+            // The toolbar is grey, so the primary color is not readable there. A contained button has its own background
+            color={action.variant === 'contained' ? undefined : 'inherit'}
             tooltip={tooltip}
             label={title}
             disabled={action.disabled}

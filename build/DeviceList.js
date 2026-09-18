@@ -40,6 +40,25 @@ function deviceKey(device) {
  * and a few hundred pulsing placeholders cost more than the cards they are waiting for.
  */
 const MAX_SKELETONS = 12;
+/**
+ * The toolbar is grey in both themes, so its content is always white. Buttons and inputs bring their own
+ * colors (primary blue, the text color of the theme), which are hard to read on grey and are overridden here.
+ */
+const TOOLBAR_SX = {
+    backgroundColor: '#777',
+    color: '#fff',
+    '& .MuiButtonBase-root.Mui-disabled': { color: 'rgba(255, 255, 255, 0.4)' },
+    '& .MuiInputBase-root, & .MuiSelect-icon': { color: 'inherit' },
+    '& .MuiInputBase-input::placeholder': { opacity: 0.7 },
+    '& .MuiInput-underline::before': { borderBottomColor: 'rgba(255, 255, 255, 0.7)' },
+    '& .MuiInput-underline:hover:not(.Mui-disabled, .Mui-error)::before': { borderBottomColor: '#fff' },
+    '& .MuiInput-underline::after': { borderBottomColor: '#fff' },
+};
+/** Marks an active toggle button in the toolbar, as the primary color is not readable there */
+const TOOLBAR_TOGGLE_ACTIVE_SX = {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.35)' },
+};
 /** Returns true if any of the device status objects carries a battery value */
 function hasBatteryStatus(status) {
     if (!status || typeof status === 'string') {
@@ -626,7 +645,7 @@ export default class DeviceList extends Communication {
                 input: {
                     autoComplete: 'new-password',
                     endAdornment: this.state.filterText ? (React.createElement(InputAdornment, { position: "end" },
-                        React.createElement(IconButton, { tabIndex: -1, onClick: () => this.handleFilterChange(''), edge: "end" },
+                        React.createElement(IconButton, { tabIndex: -1, onClick: () => this.handleFilterChange(''), color: "inherit", edge: "end" },
                             React.createElement(Clear, null)))) : null,
                 },
                 htmlInput: {
@@ -718,7 +737,7 @@ export default class DeviceList extends Communication {
         }
         return (React.createElement(React.Fragment, null,
             React.createElement(Tooltip, { title: getTranslation('indicatorsTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
-                React.createElement(IconButton, { size: "small", onClick: e => this.setState({ indicatorsAnchor: e.currentTarget }) },
+                React.createElement(IconButton, { size: "small", color: "inherit", onClick: e => this.setState({ indicatorsAnchor: e.currentTarget }) },
                     React.createElement(Tune, null))),
             React.createElement(Menu, { open: !!this.state.indicatorsAnchor, anchorEl: this.state.indicatorsAnchor, onClose: () => this.setState({ indicatorsAnchor: null }) },
                 React.createElement(ListSubheader, { style: { lineHeight: '32px' } }, getTranslation('indicatorsTitle')),
@@ -867,8 +886,7 @@ export default class DeviceList extends Communication {
                 this.state.apiVersionError ? React.createElement("div", null, I18n.t('apiVersionError')) : list));
         }
         return (React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' } },
-            React.createElement(Toolbar, { variant: "dense", style: {
-                    backgroundColor: '#777',
+            React.createElement(Toolbar, { variant: "dense", sx: TOOLBAR_SX, style: {
                     display: 'flex',
                     flexWrap: 'wrap',
                     rowGap: 4,
@@ -880,17 +898,17 @@ export default class DeviceList extends Communication {
                     this.state.dmInstances &&
                     this.state.selectedInstance ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8 } },
                     Object.keys(this.state.dmInstances).length > 1 ? (React.createElement(Tooltip, { title: getTranslation('backToInstancesList'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
-                        React.createElement(IconButton, { onClick: () => this.backToInstancesList(), size: "small" },
+                        React.createElement(IconButton, { onClick: () => this.backToInstancesList(), color: "inherit", size: "small" },
                             React.createElement(ArrowBack, null)))) : null,
                     this.state.dmInstances[this.state.selectedInstance]?.icon ? (React.createElement(Icon, { src: this.state.dmInstances[this.state.selectedInstance].icon, style: { width: 24, height: 24 } })) : null,
                     React.createElement("span", { style: { marginRight: 8 } }, this.state.selectedInstance))) : null,
                 this.props.selectedInstance === undefined && !this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshInstanceList'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
-                        React.createElement(IconButton, { onClick: () => this.refreshInstanceList(), disabled: !this.state.dmInstances, size: "small" },
+                        React.createElement(IconButton, { onClick: () => this.refreshInstanceList(), disabled: !this.state.dmInstances, color: "inherit", size: "small" },
                             React.createElement(Refresh, null))))) : null,
                 this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
-                        React.createElement(IconButton, { onClick: () => this.loadAllData(), disabled: !this.state.alive || this.state.apiVersionError, size: "small" },
+                        React.createElement(IconButton, { onClick: () => this.loadAllData(), disabled: !this.state.alive || this.state.apiVersionError, color: "inherit", size: "small" },
                             React.createElement(Refresh, null))))) : null,
                 !this.state.apiVersionError && this.state.alive && this.renderInstanceActions(),
                 !this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.indicators?.length ? (React.createElement(StatusIndicators, { indicators: this.state.instanceInfo.indicators.filter(indicator => this.isIndicatorVisible(indicator)), theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler, resolveAction: this.resolveInstanceIndicatorAction, defaultColor: "#fff", style: { marginLeft: 20 } })) : null,
@@ -899,7 +917,7 @@ export default class DeviceList extends Communication {
                 !this.state.apiVersionError &&
                     this.state.alive &&
                     this.state.devices.some(device => device.update) ? (React.createElement(Tooltip, { title: getTranslation('onlyUpdatableTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
-                    React.createElement(IconButton, { color: this.state.onlyUpdatable ? 'primary' : 'default', onClick: () => {
+                    React.createElement(IconButton, { color: "inherit", sx: this.state.onlyUpdatable ? TOOLBAR_TOGGLE_ACTIVE_SX : undefined, onClick: () => {
                             const onlyUpdatable = !this.state.onlyUpdatable;
                             this.setState({ onlyUpdatable });
                             window.localStorage.setItem('dm_onlyUpdatable', onlyUpdatable ? 'true' : 'false');
@@ -908,7 +926,7 @@ export default class DeviceList extends Communication {
                 !this.state.apiVersionError &&
                     this.state.alive &&
                     this.state.devices.some(device => hasBatteryStatus(device.status)) ? (React.createElement(Tooltip, { title: getTranslation('onlyBatteryProblemTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
-                    React.createElement(IconButton, { color: this.state.onlyBatteryProblem ? 'primary' : 'default', onClick: () => {
+                    React.createElement(IconButton, { color: "inherit", sx: this.state.onlyBatteryProblem ? TOOLBAR_TOGGLE_ACTIVE_SX : undefined, onClick: () => {
                             const onlyBatteryProblem = !this.state.onlyBatteryProblem;
                             this.setState({ onlyBatteryProblem });
                             window.localStorage.setItem('dm_onlyBatteryProblem', onlyBatteryProblem ? 'true' : 'false');
@@ -916,15 +934,14 @@ export default class DeviceList extends Communication {
                         React.createElement(BatteryAlert, null)))) : null,
                 !this.state.apiVersionError && this.state.alive ? this.renderIndicatorSettings() : null,
                 !this.state.apiVersionError && this.state.alive ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
-                    React.createElement(FilterAlt, { style: { color: '#fff' } }),
+                    React.createElement(FilterAlt, null),
                     this.renderFilterFields(),
                     this.renderFilterValue())) : null,
                 React.createElement(Typography, { sx: { display: { xs: 'none', md: 'block' } }, style: {
                         marginLeft: 16,
                         fontWeight: 'bold',
                         whiteSpace: 'nowrap',
-                        color: '#fff',
-                    } }, "Config-Manager")),
+                    } }, I18n.t('configManager'))),
             React.createElement("div", { ref: this.containerRef, style: {
                     width: '100%',
                     flex: 1,
