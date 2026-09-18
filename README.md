@@ -197,7 +197,7 @@ const indicator = {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 10.0.22 (2026-09-18)
 - (@GermanBluefox) Updated packages
 - (@GermanBluefox) Renamed `Config manager` to `Konfig-Manager` (DE)
 - (@GermanBluefox) Text colors in toolbar was changed
