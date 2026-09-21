@@ -197,6 +197,9 @@ const indicator = {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@BenAhrdt) Supported explicit line breaks in status indicator tooltips
+
 ### 10.0.22 (2026-09-18)
 - (@GermanBluefox) Updated packages
 - (@GermanBluefox) Renamed `Config manager` to `Konfig-Manager` (DE)
