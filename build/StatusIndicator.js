@@ -110,7 +110,7 @@ export default function StatusIndicator(props) {
     if (!tooltip) {
         return element;
     }
-    return (React.createElement(Tooltip, { title: tooltip, slotProps: { popper: { sx: styles.tooltip } } },
+    return (React.createElement(Tooltip, { title: React.createElement("span", { style: { whiteSpace: 'pre-line' } }, tooltip), slotProps: { popper: { sx: styles.tooltip } } },
         React.createElement("span", { style: { display: 'inline-flex' } }, element)));
 }
 /**
