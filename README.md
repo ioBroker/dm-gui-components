@@ -197,7 +197,7 @@ const indicator = {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 10.0.23 (2026-09-21)
 - (@BenAhrdt) Supported explicit line breaks in status indicator tooltips
 
 ### 10.0.22 (2026-09-18)
