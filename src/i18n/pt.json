@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Por favor, insira",
     "refreshInstanceList": "Atualizar lista de instâncias",
     "refreshTooltip": "Atualizar",
+    "resetFilters": "Redefinir filtros",
+    "resetFiltersTooltip": "Redefinir todos os filtros",
     "rootInfoText": "Este é o gerenciador de dispositivos. Selecione uma instância de adaptador abaixo para visualizar, configurar e atualizar os seus dispositivos.",
     "selectInstanceText": "Por favor, selecione uma instância.",
     "toClipboard": "para a área de transferência",
     "updateAvailable": "Atualização disponível",
     "updateConfirmation": "Deseja instalar a atualização disponível?",
+    "uploadImageTooltip": "Carregar uma imagem do dispositivo",
     "yesButtonText": "Sim"
 }

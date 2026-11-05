@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "请输入",
     "refreshInstanceList": "刷新实例列表",
     "refreshTooltip": "刷新",
+    "resetFilters": "重置筛选",
+    "resetFiltersTooltip": "重置所有筛选",
     "rootInfoText": "这是设备管理器。请在下方选择一个适配器实例，以查看、配置和更新其设备。",
     "selectInstanceText": "请选择实例",
     "toClipboard": "到剪贴板",
     "updateAvailable": "有可用更新",
     "updateConfirmation": "是否要安装可用的更新？",
+    "uploadImageTooltip": "上传设备图片",
     "yesButtonText": "是的"
 }

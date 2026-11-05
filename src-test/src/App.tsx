@@ -122,6 +122,10 @@ export default class App extends Component<object, AppState> {
 
         this.socket = new Connection({
             name: window.adapterName,
+            // The admin is always on its own port (like in index.html, where socket.io.js is loaded from it).
+            // Without this, the socket client maps only the dev port 3000 to 8081, and the app does not
+            // connect if it runs on another port because 3000 is taken.
+            port: parseInt(new URLSearchParams(window.location.search).get('port') || '', 10) || 8081,
             onProgress: progress => {
                 if (progress === PROGRESS.CONNECTING) {
                     this.setState({ connected: false });

@@ -49,6 +49,8 @@ export type CommunicationState = {
     showInput: InputAction | null;
     inputValue: string | boolean | number | null;
     selectedInstance: string;
+    /** Changes after each successful action: a check mark confirms it for a moment. 0 - nothing to show */
+    resultFlash?: number;
 };
 /**
  * Communication Component
@@ -56,12 +58,15 @@ export type CommunicationState = {
 export default class Communication<P extends CommunicationProps, S extends CommunicationState> extends Component<P, S> {
     private protocol;
     private responseTimeout;
+    private resultFlashTimeout;
     instanceHandler: (action: ActionBase) => () => void;
     deviceHandler: (deviceId: DeviceId, action: ActionBase) => () => void;
     controlHandler: (deviceId: DeviceId, control: ControlBase, state: ControlState) => () => Promise<ioBroker.State | null>;
     controlStateHandler: (deviceId: DeviceId, control: ControlBase) => () => Promise<ioBroker.State | null>;
     constructor(props: P);
     componentWillUnmount(): void;
+    /** Confirms a successful action: the spinner is followed by a check mark that draws itself */
+    showResultFlash(): void;
     loadAllData(): Promise<void>;
     loadDeviceList(): void;
     updateDevice(_update: DeviceInfo): void;
@@ -76,7 +81,9 @@ export default class Communication<P extends CommunicationProps, S extends Commu
     loadInstanceInfos(): Promise<InstanceDetails>;
     renderMessageDialog(): React.JSX.Element | null;
     renderConfirmDialog(): React.JSX.Element | null;
+    /** The toast shows errors: the cross draws itself and shakes */
     renderSnackbar(): React.JSX.Element;
+    renderResultFlash(): React.JSX.Element | null;
     getOkButton(button?: ActionButton | 'apply' | 'cancel' | 'close'): React.JSX.Element;
     getCancelButton(button?: ActionButton | 'apply' | 'cancel' | 'close'): React.JSX.Element;
     renderFormDialog(): React.JSX.Element | null;

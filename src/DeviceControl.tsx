@@ -52,11 +52,40 @@ interface DeviceControlState {
 export default class DeviceControlComponent extends Component<DeviceControlProps, DeviceControlState> {
     constructor(props: DeviceControlProps) {
         super(props);
+        const control = props.control;
         this.state = {
-            value: props.control.state?.val,
-            ts: props.control.state?.ts,
-            unit: props.control.unit || '',
+            value: control.state?.val,
+            ts: control.state?.ts,
+            unit: control.unit || '',
         };
+
+        // What the definition already says is used right away. Only the rest is read from the
+        // object of the state, and only if the control has one (see componentDidMount).
+        if (control.type === 'slider' || control.type === 'number') {
+            if (control.min !== undefined || control.max !== undefined) {
+                const min = control.min ?? 0;
+                const max = control.max ?? 100;
+                this.state = { ...this.state, min, max, step: control.step ?? (max - min) / 100 };
+            } else if (!control.stateId) {
+                // No object to read the range from. A slider cannot be shown without one.
+                this.state = {
+                    ...this.state,
+                    min: control.type === 'slider' ? 0 : undefined,
+                    max: control.type === 'slider' ? 100 : undefined,
+                    step: control.step ?? (control.type === 'slider' ? 1 : undefined),
+                };
+            }
+        } else if (control.type === 'select' && control.options?.length) {
+            this.state = {
+                ...this.state,
+                options: control.options.map(item => ({
+                    label: getTranslation(item.label),
+                    value: item.value,
+                    icon: item.icon,
+                    color: item.color,
+                })),
+            };
+        }
     }
 
     async componentDidMount(): Promise<void> {
@@ -66,7 +95,7 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                 await mayBePromise;
             }
             if (this.props.control.type === 'slider' || this.props.control.type === 'number') {
-                if (this.props.control.min === undefined && this.props.control.max === undefined) {
+                if (this.state.min === undefined && this.state.max === undefined) {
                     // read an object to get min and max
                     void this.props.socket.getObject(this.props.control.stateId).then(obj => {
                         if (obj?.common) {
@@ -89,19 +118,9 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                             });
                         }
                     });
-                } else {
-                    const min = this.props.control.min ?? 0;
-                    const max = this.props.control.max ?? 100;
-
-                    this.setState({
-                        min,
-                        max,
-                        step: this.props.control.step === undefined ? (max - min) / 100 : this.props.control.step,
-                        unit: this.props.control.unit || '',
-                    });
                 }
             } else if (this.props.control.type === 'select') {
-                if (!this.props.control.options?.length) {
+                if (!this.state.options) {
                     // read an object to get options
                     void this.props.socket.getObject(this.props.control.stateId).then(obj => {
                         if (obj?.common?.states) {
@@ -128,15 +147,6 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                                 options,
                             });
                         }
-                    });
-                } else {
-                    this.setState({
-                        options: this.props.control.options.map(item => ({
-                            label: getTranslation(item.label),
-                            value: item.value,
-                            icon: item.icon,
-                            color: item.color,
-                        })),
                     });
                 }
             } else if (this.props.control.type === 'info') {
@@ -323,7 +333,8 @@ export default class DeviceControlComponent extends Component<DeviceControlProps
                 {this.props.control.label ? <InputLabel>{getTranslation(this.props.control.label)}</InputLabel> : null}
                 <Select
                     variant="standard"
-                    value={this.state.value}
+                    // Until the options are known, any value would be out of range for MUI
+                    value={this.state.options ? (this.state.value ?? '') : ''}
                     onChange={(e): Promise<void> =>
                         this.sendControl(this.props.deviceId, this.props.control, e.target.value)
                     }

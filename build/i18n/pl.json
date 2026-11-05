@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Podaj",
     "refreshInstanceList": "Odśwież listę instancji",
     "refreshTooltip": "Odświeżać",
+    "resetFilters": "Resetuj filtry",
+    "resetFiltersTooltip": "Resetuj wszystkie filtry",
     "rootInfoText": "To jest menedżer urządzeń. Wybierz poniżej instancję adaptera, aby wyświetlić, skonfigurować i zaktualizować jej urządzenia.",
     "selectInstanceText": "Proszę wybrać instancję",
     "toClipboard": "do schowka",
     "updateAvailable": "Dostępna aktualizacja",
     "updateConfirmation": "Czy chcesz zainstalować dostępną aktualizację?",
+    "uploadImageTooltip": "Prześlij zdjęcie urządzenia",
     "yesButtonText": "Tak"
 }

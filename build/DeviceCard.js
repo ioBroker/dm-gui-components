@@ -1,14 +1,16 @@
-import React, { PureComponent } from 'react';
-import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon, ExpandMore, } from '@mui/icons-material';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, Paper, Skeleton, Tooltip, Typography, Accordion, AccordionSummary, AccordionDetails, } from '@mui/material';
-import { DeviceTypeIcon, Utils, Icon, } from '@iobroker/gui-components';
+import React, { PureComponent, useState } from 'react';
+import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon } from '@mui/icons-material';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Skeleton, Tooltip, Typography, Accordion, AccordionSummary, AccordionDetails, } from '@mui/material';
+import { DeviceTypeIcon, Utils, Icon, IconCopyToClipboard, IconFolder, } from '@iobroker/gui-components';
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
-import DeviceStatusComponent from './DeviceStatus';
+import DeviceStatusComponent, { DeviceLed } from './DeviceStatus';
 import JsonConfig from './JsonConfig';
 import { StatusIndicators } from './StatusIndicator';
+import Switch from './Switch';
 import { getText, getTranslation } from './Utils';
+import { ensureDmStyles, getThemeVars } from './styles';
 /** Reserved action names (this is copied from https://github.com/ioBroker/dm-utils/blob/main/src/types/base.ts as we can only have type references to dm-utils) */
 const ACTIONS = {
     /** This action will be called when the user clicks on the connection icon */
@@ -25,10 +27,10 @@ const ACTIONS = {
  * the same size, so that neither the layout nor the length of the scrollbar changes.
  */
 export const CARD_WIDTH = 300;
-export const CARD_MIN_HEIGHT = 280;
-export const CARD_MARGIN = 10;
-export const SMALL_CARD_WIDTH = 200;
-export const SMALL_CARD_MIN_HEIGHT = 200;
+export const CARD_MIN_HEIGHT = 250;
+export const CARD_MARGIN = 8;
+export const SMALL_CARD_WIDTH = 210;
+export const SMALL_CARD_MIN_HEIGHT = 190;
 export const SMALL_CARD_MARGIN = 5;
 const cardSize = { width: CARD_WIDTH, minHeight: CARD_MIN_HEIGHT, margin: CARD_MARGIN };
 const smallCardSize = {
@@ -38,6 +40,7 @@ const smallCardSize = {
 };
 /** A card that sits in a container which already has the footprint of a card */
 const filledCardSize = { width: '100%', margin: 0 };
+const tooltipSlotProps = { popper: { sx: { pointerEvents: 'none' } } };
 /**
  * Icons read from the file storage of the adapter, keyed by `<instance>/<file>`.
  *
@@ -45,68 +48,43 @@ const filledCardSize = { width: '100%', margin: 0 };
  * would repeat the `readFile` round trip for an icon that is very often not there at all.
  */
 const fileIconCache = new Map();
-const styles = {
-    cardStyle: (theme) => ({
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5',
-    }),
-    headerStyle: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        paddingLeft: 8,
-        paddingRight: 8,
-        position: 'relative',
-        minHeight: 60,
-        color: '#000',
-    },
-    imgAreaStyle: {
-        height: 45,
-        width: 45,
-        justifyContent: 'center',
-        display: 'flex',
-        alignItems: 'center',
-    },
-    imgStyle: {
-        zIndex: 2,
-        maxWidth: '100%',
-        maxHeight: '100%',
-        color: '#FFF',
-    },
-    titleStyle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        // whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-    },
-    detailsButtonStyle: {
-        right: 20,
-        bottom: -20,
-        position: 'absolute',
-    },
-    bodyStyle: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-    },
-    deviceInfoStyle: {
-        padding: '20px 16px 0 16px',
-    },
-    statusStyle: {
-        padding: '15px 25px 0 15px',
-        // The line may grow if the device provides custom indicators, so only the minimum is fixed
-        minHeight: 41,
-    },
-};
-function NoImageIcon(props) {
-    return (React.createElement("svg", { viewBox: "0 0 24 24", width: "24", height: "24", style: props.style, className: props.className },
-        React.createElement("path", { fill: "currentColor", d: "M21.9,21.9l-8.49-8.49l0,0L3.59,3.59l0,0L2.1,2.1L0.69,3.51L3,5.83V19c0,1.1,0.9,2,2,2h13.17l2.31,2.31L21.9,21.9z M5,18 l3.5-4.5l2.5,3.01L12.17,15l3,3H5z M21,18.17L5.83,3H19c1.1,0,2,0.9,2,2V18.17z" })));
+/**
+ * True if the icon is a picture (a photo of the device, an uploaded image). A picture keeps its own
+ * colors and sits on a neutral tile; a device type or a symbol takes the color of the device.
+ */
+function isPicture(src) {
+    if (src.startsWith('data:image/svg')) {
+        return false;
+    }
+    return src.startsWith('data:image') || src.includes('/') || /\.(png|jpe?g|gif|webp|ico|bmp)$/i.test(src);
+}
+/** The status entries of a device as a list */
+function getStatusList(device) {
+    if (!device.status) {
+        return [];
+    }
+    return Array.isArray(device.status) ? device.status : [device.status];
+}
+/** A group of controls in the control dialog: the folder opens with the group */
+function ControlGroup(props) {
+    const [expanded, setExpanded] = useState(false);
+    const { control } = props;
+    return (React.createElement(Accordion, { expanded: expanded, onChange: (_e, isExpanded) => setExpanded(isExpanded), disableGutters: true },
+        React.createElement(AccordionSummary, { expandIcon: React.createElement(IconFolder, { open: expanded }), 
+            // The folder shows the state itself, it must not be turned around like the arrow
+            sx: { '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'none' } } },
+            React.createElement(Typography, { component: "span", style: { display: 'flex', alignItems: 'center', gap: 8, color: control.color } },
+                control.icon ? React.createElement(Icon, { src: control.icon }) : null,
+                getTranslation(control.label))),
+        React.createElement(AccordionDetails, { style: { display: 'flex', flexDirection: 'column' } }, props.children)));
 }
 /**
  * Device Card Component.
+ *
+ * The card is laid out like the type plate of a device: its symbol (in the color of the device, with
+ * an LED for the connection) and its name at the top, the status line below, then the facts and at
+ * the bottom the actions. The status values are neutral while all is well and tinted when they need
+ * attention, so that in a long list the devices with a problem stand out.
  *
  * A `PureComponent`: the list re-renders on every loading step, on every filter change and on every
  * resolved device value. Without the shallow property comparison all cards would be re-rendered
@@ -117,6 +95,7 @@ export default class DeviceCard extends PureComponent {
     mounted = false;
     constructor(props) {
         super(props);
+        ensureDmStyles();
         const cacheKey = DeviceCard.iconCacheKey(props);
         this.state = {
             open: false,
@@ -161,17 +140,6 @@ export default class DeviceCard extends PureComponent {
                     return;
                 }
                 this.setState({ localIcon });
-                // const response = await fetch(url);
-                // if (response.ok) {
-                //     const blob = await response.blob();
-                //     const reader = new FileReader();
-                //     reader.onloadend = () => {
-                //         setIcon(reader.result);
-                //     };
-                //     reader.readAsDataURL(blob);
-                // } else {
-                //     throw new Error('Response not ok');
-                // }
             }
             catch {
                 fileIconCache.set(cacheKey, '');
@@ -207,15 +175,13 @@ export default class DeviceCard extends PureComponent {
         this.setState({ details, data: details?.data || {} });
     }
     /**
-     * Copy the device ID to the clipboard
+     * Copy the device ID to the clipboard. The copy symbol shows a check mark as confirmation.
      */
     copyToClipboard = () => {
         const textToCopy = this.props.fields.identifier;
-        if (!textToCopy) {
-            return;
+        if (textToCopy) {
+            Utils.copyToClipboard(textToCopy);
         }
-        Utils.copyToClipboard(textToCopy);
-        alert(`${getTranslation('copied')} ${textToCopy} ${getTranslation('toClipboard')}!`);
     };
     renderDialog() {
         if (!this.state.open || !this.state.details) {
@@ -233,12 +199,7 @@ export default class DeviceCard extends PureComponent {
             .map(control => {
             if (control.type === 'group') {
                 const children = allControls.filter(ctrl => ctrl.group === control.id);
-                return (React.createElement(Accordion, { key: control.id },
-                    React.createElement(AccordionSummary, { expandIcon: React.createElement(ExpandMore, null) },
-                        React.createElement(Typography, { component: "span", style: { display: 'flex', gap: 8, color: control.color } },
-                            control.icon ? React.createElement(Icon, { src: control.icon }) : null,
-                            getTranslation(control.label))),
-                    React.createElement(AccordionDetails, { style: { display: 'flex', flexDirection: 'column' } }, this.renderControlItems(children, allControls, colors, control.id))));
+                return (React.createElement(ControlGroup, { key: control.id, control: control }, this.renderControlItems(children, allControls, colors, control.id)));
             }
             return (React.createElement(DeviceControlComponent, { disabled: false, key: control.id, control: control, socket: this.props.socket, colors: colors, deviceId: this.props.device.id, controlHandler: this.props.controlHandler, controlStateHandler: this.props.controlStateHandler }));
         });
@@ -268,8 +229,8 @@ export default class DeviceCard extends PureComponent {
         }
         if (this.props.device.controls?.length) {
             // place a button and show a control dialog
-            return (React.createElement(Fab, { size: "small", style: { width: 32, height: 32, minHeight: 32 }, disabled: !this.props.alive, onClick: () => this.setState({ showControlDialog: true }) },
-                React.createElement(ControlIcon, null)));
+            return (React.createElement(IconButton, { size: "small", color: "primary", disabled: !this.props.alive, onClick: () => this.setState({ showControlDialog: true }) },
+                React.createElement(ControlIcon, { className: "dm-ani dm-ani-tick" })));
         }
         return null;
     }
@@ -313,7 +274,7 @@ export default class DeviceCard extends PureComponent {
         };
     };
     /** Custom indicators and the actions that requested to be shown in the status line */
-    renderIndicators(small) {
+    renderIndicators() {
         const reserved = [ACTIONS.STATUS, ACTIONS.ENABLE_DISABLE, ACTIONS.UPDATE, ACTIONS.BATTERY];
         const statusActions = this.props.device.actions?.filter(a => a.placement === 'status' && !reserved.includes(a.id)) || [];
         // An indicator switched off by the user is not shown at all. An action referenced by it stays
@@ -324,7 +285,9 @@ export default class DeviceCard extends PureComponent {
         if (!indicators?.length && !statusActions.length) {
             return null;
         }
-        return (React.createElement(StatusIndicators, { indicators: indicators, theme: this.props.theme, stateOrObjectHandler: this.props.stateOrObjectHandler, disabled: !this.props.alive, resolveAction: this.resolveIndicatorAction, style: { marginTop: small ? 2 : 4 } }, statusActions.map(action => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: action.id, deviceId: this.props.device.id, action: action, deviceHandler: this.props.deviceHandler })))));
+        return (React.createElement(StatusIndicators, { indicators: indicators, theme: this.props.theme, stateOrObjectHandler: this.props.stateOrObjectHandler, disabled: !this.props.alive, resolveAction: this.resolveIndicatorAction, 
+            // The indicators flow in the status line together with the built-in values
+            style: { display: 'contents' } }, statusActions.map(action => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: action.id, deviceId: this.props.device.id, action: action, deviceHandler: this.props.deviceHandler })))));
     }
     renderActions() {
         const statusActionIds = this.getStatusActionIds();
@@ -333,67 +296,8 @@ export default class DeviceCard extends PureComponent {
             ? actions.map(a => (React.createElement(DeviceActionButton, { disabled: !this.props.alive, key: a.id, deviceId: this.props.device.id, action: a, deviceHandler: this.props.deviceHandler })))
             : null;
     }
-    renderSmall() {
-        const status = !this.props.device.status
-            ? []
-            : Array.isArray(this.props.device.status)
-                ? this.props.device.status
-                : [this.props.device.status];
-        const iconSrc = this.state.localIcon || this.props.fields.icon;
-        const icon = iconSrc ? (React.createElement(DeviceTypeIcon, { src: iconSrc, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
-        const headerStyle = this.getCardHeaderStyle(this.props.theme);
-        const title = this.state.details?.data?.name || this.props.device.name || '';
-        return (React.createElement(Paper, { style: this.props.fillContainer ? filledCardSize : smallCardSize, sx: styles.cardStyle },
-            React.createElement(Box, { sx: headerStyle, style: { ...styles.headerStyle, minHeight: 48 } },
-                React.createElement("div", { style: { ...styles.imgAreaStyle, height: 32, width: 32 } },
-                    this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.props.fields.manufacturer, model: this.props.fields.model, onImageSelect: (imageData) => {
-                            if (imageData) {
-                                this.setState({ localIcon: imageData });
-                            }
-                        }, socket: this.props.socket })) : null,
-                    icon),
-                React.createElement(Box, { style: { ...styles.titleStyle, fontSize: 14 }, title: title.length > 15 ? title : undefined, sx: theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText }) }, this.state.details?.data?.name || this.props.fields.name),
-                this.props.fields.hasDetails ? (React.createElement(Fab, { disabled: !this.props.alive, size: "small", style: styles.detailsButtonStyle, onClick: () => {
-                        if (!this.state.open) {
-                            this.loadDetails().catch(console.error);
-                            this.setState({ open: true });
-                        }
-                    }, color: "primary" },
-                    React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } },
-                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.props.fields.connectionType, status: s, enabled: this.props.fields.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.props.stateOrObjectHandler }))),
-                this.renderIndicators(true)),
-            React.createElement("div", { style: styles.bodyStyle },
-                React.createElement(Typography, { variant: "body2", style: { ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' } },
-                    this.props.fields.identifier ? (React.createElement("div", { onClick: this.copyToClipboard, style: { textOverflow: 'ellipsis', overflow: 'hidden' } },
-                        React.createElement("b", null,
-                            getText(this.props.identifierLabel),
-                            ":"),
-                        React.createElement("span", { style: { marginLeft: 4 } }, this.props.fields.identifier))) : null,
-                    this.props.fields.manufacturer ? (React.createElement(Tooltip, { title: getTranslation('manufacturer'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
-                        React.createElement("div", null, this.props.fields.manufacturer))) : null,
-                    this.props.fields.model ? (React.createElement(Tooltip, { title: getTranslation('model'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
-                        React.createElement("div", null, this.props.fields.model))) : null),
-                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 10px 10px' } },
-                    React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
-                            /* ignore */
-                        }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,
-                !!(this.hasFooterActions() || this.props.device.controls?.length) && (React.createElement("div", { style: {
-                        marginTop: 'auto',
-                        display: 'flex',
-                        gap: 4,
-                        paddingBottom: 5,
-                        minHeight: 34,
-                        paddingLeft: 8,
-                        paddingRight: 8,
-                    } },
-                    this.renderActions(),
-                    React.createElement("div", { style: { flexGrow: 1 } }),
-                    this.renderControls()))),
-            this.renderDialog(),
-            this.renderControlDialog()));
-    }
-    getCardHeaderStyle(theme, maxWidth) {
+    /** Color of the device symbol and of the glyph on it */
+    getAccent(theme) {
         const backgroundColor = this.props.fields.backgroundColor === 'primary'
             ? theme.palette.primary.main
             : this.props.fields.backgroundColor === 'secondary'
@@ -424,142 +328,133 @@ export default class DeviceCard extends PureComponent {
                 color = Utils.invertColor(backgroundColor, true);
             }
         }
-        return {
-            backgroundColor,
-            color,
-            maxWidth,
-        };
+        return { background: backgroundColor, color };
     }
-    renderBig() {
-        const status = !this.props.device.status
-            ? []
-            : Array.isArray(this.props.device.status)
-                ? this.props.device.status
-                : [this.props.device.status];
+    /** The device symbol with the LED and, if allowed, the image upload */
+    renderAvatar(name, small) {
         const iconSrc = this.state.localIcon || this.props.fields.icon;
-        const icon = iconSrc ? (React.createElement(DeviceTypeIcon, { src: iconSrc, style: styles.imgStyle })) : (React.createElement(NoImageIcon, { style: styles.imgStyle }));
-        const headerStyle = this.getCardHeaderStyle(this.props.theme);
-        const title = this.state.details?.data?.name || this.props.device.name || '';
-        return (React.createElement(Paper, { style: this.props.fillContainer ? filledCardSize : cardSize, sx: styles.cardStyle },
-            React.createElement(Box, { sx: headerStyle, style: styles.headerStyle },
-                React.createElement("div", { style: styles.imgAreaStyle },
-                    this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.props.fields.manufacturer, model: this.props.fields.model, onImageSelect: (imageData) => {
-                            if (imageData) {
-                                this.setState({ localIcon: imageData });
+        const picture = !!iconSrc && isPicture(iconSrc);
+        const accent = this.getAccent(this.props.theme);
+        const firstStatus = getStatusList(this.props.device)[0];
+        let glyph;
+        if (iconSrc) {
+            // The size is given inline, because `DeviceTypeIcon` sets an inline size of its own
+            const glyphSize = small ? 20 : 26;
+            glyph = (React.createElement(DeviceTypeIcon, { src: iconSrc, className: "dm-avatar-glyph", style: picture
+                    ? { width: '100%', height: '100%', objectFit: 'contain' }
+                    : { width: glyphSize, height: glyphSize, color: accent.color } }));
+        }
+        else {
+            // Without an icon, the initial of the name gives each device its own symbol
+            glyph = React.createElement("span", { className: "dm-avatar-letter" }, Array.from(name.trim())[0] || '?');
+        }
+        return (React.createElement("div", { className: picture ? 'dm-avatar dm-avatar-img' : 'dm-avatar', style: picture
+                ? undefined
+                : {
+                    '--dm-accent': accent.background,
+                    '--dm-accent-text': accent.color,
+                } },
+            glyph,
+            this.props.uploadImagesToInstance ? (React.createElement(DeviceImageUpload, { uploadImagesToInstance: this.props.uploadImagesToInstance, deviceId: this.props.device.id, manufacturer: this.props.fields.manufacturer, model: this.props.fields.model, onImageSelect: (imageData) => {
+                    if (imageData) {
+                        this.setState({ localIcon: imageData });
+                    }
+                }, socket: this.props.socket })) : null,
+            firstStatus ? (React.createElement(DeviceLed, { status: firstStatus, stateOrObjectHandler: this.props.stateOrObjectHandler, alive: this.props.alive, enabled: this.props.fields.enabled })) : null));
+    }
+    /** The switch that enables or disables the device */
+    renderEnabled(small) {
+        if (typeof this.props.fields.enabled !== 'boolean') {
+            return null;
+        }
+        const action = this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE);
+        const tooltip = this.props.fields.enabled
+            ? getTranslation('disableIconTooltip')
+            : getTranslation('enableIconTooltip');
+        return (React.createElement("div", { className: "dm-status-end" },
+            React.createElement(Tooltip, { title: tooltip, slotProps: tooltipSlotProps },
+                React.createElement("div", null,
+                    React.createElement(Switch, { size: small ? 'small' : undefined, checked: this.props.fields.enabled, disabled: !action || !this.props.alive, ariaLabel: tooltip, onChange: () => action && this.props.deviceHandler(this.props.device.id, action)(), theme: this.props.theme })))));
+    }
+    /** Identifier, manufacturer and model as a table of labels and values */
+    renderFacts() {
+        const { identifier, manufacturer, model } = this.props.fields;
+        if (!identifier && !manufacturer && !model) {
+            return null;
+        }
+        return (React.createElement("div", { className: "dm-facts" },
+            identifier ? (React.createElement(React.Fragment, null,
+                React.createElement("span", { className: "dm-fact-label" }, getText(this.props.identifierLabel)),
+                React.createElement("span", { className: "dm-fact-copy" },
+                    React.createElement("span", { title: identifier }, identifier),
+                    React.createElement(Tooltip, { title: getTranslation('ctcButtonText'), slotProps: tooltipSlotProps },
+                        React.createElement(IconButton, { size: "small", className: "dm-copy-btn", "aria-label": getTranslation('ctcButtonText'), onClick: this.copyToClipboard },
+                            React.createElement(IconCopyToClipboard, null)))))) : null,
+            manufacturer ? (React.createElement(React.Fragment, null,
+                React.createElement("span", { className: "dm-fact-label" }, getTranslation('manufacturer')),
+                React.createElement("span", { className: "dm-fact-value", title: manufacturer }, manufacturer))) : null,
+            model ? (React.createElement(React.Fragment, null,
+                React.createElement("span", { className: "dm-fact-label" }, getTranslation('model')),
+                React.createElement("span", { className: "dm-fact-value", title: model }, model))) : null));
+    }
+    render() {
+        const small = !!this.props.smallCards;
+        const status = getStatusList(this.props.device);
+        const name = this.state.details?.data?.name || this.props.fields.name || '';
+        const off = this.props.fields.enabled === false;
+        let className = small ? 'dm-card dm-small' : 'dm-card';
+        if (off) {
+            className += ' dm-off';
+        }
+        const size = this.props.fillContainer ? filledCardSize : small ? smallCardSize : cardSize;
+        return (React.createElement("div", { className: className, style: { ...getThemeVars(this.props.theme), ...size } },
+            React.createElement("div", { className: "dm-head" },
+                this.renderAvatar(name, small),
+                React.createElement("div", { className: "dm-name", title: name.length > (small ? 15 : 20) ? name : undefined }, name),
+                this.props.fields.hasDetails ? (React.createElement("div", { className: "dm-head-end" },
+                    React.createElement(IconButton, { size: "small", disabled: !this.props.alive, "aria-label": getTranslation('moreInformation'), onClick: () => {
+                            if (!this.state.open) {
+                                this.loadDetails().catch(console.error);
+                                this.setState({ open: true });
                             }
-                        }, socket: this.props.socket })) : null,
-                    icon),
-                React.createElement(Box, { style: styles.titleStyle, title: title.length > 20 ? title : undefined, sx: theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText }) }, this.state.details?.data?.name || this.props.fields.name),
-                this.props.fields.hasDetails ? (React.createElement(Fab, { disabled: !this.props.alive, size: "small", style: styles.detailsButtonStyle, onClick: () => {
-                        if (!this.state.open) {
-                            this.loadDetails().catch(console.error);
-                            this.setState({ open: true });
-                        }
-                    }, color: "primary" },
-                    React.createElement(MoreVertIcon, null))) : null),
-            React.createElement("div", { style: styles.statusStyle },
-                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.props.fields.connectionType, status: s, enabled: this.props.fields.enabled, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), disableEnableAction: this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.props.stateOrObjectHandler }))),
-                this.renderIndicators()),
-            React.createElement("div", { style: styles.bodyStyle },
-                React.createElement(Typography, { variant: "body1", style: styles.deviceInfoStyle },
-                    this.props.fields.identifier ? (React.createElement("div", { onClick: this.copyToClipboard },
-                        React.createElement("b", { style: { marginRight: 4 } },
-                            getText(this.props.identifierLabel),
-                            ":"),
-                        this.props.fields.identifier)) : null,
-                    this.props.fields.manufacturer ? (React.createElement("div", null,
-                        React.createElement("b", { style: { marginRight: 4 } },
-                            getTranslation('manufacturer'),
-                            ":"),
-                        this.props.fields.manufacturer)) : null,
-                    this.props.fields.model ? (React.createElement("div", null,
-                        React.createElement("b", { style: { marginRight: 4 } },
-                            getTranslation('model'),
-                            ":"),
-                        this.props.fields.model)) : null),
-                this.props.device.customInfo ? (React.createElement("div", { style: { padding: '0 16px 16px' } },
-                    React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
-                            /* ignore */
-                        }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,
-                !!(this.hasFooterActions() || this.props.device.controls?.length) && (React.createElement("div", { style: {
-                        marginTop: 'auto',
-                        display: 'flex',
-                        gap: 8,
-                        paddingBottom: 5,
-                        minHeight: 34,
-                        paddingLeft: 10,
-                        paddingRight: 10,
-                    } },
-                    this.renderActions(),
-                    React.createElement("div", { style: { flexGrow: 1 } }),
-                    this.renderControls()))),
+                        } },
+                        React.createElement(MoreVertIcon, { className: "dm-ani dm-ani-turn" })))) : null),
+            React.createElement("div", { className: "dm-status" },
+                status.map((s, i) => (React.createElement(DeviceStatusComponent, { key: i, socket: this.props.socket, deviceId: this.props.device.id, connectionType: this.props.fields.connectionType, status: s, statusAction: this.props.device.actions?.find(a => a.id === ACTIONS.STATUS), update: i === 0 ? this.props.device.update : undefined, updateAction: i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined, batteryAction: this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY), deviceHandler: this.props.deviceHandler, theme: this.props.theme, stateOrObjectHandler: this.props.stateOrObjectHandler }))),
+                this.renderIndicators(),
+                this.renderEnabled(small)),
+            this.renderFacts(),
+            this.props.device.customInfo ? (React.createElement("div", { className: "dm-custom" },
+                React.createElement(JsonConfig, { instanceId: this.props.instanceId, socket: this.props.socket, schema: this.props.device.customInfo.schema, data: this.props.device.customInfo.data || {}, onChange: (_data) => {
+                        /* ignore */
+                    }, themeName: this.props.themeName, themeType: this.props.themeType, theme: this.props.theme, isFloatComma: this.props.isFloatComma, dateFormat: this.props.dateFormat }))) : null,
+            this.hasFooterActions() || this.props.device.controls?.length ? (React.createElement("div", { className: "dm-foot" },
+                this.renderActions(),
+                React.createElement("div", { className: "dm-foot-end" }, this.renderControls()))) : null,
             this.renderDialog(),
             this.renderControlDialog()));
     }
-    render() {
-        if (this.props.smallCards) {
-            return this.renderSmall();
-        }
-        return this.renderBig();
-    }
 }
+/** Placeholder of a device that is not loaded yet, with the layout of the card */
 export class DeviceCardSkeleton extends PureComponent {
+    constructor(props) {
+        super(props);
+        ensureDmStyles();
+    }
     render() {
-        if (this.props.smallCards) {
-            return this.renderSmall();
-        }
-        return this.renderBig();
-    }
-    renderSmall() {
-        const headerStyle = this.getCardHeaderStyle(this.props.theme);
-        return (React.createElement(Paper, { sx: styles.cardStyle, style: smallCardSize },
-            React.createElement(Box, { sx: headerStyle, style: { ...styles.headerStyle, minHeight: 48 } },
-                React.createElement("div", { style: { ...styles.imgAreaStyle, height: 32, width: 32 } },
-                    React.createElement(Skeleton, { variant: "rounded", width: 24, height: 24 })),
-                React.createElement(Box, { style: { ...styles.titleStyle, fontSize: 14, minWidth: '50%' }, sx: theme => ({
-                        color: headerStyle.color || theme.palette.secondary.contrastText,
-                    }) },
-                    React.createElement(Skeleton, null))),
-            React.createElement("div", { style: { ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' } }),
-            React.createElement("div", { style: styles.bodyStyle },
-                React.createElement(Typography, { variant: "body2", style: { ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' } },
-                    React.createElement("div", null,
-                        React.createElement(Skeleton, null)),
-                    React.createElement("div", null,
-                        React.createElement(Skeleton, null)),
-                    React.createElement("div", null,
-                        React.createElement(Skeleton, null))))));
-    }
-    renderBig() {
-        const headerStyle = this.getCardHeaderStyle(this.props.theme);
-        return (React.createElement(Paper, { sx: styles.cardStyle, style: cardSize },
-            React.createElement(Box, { sx: headerStyle, style: styles.headerStyle },
-                React.createElement("div", { style: styles.imgAreaStyle },
-                    React.createElement(Skeleton, { variant: "rounded", width: 24, height: 24 })),
-                React.createElement(Box, { style: styles.titleStyle, sx: theme => ({
-                        color: headerStyle.color || theme.palette.secondary.contrastText,
-                        minWidth: '50%',
-                    }) },
-                    React.createElement(Skeleton, null))),
-            React.createElement("div", { style: styles.statusStyle }),
-            React.createElement("div", { style: styles.bodyStyle },
-                React.createElement(Typography, { variant: "body1", style: styles.deviceInfoStyle },
-                    React.createElement("div", null,
-                        React.createElement(Skeleton, null)),
-                    React.createElement("div", null,
-                        React.createElement(Skeleton, null)),
-                    React.createElement("div", null,
-                        React.createElement(Skeleton, null))))));
-    }
-    // eslint-disable-next-line class-methods-use-this
-    getCardHeaderStyle(theme, maxWidth) {
-        const backgroundColor = theme.palette.secondary.main;
-        const color = theme.palette.secondary.contrastText;
-        return {
-            backgroundColor,
-            color,
-            maxWidth,
-        };
+        const small = !!this.props.smallCards;
+        return (React.createElement("div", { className: small ? 'dm-card dm-small dm-skeleton' : 'dm-card dm-skeleton', style: { ...getThemeVars(this.props.theme), ...(small ? smallCardSize : cardSize) } },
+            React.createElement("div", { className: "dm-head" },
+                React.createElement("div", { className: "dm-avatar" }),
+                React.createElement("div", { className: "dm-name" },
+                    React.createElement(Skeleton, { width: "70%" }))),
+            React.createElement("div", { className: "dm-status" },
+                React.createElement(Skeleton, { variant: "rounded", width: small ? 120 : 150, height: 20 })),
+            React.createElement("div", { className: "dm-facts" }, [0, 1, 2].map(i => (React.createElement(React.Fragment, { key: i },
+                React.createElement(Skeleton, { width: small ? 42 : 56 }),
+                React.createElement(Skeleton, { width: `${70 - i * 12}%` }))))),
+            React.createElement("div", { className: "dm-foot" },
+                React.createElement(Skeleton, { variant: "rounded", width: small ? 110 : 150, height: 20 }))));
     }
 }
 //# sourceMappingURL=DeviceCard.js.map

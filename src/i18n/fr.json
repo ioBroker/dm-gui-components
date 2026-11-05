@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Entrez s'il vous plait",
     "refreshInstanceList": "Actualiser la liste des instances",
     "refreshTooltip": "Rafraîchir",
+    "resetFilters": "Réinitialiser les filtres",
+    "resetFiltersTooltip": "Réinitialiser tous les filtres",
     "rootInfoText": "Ceci est le gestionnaire d'appareils. Sélectionnez une instance d'adaptateur ci-dessous pour afficher, configurer et mettre à jour ses appareils.",
     "selectInstanceText": "Veuillez sélectionner une instance",
     "toClipboard": "au presse-papiers",
     "updateAvailable": "Mise à jour disponible",
     "updateConfirmation": "Voulez-vous installer la mise à jour disponible ?",
+    "uploadImageTooltip": "Téléverser une image de l'appareil",
     "yesButtonText": "Oui"
 }

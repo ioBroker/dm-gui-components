@@ -1,5 +1,7 @@
 import React, { type JSX } from 'react';
 import {
+    Button,
+    ButtonBase,
     IconButton,
     InputAdornment,
     TextField,
@@ -8,28 +10,23 @@ import {
     LinearProgress,
     Select,
     MenuItem,
-    Card,
-    CardActionArea,
-    CardContent,
     Typography,
     Menu,
     Checkbox,
     ListSubheader,
 } from '@mui/material';
 
-import {
-    ArrowBack,
-    Clear,
-    QuestionMark,
-    Refresh,
-    FilterAlt,
-    FilterAltOff,
-    SystemUpdateAlt,
-    BatteryAlert,
-    Tune,
-} from '@mui/icons-material';
+import { ArrowBack, Clear, DevicesOther, QuestionMark, FilterAltOff, Tune } from '@mui/icons-material';
 
-import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/gui-components';
+import {
+    I18n,
+    DeviceTypeIcon,
+    Icon,
+    IconConnectionState,
+    IconFilter,
+    IconRefresh,
+    InfoBox,
+} from '@iobroker/gui-components';
 import type { DeviceId, DeviceInfo, DeviceStatus, InstanceDetails, StatusIndicator } from './protocol/api';
 
 import DeviceCard, {
@@ -48,6 +45,8 @@ import { StatusIndicators } from './StatusIndicator';
 import { StateOrObjectHandler } from './StateOrObjectHandler';
 import { DeviceFieldsResolver, type DeviceFilterField } from './DeviceFields';
 import { LazyRender, LazyRenderObserver } from './LazyRender';
+import { IconBattery, IconUpdate } from './AnimatedIcons';
+import { ensureDmStyles, getThemeVars } from './styles';
 
 import de from './i18n/de.json';
 import en from './i18n/en.json';
@@ -216,6 +215,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     constructor(props: DeviceListProps) {
         super(props);
 
+        ensureDmStyles();
         this.stateOrObjectHandler = new StateOrObjectHandler(this.props.socket);
         this.fieldsResolver = new DeviceFieldsResolver(this.stateOrObjectHandler, this.onFieldsChanged);
 
@@ -716,121 +716,111 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
         const instanceIds = Object.keys(this.state.dmInstances);
         if (!instanceIds.length) {
-            return [
-                <div
-                    style={{ padding: 25 }}
-                    key="noInstances"
-                >
-                    <span>{getTranslation('noInstancesFoundText')}</span>
-                </div>,
-            ];
+            return [this.renderEmpty('noInstances', getTranslation('noInstancesFoundText'))];
         }
 
-        const backgroundColor = this.props.theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5';
-
-        if (this.props.smallCards) {
-            return instanceIds.map(id => {
-                const info = this.state.dmInstances![id];
-                return (
-                    <Card
-                        key={id}
-                        sx={{ width: 200, margin: '5px', backgroundColor }}
-                    >
-                        <CardActionArea
-                            onClick={() => this.selectInstance(id)}
-                            style={{ height: '100%' }}
-                        >
-                            <CardContent
-                                style={{
-                                    height: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    padding: 8,
-                                }}
-                            >
-                                {info.icon ? (
-                                    <Icon
-                                        src={info.icon}
-                                        style={{ width: 32, height: 32, flexShrink: 0 }}
-                                    />
-                                ) : (
-                                    <QuestionMark style={{ width: 32, height: 32, flexShrink: 0 }} />
-                                )}
-                                <div style={{ overflow: 'hidden' }}>
-                                    <Typography
-                                        variant="body1"
-                                        noWrap
-                                        style={{ fontSize: 14, fontWeight: 'bold' }}
-                                    >
-                                        {id}
-                                    </Typography>
-                                    {info.title ? (
-                                        <Typography
-                                            variant="caption"
-                                            color="textSecondary"
-                                            noWrap
-                                            component="div"
-                                        >
-                                            {info.title}
-                                        </Typography>
-                                    ) : null}
-                                </div>
-                            </CardContent>
-                        </CardActionArea>
-                    </Card>
-                );
-            });
-        }
+        const small = !!this.props.smallCards;
 
         return instanceIds.map(id => {
             const info = this.state.dmInstances![id];
             return (
-                <Card
+                <div
                     key={id}
-                    sx={{ width: 240, margin: '10px', backgroundColor }}
+                    className={small ? 'dm-card dm-inst dm-inst-small' : 'dm-card dm-inst'}
                 >
-                    <CardActionArea
+                    <ButtonBase
+                        className="dm-inst-area"
                         onClick={() => this.selectInstance(id)}
-                        style={{ height: '100%' }}
                     >
-                        <CardContent
-                            style={{
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: 8,
-                            }}
-                        >
+                        <div className="dm-avatar">
                             {info.icon ? (
                                 <Icon
                                     src={info.icon}
-                                    style={{ width: 64, height: 64 }}
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                 />
                             ) : (
-                                <QuestionMark style={{ width: 64, height: 64 }} />
+                                <QuestionMark style={{ width: '70%', height: '70%' }} />
                             )}
-                            <Typography
-                                variant="h6"
-                                style={{ textAlign: 'center', wordBreak: 'break-all' }}
-                            >
-                                {id}
-                            </Typography>
-                            {info.title ? (
-                                <Typography
-                                    variant="body2"
-                                    color="textSecondary"
-                                    style={{ textAlign: 'center' }}
-                                >
-                                    {info.title}
-                                </Typography>
-                            ) : null}
-                        </CardContent>
-                    </CardActionArea>
-                </Card>
+                        </div>
+                        <div className="dm-inst-text">
+                            <div className="dm-inst-id">{id}</div>
+                            {info.title ? <div className="dm-inst-title">{info.title}</div> : null}
+                        </div>
+                    </ButtonBase>
+                </div>
             );
         });
+    }
+
+    /** True if any filter hides devices: the text, the group or one of the toggles */
+    private hasActiveFilter(): boolean {
+        return (
+            !!this.state.filterText ||
+            this.state.onlyUpdatable ||
+            this.state.onlyBatteryProblem ||
+            (!!this.state.groupKey && this.state.groupKey !== '_')
+        );
+    }
+
+    /** Removes all filters at once */
+    private resetFilters(): void {
+        if (this.filterTimeout) {
+            clearTimeout(this.filterTimeout);
+            this.filterTimeout = null;
+        }
+        window.localStorage.setItem('dm_onlyUpdatable', 'false');
+        window.localStorage.setItem('dm_onlyBatteryProblem', 'false');
+        window.localStorage.removeItem(`dm_group_${this.state.selectedInstance}`);
+        this.setState({
+            filter: '',
+            filterText: '',
+            onlyUpdatable: false,
+            onlyBatteryProblem: false,
+            groupKey: '',
+        });
+    }
+
+    /** An empty list says what happened and, if possible, what to do */
+    private renderEmpty(
+        key: string,
+        text: string,
+        icon?: React.JSX.Element | null,
+        action?: React.JSX.Element | null,
+    ): React.JSX.Element {
+        return (
+            <div
+                key={key}
+                className="dm-empty"
+                style={getThemeVars(this.props.theme)}
+            >
+                {icon}
+                <span>{text}</span>
+                {action}
+            </div>
+        );
+    }
+
+    /** The filter symbol in the toolbar. While a filter is set, a red cross shows that a click removes all filters */
+    private renderFilterButton(): React.JSX.Element {
+        const active = this.hasActiveFilter();
+        if (!active) {
+            return <IconFilter active={false} />;
+        }
+        return (
+            <Tooltip
+                title={getTranslation('resetFiltersTooltip')}
+                slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
+            >
+                <IconButton
+                    color="inherit"
+                    size="small"
+                    onClick={() => this.resetFilters()}
+                    style={{ margin: -5 }}
+                >
+                    <IconFilter active />
+                </IconButton>
+            </Tooltip>
+        );
     }
 
     /**
@@ -1189,10 +1179,6 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
     }
 
     renderContent(): JSX.Element | JSX.Element[] | null {
-        const emptyStyle: React.CSSProperties = {
-            padding: 25,
-        };
-
         const deviceGroups: { name: string; value: string; count: number; icon?: React.JSX.Element | string | null }[] =
             [];
         const showRootPage =
@@ -1204,22 +1190,15 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
             list.unshift(this.renderRootInfo());
         } else if (!this.props.embedded && !this.state.alive) {
             list = [
-                <div
-                    style={emptyStyle}
-                    key="notAlive"
-                >
-                    <span>{getTranslation('instanceNotAlive')}</span>
-                </div>,
+                this.renderEmpty(
+                    'notAlive',
+                    getTranslation('instanceNotAlive'),
+                    // `null` while the state is still unknown: nothing is known yet, so no symbol
+                    this.state.alive === false ? <IconConnectionState state="disconnected" /> : null,
+                ),
             ];
         } else if (!this.state.devices.length && this.state.selectedInstance && !this.state.loading) {
-            list = [
-                <div
-                    style={emptyStyle}
-                    key="notFound"
-                >
-                    <span>{getTranslation('noDevicesFoundText')}</span>
-                </div>,
-            ];
+            list = [this.renderEmpty('notFound', getTranslation('noDevicesFoundText'), <DevicesOther />)];
         } else {
             // build a device types list
             let filteredDevices = this.state.devices;
@@ -1339,23 +1318,24 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                     // The filter is applied here now, so the list knows that nothing is left instead
                     // of having to hide the message with a CSS rule
                     list.push(
-                        <div
-                            style={emptyStyle}
-                            key="filtered"
-                        >
-                            <span>{getTranslation('allDevicesFilteredOut')}</span>
-                        </div>,
+                        this.renderEmpty(
+                            'filtered',
+                            getTranslation('allDevicesFilteredOut'),
+                            <IconFilter active={!this.props.embedded} />,
+                            this.props.embedded ? null : (
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    onClick={() => this.resetFilters()}
+                                >
+                                    {getTranslation('resetFilters')}
+                                </Button>
+                            ),
+                        ),
                     );
                 }
             } else {
-                list = [
-                    <div
-                        style={emptyStyle}
-                        key="selectInstance"
-                    >
-                        <span>{getTranslation('selectInstanceText')}</span>
-                    </div>,
-                ];
+                list = [this.renderEmpty('selectInstance', getTranslation('selectInstanceText'))];
             }
         }
 
@@ -1370,7 +1350,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
 
         return (
             <div
-                style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+                style={{
+                    ...getThemeVars(this.props.theme),
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                }}
             >
                 <Toolbar
                     variant="dense"
@@ -1423,7 +1410,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                     color="inherit"
                                     size="small"
                                 >
-                                    <Refresh />
+                                    {/* Turns while the instances are loaded, then shows a check mark */}
+                                    <IconRefresh loading={!this.state.dmInstances} />
                                 </IconButton>
                             </span>
                         </Tooltip>
@@ -1440,7 +1428,8 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                     color="inherit"
                                     size="small"
                                 >
-                                    <Refresh />
+                                    {/* Turns while the devices are loaded, then shows a check mark */}
+                                    <IconRefresh loading={!!this.state.loading} />
                                 </IconButton>
                             </span>
                         </Tooltip>
@@ -1479,7 +1468,7 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                 }}
                                 size="small"
                             >
-                                <SystemUpdateAlt />
+                                <IconUpdate />
                             </IconButton>
                         </Tooltip>
                     ) : null}
@@ -1503,14 +1492,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
                                 }}
                                 size="small"
                             >
-                                <BatteryAlert />
+                                <IconBattery level={10} />
                             </IconButton>
                         </Tooltip>
                     ) : null}
                     {!this.state.apiVersionError && this.state.alive ? this.renderIndicatorSettings() : null}
                     {!this.state.apiVersionError && this.state.alive ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <FilterAlt />
+                            {this.renderFilterButton()}
                             {this.renderFilterFields()}
                             {this.renderFilterValue()}
                         </div>

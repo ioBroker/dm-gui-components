@@ -1,13 +1,15 @@
 import {
     I18n,
     Icon,
+    IconCopyToClipboard,
+    IconResult,
     Utils,
     type Connection,
     type IobTheme,
     type ThemeName,
     type ThemeType,
 } from '@iobroker/gui-components';
-import { Check, Close, ContentCopy } from '@mui/icons-material';
+import { Check, Close } from '@mui/icons-material';
 import {
     Backdrop,
     Box,
@@ -54,6 +56,7 @@ import { DmProtocolV2 } from './protocol/DmProtocolV2';
 import { DmProtocolV3 } from './protocol/DmProtocolV3';
 import { UnknownDmProtocol } from './protocol/UnknownDmProtocol';
 import { getTranslation } from './Utils';
+import { ensureDmStyles, getThemeVars } from './styles';
 
 declare module '@mui/material/Button' {
     interface ButtonPropsColorOverrides {
@@ -106,7 +109,12 @@ export type CommunicationState = {
     showInput: InputAction | null;
     inputValue: string | boolean | number | null;
     selectedInstance: string; // adapterName.X
+    /** Changes after each successful action: a check mark confirms it for a moment. 0 - nothing to show */
+    resultFlash?: number;
 };
+
+/** How long the check mark after a successful action is shown (the CSS animation takes as long) */
+const RESULT_FLASH_DURATION = 1250;
 
 /**
  * Communication Component
@@ -114,6 +122,7 @@ export type CommunicationState = {
 export default class Communication<P extends CommunicationProps, S extends CommunicationState> extends Component<P, S> {
     private protocol: DmProtocolBase = new UnknownDmProtocol();
     private responseTimeout: ReturnType<typeof setTimeout> | null = null;
+    private resultFlashTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // eslint-disable-next-line react/no-unused-class-component-methods
     instanceHandler: (action: ActionBase) => () => void;
@@ -133,6 +142,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
 
     constructor(props: P) {
         super(props);
+        ensureDmStyles();
 
         this.state = {
             showSpinner: false,
@@ -144,6 +154,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             showConfirmation: null,
             showInput: null,
             inputValue: null,
+            resultFlash: 0,
             selectedInstance:
                 this.props.selectedInstance ??
                 this.props.instance ??
@@ -197,6 +208,22 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             clearTimeout(this.responseTimeout);
             this.responseTimeout = null;
         }
+        if (this.resultFlashTimeout) {
+            clearTimeout(this.resultFlashTimeout);
+            this.resultFlashTimeout = null;
+        }
+    }
+
+    /** Confirms a successful action: the spinner is followed by a check mark that draws itself */
+    showResultFlash(): void {
+        if (this.resultFlashTimeout) {
+            clearTimeout(this.resultFlashTimeout);
+        }
+        this.setState({ resultFlash: Date.now() });
+        this.resultFlashTimeout = setTimeout(() => {
+            this.resultFlashTimeout = null;
+            this.setState({ resultFlash: 0 });
+        }, RESULT_FLASH_DURATION);
     }
 
     // eslint-disable-next-line class-methods-use-this
@@ -225,8 +252,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
             this.setState({ showSpinner: true });
 
             this.responseTimeout = setTimeout(() => {
-                this.setState({ showSpinner: false });
-                window.alert(I18n.t('ra_No response from the backend'));
+                this.setState({ showSpinner: false, showToast: I18n.t('ra_No response from the backend') });
             }, messageToSend.timeout || 5000);
 
             const response = await this.protocol.sendAction(command, messageToSend);
@@ -354,6 +380,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                         this.setState({ showToast: response.result.error.message, showSpinner: false });
                     } else {
                         this.setState({ showSpinner: false });
+                        this.showResultFlash();
                     }
                     break;
 
@@ -483,14 +510,40 @@ export default class Communication<P extends CommunicationProps, S extends Commu
         );
     }
 
+    /** The toast shows errors: the cross draws itself and shakes */
     renderSnackbar(): React.JSX.Element {
         return (
             <Snackbar
                 open={!!this.state.showToast}
                 autoHideDuration={6_000}
                 onClose={() => this.setState({ showToast: null })}
-                message={this.state.showToast}
+                message={
+                    this.state.showToast ? (
+                        <span className="dm-toast">
+                            <IconResult
+                                type="error"
+                                replay={this.state.showToast}
+                            />
+                            {this.state.showToast}
+                        </span>
+                    ) : null
+                }
             />
+        );
+    }
+
+    renderResultFlash(): React.JSX.Element | null {
+        if (!this.state.resultFlash) {
+            return null;
+        }
+        return (
+            <div
+                key={this.state.resultFlash}
+                className="dm-result"
+                style={getThemeVars(this.props.theme)}
+            >
+                <IconResult type="success" />
+            </div>
         );
     }
 
@@ -594,6 +647,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                         : undefined,
                                 ...(button.style || undefined),
                             }}
+                            // The copy symbol confirms the copy with a check mark
                             onClick={() => {
                                 if (button.copyToClipboardAttr && form.data) {
                                     const val = form.data[button.copyToClipboardAttr];
@@ -602,15 +656,13 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                                     } else {
                                         Utils.copyToClipboard(JSON.stringify(val, null, 2));
                                     }
-                                    window.alert(I18n.t('copied'));
                                 } else if (form.data) {
                                     Utils.copyToClipboard(JSON.stringify(form.data, null, 2));
-                                    window.alert(I18n.t('copied'));
                                 } else {
-                                    window.alert(I18n.t('nothingToCopy'));
+                                    this.setState({ showToast: I18n.t('nothingToCopy') });
                                 }
                             }}
-                            startIcon={button?.icon ? <Icon src={button?.icon} /> : <ContentCopy />}
+                            startIcon={button?.icon ? <Icon src={button?.icon} /> : <IconCopyToClipboard />}
                         >
                             {getTranslation(button?.label || 'ctcButtonText', button?.noTranslation)}
                         </Button>,
@@ -1005,6 +1057,7 @@ export default class Communication<P extends CommunicationProps, S extends Commu
                 {this.renderConfirmationDialog()}
                 {this.renderInputDialog()}
                 {this.renderSpinner()}
+                {this.renderResultFlash()}
             </ThemeProvider>
         );
     }

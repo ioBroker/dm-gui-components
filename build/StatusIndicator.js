@@ -1,27 +1,16 @@
 import React from 'react';
-import { IconButton, Tooltip } from '@mui/material';
 import { useStateOrObject } from './hooks';
+import StatusPill from './StatusPill';
 import { getIndicatorColor, getTranslation, renderIcon } from './Utils';
 const styles = {
-    tooltip: {
-        pointerEvents: 'none',
-    },
-    content: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        lineHeight: 1,
-    },
-    text: {
-        fontSize: 'small',
-        margin: 0,
-        whiteSpace: 'nowrap',
+    tooltipText: {
+        whiteSpace: 'pre-line',
     },
     row: {
         display: 'flex',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: 4,
     },
 };
 /**
@@ -88,30 +77,13 @@ export default function StatusIndicator(props) {
     }
     const tooltipSource = level?.tooltip ?? indicator.tooltip;
     const tooltip = tooltipSource ? getTranslation(tooltipSource) : '';
+    // An indicator in the color "error" or "warning" needs attention: its pill is tinted like the built-in ones
+    const tone = colorName === 'error' ? 'err' : colorName === 'warning' ? 'warn' : undefined;
     // Only fall back to the "question mark" icon if the indicator shows nothing else at all
-    const iconElement = iconName || !label ? renderIcon(iconName, resolvedColor) : null;
-    const content = (React.createElement("div", { style: styles.content },
+    const iconElement = iconName || !label ? renderIcon(iconName, tone ? undefined : resolvedColor) : null;
+    return (React.createElement(StatusPill, { tone: tone, color: tone ? undefined : resolvedColor, tooltip: tooltip ? React.createElement("span", { style: styles.tooltipText }, tooltip) : undefined, href: props.url, onClick: props.url ? undefined : props.onClick, disabled: props.disabled },
         iconElement,
-        label ? React.createElement("p", { style: { ...styles.text, color: resolvedColor } }, label) : null));
-    let element;
-    if (props.url) {
-        element = (React.createElement(IconButton, { size: "small", style: { padding: 2, borderRadius: 4 }, href: props.url, target: "_blank", disabled: props.disabled }, content));
-    }
-    else if (props.onClick) {
-        element = (React.createElement(IconButton, { size: "small", style: { padding: 2, borderRadius: 4 }, disabled: props.disabled, onClick: e => {
-                // The card itself may react on clicks, so the event must not bubble
-                e.stopPropagation();
-                props.onClick?.();
-            } }, content));
-    }
-    else {
-        element = content;
-    }
-    if (!tooltip) {
-        return element;
-    }
-    return (React.createElement(Tooltip, { title: React.createElement("span", { style: { whiteSpace: 'pre-line' } }, tooltip), slotProps: { popper: { sx: styles.tooltip } } },
-        React.createElement("span", { style: { display: 'inline-flex' } }, element)));
+        label ? React.createElement("span", null, label) : null));
 }
 /**
  * The line of custom status indicators.

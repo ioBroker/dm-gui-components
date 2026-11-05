@@ -1,28 +1,16 @@
-import { I18n } from '@iobroker/gui-components';
-import type { Connection, IobTheme, ThemeType } from '@iobroker/gui-components';
+import { I18n, IconConnectionState, IconStatusLed } from '@iobroker/gui-components';
+import type { Connection, IobTheme } from '@iobroker/gui-components';
 import {
-    Battery20 as Battery20Icon,
-    Battery30 as Battery30Icon,
-    Battery50 as Battery50Icon,
-    Battery60 as Battery60Icon,
-    Battery80 as Battery80Icon,
-    Battery90 as Battery90Icon,
-    BatteryAlert as BatteryAlertIcon,
-    BatteryCharging50 as BatteryCharging50Icon,
-    BatteryFull as BatteryFullIcon,
     Bluetooth as IconConnectionBluetooth,
     Cable as IconConnectionLan,
     BluetoothDisabled as IconConnectionNoBluetooth,
-    WifiOff as IconConnectionNoWifi,
-    Wifi as IconConnectionWifi,
     Link as LinkIcon,
     LinkOff as LinkOffIcon,
-    NetworkCheck as NetworkCheckIcon,
-    SystemUpdateAlt as SystemUpdateAltIcon,
     Warning as WarningIcon,
 } from '@mui/icons-material';
-import { IconButton, Tooltip } from '@mui/material';
-import React, { useMemo, type CSSProperties, type MouseEvent } from 'react';
+import React, { useState, type CSSProperties, type MouseEvent } from 'react';
+
+import { IconBattery, IconSignal, IconUpdate, useValueTick } from './AnimatedIcons';
 import { useStateOrObject } from './hooks';
 import type {
     ActionBase,
@@ -32,20 +20,14 @@ import type {
     DeviceInfo,
     DeviceStatus,
 } from './protocol/api';
-import Switch from './Switch';
-import { getTranslation } from './Utils';
+import StatusPill from './StatusPill';
 import type { StateOrObjectHandler } from './StateOrObjectHandler';
+import { getTranslation } from './Utils';
 
 export const ACTIONS = {
     STATUS: 'status',
     DISABLE: 'disable',
     ENABLE: 'enable',
-};
-
-const styles: Record<string, React.CSSProperties> = {
-    tooltip: {
-        pointerEvents: 'none',
-    },
 };
 
 export interface IconProps {
@@ -128,14 +110,51 @@ function ZigBeeIcon(props: IconProps): React.JSX.Element {
     );
 }
 
+/** The status as an object, also if the device gives only the connection as a string */
+function normalizeStatus(status: DeviceStatus | null | undefined): Exclude<DeviceStatus, string> {
+    if (!status) {
+        return {};
+    }
+    if (typeof status === 'string') {
+        return { connection: status };
+    }
+    return status;
+}
+
+/** The symbol of the connection type; `null` if there is nothing to show */
+function getConnectionSymbol(
+    connectionType: ConfigConnectionType | undefined,
+    connection: string | undefined,
+): React.JSX.Element | null {
+    const disconnected = connection === 'disconnected';
+    switch (connectionType) {
+        case 'wifi':
+            // The waves are crossed out when the connection is lost
+            return <IconConnectionState state={disconnected ? 'disconnected' : 'connected'} />;
+        case 'bluetooth':
+            return disconnected ? <IconConnectionNoBluetooth /> : <IconConnectionBluetooth />;
+        case 'lan':
+            return <IconConnectionLan />;
+        case 'thread':
+            return <ThreadIcon />;
+        case 'z-wave':
+            return <ZWaveIcon />;
+        case 'zigbee':
+            return <ZigBeeIcon />;
+        default:
+            if (connection === 'connected') {
+                return <LinkIcon />;
+            }
+            return disconnected ? <LinkOffIcon /> : null;
+    }
+}
+
 interface DeviceStatusProps {
     socket: Connection;
     status: DeviceStatus | null;
     deviceId: DeviceId;
     connectionType?: ConfigConnectionType;
     statusAction?: DeviceAction;
-    enabled?: boolean;
-    disableEnableAction?: DeviceAction;
     /** Update information of the device (firmware/software) */
     update?: DeviceInfo['update'];
     /** Reserved "update" action. If provided, the update indicator becomes a clickable button */
@@ -147,88 +166,17 @@ interface DeviceStatusProps {
     stateOrObjectHandler: StateOrObjectHandler;
 }
 
-function rssiColor(signal: number, themeType: ThemeType): string {
-    if (signal < -80) {
-        return themeType === 'dark' ? '#ff5c5c' : '#aa0000';
-    }
-    if (signal < -60) {
-        return themeType === 'dark' ? '#fa8547' : '#ae5c00';
-    }
-    if (signal < -50) {
-        return themeType === 'dark' ? '#cdff4f' : '#7b9500';
-    }
-
-    return themeType === 'dark' ? '#5cff5c' : '#008500';
-}
-
-const iconStyleOK = {
-    fill: '#00ac00',
-    color: '#00ac00',
-};
-const iconStyleNotOK = {
-    fill: '#ff0000',
-    color: '#ff0000',
-};
-const iconStyleWarning = {
-    fill: '#da8200',
-    color: '#da8200',
-};
-const iconStyleUnknown = {
-    fill: '#8a8a8a',
-    color: '#8a8a8a',
-};
-const iconStylePreWarning = {
-    fill: '#ffcc00',
-    color: '#ffcc00',
-};
-const iconStyleUpdate = {
-    fill: '#2196f3',
-    color: '#2196f3',
-};
-
-function getBatteryIcon(battery: number): React.ReactNode {
-    if (battery > 95) {
-        return <BatteryFullIcon style={iconStyleOK} />;
-    }
-    if (battery > 85 && battery <= 95) {
-        return <Battery90Icon style={iconStyleOK} />;
-    }
-    if (battery > 70 && battery <= 85) {
-        return <Battery80Icon style={iconStyleOK} />;
-    }
-    if (battery > 55 && battery <= 70) {
-        return <Battery60Icon style={iconStyleOK} />;
-    }
-    if (battery > 40 && battery <= 55) {
-        return <Battery50Icon style={iconStylePreWarning} />;
-    }
-    if (battery > 25 && battery <= 40) {
-        return <Battery30Icon style={iconStylePreWarning} />;
-    }
-    if (battery > 10 && battery <= 25) {
-        return <Battery20Icon style={iconStyleWarning} />;
-    }
-
-    return <BatteryAlertIcon style={iconStyleNotOK} />;
-}
-
 /**
- * Device Status component
+ * Device Status component: connection, signal, battery, warning and update as pills of the status line.
+ *
+ * A pill is neutral while the value is fine and tinted with its color when it needs attention, so that
+ * the problems stand out in a list of many devices.
  *
  * @param props - Parameters
  * @param props.status - Status object, e.g. { connection: 'connected', battery: 100, rssi: -50 }
  */
-export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Element | null {
-    let status: DeviceStatus;
-    if (!props.status) {
-        status = {};
-    } else if (typeof props.status === 'string') {
-        status = {
-            connection: props.status,
-        };
-    } else {
-        status = props.status;
-    }
+export default function DeviceStatusComponent(props: DeviceStatusProps): React.JSX.Element | null {
+    const status = normalizeStatus(props.status);
 
     const connection = useStateOrObject(status.connection, props.stateOrObjectHandler);
     const rssi = useStateOrObject(status.rssi, props.stateOrObjectHandler);
@@ -238,283 +186,195 @@ export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Elemen
     const updateVersion = useStateOrObject(props.update?.version, props.stateOrObjectHandler);
     const updateNewVersion = useStateOrObject(props.update?.newVersion, props.stateOrObjectHandler);
 
-    const batteryIconTooltip = useMemo<React.ReactNode>(() => {
-        if (typeof battery === 'number') {
-            return getBatteryIcon(battery);
-        }
-        return null;
-    }, [battery]);
+    // The new value slides in when it changes
+    const rssiRef = useValueTick<HTMLSpanElement>(rssi);
+    const batteryRef = useValueTick<HTMLSpanElement>(battery);
 
-    const disability =
-        typeof props.enabled === 'boolean' ? (
-            <>
-                <div style={{ flexGrow: 1 }} />
-                {
-                    <Tooltip
-                        title={
-                            props.enabled ? getTranslation('disableIconTooltip') : getTranslation('enableIconTooltip')
-                        }
-                        slotProps={{ popper: { sx: styles.tooltip } }}
-                    >
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <Switch
-                                size="small"
-                                checked={props.enabled}
-                                disabled={!props.disableEnableAction}
-                                onChange={() =>
-                                    props.disableEnableAction &&
-                                    props.deviceHandler(props.deviceId, props.disableEnableAction)()
-                                }
-                                theme={props.theme}
-                            />
-                        </div>
-                    </Tooltip>
+    const pills: React.JSX.Element[] = [];
+
+    // Connection
+    const connectionSymbol = getConnectionSymbol(props.connectionType, connection);
+    if (connectionSymbol) {
+        const known = connection === 'connected' || connection === 'disconnected';
+        const tooltip = known
+            ? (connection === 'connected'
+                  ? getTranslation('connectedIconTooltip')
+                  : getTranslation('disconnectedIconTooltip')) +
+              (props.statusAction ? `. ${getTranslation(props.statusAction.description || 'moreInformation')}` : '')
+            : undefined;
+        pills.push(
+            <StatusPill
+                key="connection"
+                tone={connection === 'disconnected' ? 'err' : undefined}
+                tooltip={tooltip}
+                onClick={
+                    known && props.statusAction
+                        ? () => props.deviceHandler(props.deviceId, props.statusAction!)()
+                        : undefined
                 }
-            </>
-        ) : null;
-    let connectionSymbol: React.JSX.Element | null;
-    if (props.connectionType === 'wifi') {
-        connectionSymbol =
-            connection === 'connected' ? (
-                <IconConnectionWifi style={iconStyleOK} />
-            ) : connection === 'disconnected' ? (
-                <IconConnectionNoWifi style={iconStyleNotOK} />
-            ) : (
-                <IconConnectionWifi style={iconStyleUnknown} />
-            );
-    } else if (props.connectionType === 'bluetooth') {
-        connectionSymbol =
-            connection === 'connected' ? (
-                <IconConnectionBluetooth style={iconStyleOK} />
-            ) : connection === 'disconnected' ? (
-                <IconConnectionNoBluetooth style={iconStyleNotOK} />
-            ) : (
-                <IconConnectionBluetooth style={iconStyleUnknown} />
-            );
-    } else if (props.connectionType === 'lan') {
-        connectionSymbol =
-            connection === 'connected' ? (
-                <IconConnectionLan style={iconStyleOK} />
-            ) : connection === 'disconnected' ? (
-                <IconConnectionLan style={iconStyleNotOK} />
-            ) : (
-                <IconConnectionLan style={iconStyleUnknown} />
-            );
-    } else if (props.connectionType === 'thread') {
-        connectionSymbol =
-            connection === 'connected' ? (
-                <ThreadIcon style={iconStyleOK} />
-            ) : connection === 'disconnected' ? (
-                <ThreadIcon style={iconStyleNotOK} />
-            ) : (
-                <ThreadIcon style={iconStyleUnknown} />
-            );
-    } else if (props.connectionType === 'z-wave') {
-        connectionSymbol =
-            connection === 'connected' ? (
-                <ZWaveIcon style={iconStyleOK} />
-            ) : connection === 'disconnected' ? (
-                <ZWaveIcon style={iconStyleNotOK} />
-            ) : (
-                <ZWaveIcon style={iconStyleUnknown} />
-            );
-    } else if (props.connectionType === 'zigbee') {
-        connectionSymbol =
-            connection === 'connected' ? (
-                <ZigBeeIcon style={iconStyleOK} />
-            ) : connection === 'disconnected' ? (
-                <ZigBeeIcon style={iconStyleNotOK} />
-            ) : (
-                <ZigBeeIcon style={iconStyleUnknown} />
-            );
-    } else {
-        connectionSymbol =
-            connection === 'connected' ? (
-                <LinkIcon style={iconStyleOK} />
-            ) : connection === 'disconnected' ? (
-                <LinkOffIcon style={iconStyleNotOK} />
-            ) : null;
+            >
+                {known ? connectionSymbol : <span style={{ display: 'flex', opacity: 0.55 }}>{connectionSymbol}</span>}
+            </StatusPill>,
+        );
     }
 
-    const connectionIcon =
-        connection === 'connected' || connection === 'disconnected' ? (
-            <Tooltip
-                title={
-                    (connection === 'connected'
-                        ? getTranslation('connectedIconTooltip')
-                        : getTranslation('disconnectedIconTooltip')) +
-                    (props.statusAction
-                        ? `. ${getTranslation(props.statusAction.description || 'moreInformation')}`
+    // Signal strength
+    const rssiNumber = rssi === undefined || rssi === null || (rssi as unknown) === '' ? NaN : Number(rssi);
+    if (!isNaN(rssiNumber) && rssiNumber !== 0) {
+        pills.push(
+            <StatusPill
+                key="rssi"
+                tone={rssiNumber < -80 ? 'warn' : undefined}
+                tooltip={`RSSI: ${rssiNumber} dBm`}
+            >
+                <IconSignal rssi={rssiNumber} />
+                <span ref={rssiRef}>{rssiNumber}</span>
+            </StatusPill>,
+        );
+    }
+
+    // Battery. A button if the backend offers the reserved "battery" action (e.g. for the battery history)
+    if (battery !== undefined && battery !== null && (battery as unknown) !== '') {
+        let icon: React.JSX.Element;
+        let text: string | null = null;
+        let tone: 'warn' | 'err' | undefined;
+        if (typeof battery === 'number') {
+            icon = <IconBattery level={battery} />;
+            text = `${battery}%`;
+            tone = battery <= 10 ? 'err' : battery <= 25 ? 'warn' : undefined;
+        } else if (typeof battery === 'boolean') {
+            icon = <IconBattery level={battery ? 100 : 0} />;
+            tone = battery ? undefined : 'err';
+        } else if (battery === 'charging') {
+            icon = <IconBattery charging />;
+        } else {
+            icon = <IconBattery />;
+            text = battery.includes('V') ? battery : `${battery} mV`;
+        }
+        pills.push(
+            <StatusPill
+                key="battery"
+                tone={tone}
+                tooltip={
+                    getTranslation('batteryTooltip') +
+                    (props.batteryAction
+                        ? `. ${getTranslation(props.batteryAction.description || 'moreInformation')}`
                         : '')
                 }
-                slotProps={{ popper: { sx: styles.tooltip } }}
+                onClick={
+                    props.batteryAction ? () => props.deviceHandler(props.deviceId, props.batteryAction!)() : undefined
+                }
             >
-                {props.statusAction ? (
-                    <IconButton
-                        onClick={e => {
-                            if (props.statusAction) {
-                                e.stopPropagation();
-                                props.deviceHandler(props.deviceId, props.statusAction)();
-                            }
-                        }}
-                    >
-                        {connectionSymbol}
-                        <div style={{ position: 'absolute', top: 0, left: 0, color: 'grey' }}>*</div>
-                    </IconButton>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        {connectionSymbol}
-                    </div>
-                )}
-            </Tooltip>
-        ) : (
-            connectionSymbol
+                {icon}
+                {text ? <span ref={batteryRef}>{text}</span> : null}
+            </StatusPill>,
         );
+    }
 
-    // The battery indicator is wrapped into a button if the reserved "battery" action is provided by the backend,
-    // so the adapter can open its own dialog (e.g. battery history or battery type) on click.
-    const renderBattery = (content: React.ReactNode): React.JSX.Element => (
-        <Tooltip
-            title={
-                getTranslation('batteryTooltip') +
-                (props.batteryAction ? `. ${getTranslation(props.batteryAction.description || 'moreInformation')}` : '')
-            }
-            slotProps={{ popper: { sx: styles.tooltip } }}
-        >
-            {props.batteryAction ? (
-                <IconButton
-                    size="small"
-                    style={{ padding: 2, borderRadius: 4 }}
-                    onClick={e => {
-                        if (props.batteryAction) {
-                            e.stopPropagation();
-                            props.deviceHandler(props.deviceId, props.batteryAction)();
-                        }
-                    }}
+    // Warning: it pulses when it appears or changes
+    if (warning) {
+        const text = typeof warning === 'string' || typeof warning === 'object' ? getTranslation(warning) : '';
+        pills.push(
+            <StatusPill
+                key="warning"
+                tone="warn"
+                tooltip={text || undefined}
+            >
+                <IconStatusLed
+                    color="var(--dm-warn)"
+                    beat={typeof warning === 'object' ? JSON.stringify(warning) : warning}
                 >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>{content}</div>
-                </IconButton>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>{content}</div>
-            )}
-        </Tooltip>
-    );
+                    <WarningIcon fontSize="inherit" />
+                </IconStatusLed>
+            </StatusPill>,
+        );
+    }
+
+    // Update
+    if (updateAvailable) {
+        const versions = updateNewVersion ? `${updateVersion ? `${updateVersion} → ` : ''}${updateNewVersion}` : '';
+        pills.push(
+            <StatusPill
+                key="update"
+                tone="info"
+                tooltip={getTranslation('updateAvailable') + (versions ? `: ${versions}` : '')}
+                onClick={
+                    props.updateAction
+                        ? () => {
+                              // An update is a significant operation, so always ask for confirmation
+                              // before triggering it. Reuse the action's own confirmation message if the
+                              // backend provided one; otherwise build a default one including the versions.
+                              // The confirmation is then handled by the standard device action flow
+                              // (deviceHandler -> showConfirmation -> renderConfirmationDialog).
+                              let confirmation: boolean | ioBroker.StringOrTranslated | undefined =
+                                  props.updateAction!.confirmation;
+                              if (!confirmation) {
+                                  let message = getTranslation('updateConfirmation');
+                                  if (versions) {
+                                      message += `: ${versions}`;
+                                  }
+                                  confirmation = { [I18n.getLanguage()]: message, en: message };
+                              }
+                              props.deviceHandler(props.deviceId, { ...props.updateAction!, confirmation })();
+                          }
+                        : undefined
+                }
+            >
+                <IconUpdate />
+            </StatusPill>,
+        );
+    }
+
+    return pills.length ? <>{pills}</> : null;
+}
+
+interface DeviceLedProps {
+    status?: DeviceStatus | null;
+    stateOrObjectHandler: StateOrObjectHandler;
+    /** The instance runs. If not, the LED is grey. */
+    alive: boolean;
+    /** The device is switched off: the LED is grey */
+    enabled?: boolean;
+}
+
+/**
+ * The LED on the device symbol: green while the device is connected, red without connection.
+ *
+ * It sends a pulse each time the device reports a new signal strength, like the LED of a real device
+ * that blinks on traffic. Nothing is shown while the connection is unknown.
+ */
+export function DeviceLed(props: DeviceLedProps): React.JSX.Element | null {
+    const status = normalizeStatus(props.status);
+    const connection = useStateOrObject(status.connection, props.stateOrObjectHandler);
+    const rssi = useStateOrObject(status.rssi, props.stateOrObjectHandler);
+
+    // Only a change of a known value is a beat, not the first value after the (re)mount of the card
+    const [beat, setBeat] = useState<{ rssi: unknown; count: number }>({ rssi: undefined, count: 0 });
+    if (rssi !== undefined && rssi !== null && rssi !== beat.rssi) {
+        // Adjusting the state while rendering, as React recommends for values derived from a change
+        setBeat({ rssi, count: beat.rssi === undefined ? 0 : beat.count + 1 });
+    }
+
+    if (connection !== 'connected' && connection !== 'disconnected') {
+        return null;
+    }
+
+    let color = connection === 'connected' ? 'green' : 'red';
+    if (!props.alive || props.enabled === false) {
+        color = 'grey';
+    }
 
     return (
-        <div
-            style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                cursor: props.statusAction ? 'pointer' : undefined,
-                width: props.disableEnableAction ? '100%' : undefined,
-                gap: 8,
-            }}
-        >
-            {connectionIcon}
-
-            {rssi && (
-                <Tooltip
-                    title="RSSI"
-                    slotProps={{ popper: { sx: styles.tooltip } }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <NetworkCheckIcon style={{ color: rssiColor(rssi, props.theme.palette.mode) }} />
-                        <p style={{ fontSize: 'small', margin: 0 }}>{rssi}</p>
-                    </div>
-                </Tooltip>
-            )}
-
-            {typeof battery === 'number' &&
-                renderBattery(
-                    <>
-                        {batteryIconTooltip}
-                        <p style={{ fontSize: 'small', margin: 0 }}>{battery}%</p>
-                    </>,
-                )}
-
-            {typeof battery === 'string' &&
-                renderBattery(
-                    <>
-                        {battery === 'charging' ? <BatteryCharging50Icon /> : <BatteryFullIcon />}
-                        {battery !== 'charging' ? (
-                            battery.includes('V') || battery.includes('mV') ? (
-                                <p style={{ fontSize: 'small', margin: 0 }}>{battery}</p>
-                            ) : (
-                                <p style={{ fontSize: 'small', margin: 0 }}>
-                                    <span style={{ marginRight: 4 }}>{battery}</span>
-                                    mV
-                                </p>
-                            )
-                        ) : null}
-                    </>,
-                )}
-
-            {typeof battery === 'boolean' &&
-                renderBattery(
-                    battery ? <BatteryFullIcon style={iconStyleOK} /> : <BatteryAlertIcon style={iconStyleNotOK} />,
-                )}
-
-            {warning ? (
-                typeof warning === 'string' || typeof warning === 'object' ? (
-                    <Tooltip
-                        title={getTranslation(warning)}
-                        slotProps={{ popper: { sx: styles.tooltip } }}
-                    >
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <WarningIcon style={iconStyleWarning} />
-                        </div>
-                    </Tooltip>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <WarningIcon style={iconStyleWarning} />
-                    </div>
-                )
-            ) : null}
-
-            {updateAvailable ? (
-                <Tooltip
-                    title={
-                        getTranslation('updateAvailable') +
-                        (updateNewVersion ? `: ${updateVersion ? `${updateVersion} → ` : ''}${updateNewVersion}` : '')
-                    }
-                    slotProps={{ popper: { sx: styles.tooltip } }}
-                >
-                    {props.updateAction ? (
-                        <IconButton
-                            size="small"
-                            onClick={e => {
-                                if (!props.updateAction) {
-                                    return;
-                                }
-                                e.stopPropagation();
-                                // An update is a significant operation, so always ask for confirmation
-                                // before triggering it. Reuse the action's own confirmation message if the
-                                // backend provided one; otherwise build a default one including the versions.
-                                // The confirmation is then handled by the standard device action flow
-                                // (deviceHandler -> showConfirmation -> renderConfirmationDialog).
-                                let confirmation: boolean | ioBroker.StringOrTranslated | undefined =
-                                    props.updateAction.confirmation;
-                                if (!confirmation) {
-                                    let message = getTranslation('updateConfirmation');
-                                    if (updateNewVersion) {
-                                        message += `: ${updateVersion ? `${updateVersion} → ` : ''}${updateNewVersion}`;
-                                    }
-                                    confirmation = { [I18n.getLanguage()]: message, en: message };
-                                }
-                                props.deviceHandler(props.deviceId, { ...props.updateAction, confirmation })();
-                            }}
-                        >
-                            <SystemUpdateAltIcon style={iconStyleUpdate} />
-                        </IconButton>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <SystemUpdateAltIcon style={iconStyleUpdate} />
-                        </div>
-                    )}
-                </Tooltip>
-            ) : null}
-
-            {disability}
-        </div>
+        <span className="dm-avatar-led">
+            <IconStatusLed
+                color={color}
+                beat={beat.count}
+                ariaLabel={
+                    connection === 'connected'
+                        ? getTranslation('connectedIconTooltip')
+                        : getTranslation('disconnectedIconTooltip')
+                }
+            />
+        </span>
     );
 }

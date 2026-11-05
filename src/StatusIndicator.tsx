@@ -1,33 +1,22 @@
 import React from 'react';
-import { IconButton, Tooltip } from '@mui/material';
 
 import type { IobTheme } from '@iobroker/gui-components';
 
 import { useStateOrObject } from './hooks';
 import type { StatusIndicator as StatusIndicatorConfig, StatusIndicatorLevel } from './protocol/api';
 import type { StateOrObjectHandler } from './StateOrObjectHandler';
+import StatusPill from './StatusPill';
 import { getIndicatorColor, getTranslation, renderIcon } from './Utils';
 
 const styles: Record<string, React.CSSProperties> = {
-    tooltip: {
-        pointerEvents: 'none',
-    },
-    content: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        lineHeight: 1,
-    },
-    text: {
-        fontSize: 'small',
-        margin: 0,
-        whiteSpace: 'nowrap',
+    tooltipText: {
+        whiteSpace: 'pre-line',
     },
     row: {
         display: 'flex',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: 4,
     },
 };
 
@@ -120,59 +109,24 @@ export default function StatusIndicator(props: StatusIndicatorProps): React.JSX.
     const tooltipSource = level?.tooltip ?? indicator.tooltip;
     const tooltip = tooltipSource ? getTranslation(tooltipSource) : '';
 
+    // An indicator in the color "error" or "warning" needs attention: its pill is tinted like the built-in ones
+    const tone = colorName === 'error' ? 'err' : colorName === 'warning' ? 'warn' : undefined;
+
     // Only fall back to the "question mark" icon if the indicator shows nothing else at all
-    const iconElement = iconName || !label ? renderIcon(iconName, resolvedColor) : null;
-
-    const content = (
-        <div style={styles.content}>
-            {iconElement}
-            {label ? <p style={{ ...styles.text, color: resolvedColor }}>{label}</p> : null}
-        </div>
-    );
-
-    let element: React.JSX.Element;
-    if (props.url) {
-        element = (
-            <IconButton
-                size="small"
-                style={{ padding: 2, borderRadius: 4 }}
-                href={props.url}
-                target="_blank"
-                disabled={props.disabled}
-            >
-                {content}
-            </IconButton>
-        );
-    } else if (props.onClick) {
-        element = (
-            <IconButton
-                size="small"
-                style={{ padding: 2, borderRadius: 4 }}
-                disabled={props.disabled}
-                onClick={e => {
-                    // The card itself may react on clicks, so the event must not bubble
-                    e.stopPropagation();
-                    props.onClick?.();
-                }}
-            >
-                {content}
-            </IconButton>
-        );
-    } else {
-        element = content;
-    }
-
-    if (!tooltip) {
-        return element;
-    }
+    const iconElement = iconName || !label ? renderIcon(iconName, tone ? undefined : resolvedColor) : null;
 
     return (
-        <Tooltip
-            title={<span style={{ whiteSpace: 'pre-line' }}>{tooltip}</span>}
-            slotProps={{ popper: { sx: styles.tooltip } }}
+        <StatusPill
+            tone={tone}
+            color={tone ? undefined : resolvedColor}
+            tooltip={tooltip ? <span style={styles.tooltipText}>{tooltip}</span> : undefined}
+            href={props.url}
+            onClick={props.url ? undefined : props.onClick}
+            disabled={props.disabled}
         >
-            <span style={{ display: 'inline-flex' }}>{element}</span>
-        </Tooltip>
+            {iconElement}
+            {label ? <span>{label}</span> : null}
+        </StatusPill>
     );
 }
 

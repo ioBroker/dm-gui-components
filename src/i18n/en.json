@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Please enter",
     "refreshInstanceList": "Refresh instance list",
     "refreshTooltip": "Refresh",
+    "resetFilters": "Reset filters",
+    "resetFiltersTooltip": "Reset all filters",
     "rootInfoText": "This is the configuration manager. Select an adapter instance below to view, configure and update its devices.",
     "selectInstanceText": "Please select instance",
     "toClipboard": "to clipboard",
     "updateAvailable": "Update available",
     "updateConfirmation": "Do you want to install the available update?",
+    "uploadImageTooltip": "Upload an image of the device",
     "yesButtonText": "Yes"
 }

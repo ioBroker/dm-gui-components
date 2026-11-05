@@ -27,8 +27,6 @@ interface DeviceStatusProps {
     deviceId: DeviceId;
     connectionType?: ConfigConnectionType;
     statusAction?: DeviceAction;
-    enabled?: boolean;
-    disableEnableAction?: DeviceAction;
     /** Update information of the device (firmware/software) */
     update?: DeviceInfo['update'];
     /** Reserved "update" action. If provided, the update indicator becomes a clickable button */
@@ -40,10 +38,28 @@ interface DeviceStatusProps {
     stateOrObjectHandler: StateOrObjectHandler;
 }
 /**
- * Device Status component
+ * Device Status component: connection, signal, battery, warning and update as pills of the status line.
+ *
+ * A pill is neutral while the value is fine and tinted with its color when it needs attention, so that
+ * the problems stand out in a list of many devices.
  *
  * @param props - Parameters
  * @param props.status - Status object, e.g. { connection: 'connected', battery: 100, rssi: -50 }
  */
-export default function DeviceStatus(props: DeviceStatusProps): React.JSX.Element | null;
+export default function DeviceStatusComponent(props: DeviceStatusProps): React.JSX.Element | null;
+interface DeviceLedProps {
+    status?: DeviceStatus | null;
+    stateOrObjectHandler: StateOrObjectHandler;
+    /** The instance runs. If not, the LED is grey. */
+    alive: boolean;
+    /** The device is switched off: the LED is grey */
+    enabled?: boolean;
+}
+/**
+ * The LED on the device symbol: green while the device is connected, red without connection.
+ *
+ * It sends a pulse each time the device reports a new signal strength, like the LED of a real device
+ * that blinks on traffic. Nothing is shown while the connection is unknown.
+ */
+export declare function DeviceLed(props: DeviceLedProps): React.JSX.Element | null;
 export {};

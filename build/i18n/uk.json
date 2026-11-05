@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Будь ласка введіть",
     "refreshInstanceList": "Оновити список екземплярів",
     "refreshTooltip": "Оновити",
+    "resetFilters": "Скинути фільтри",
+    "resetFiltersTooltip": "Скинути всі фільтри",
     "rootInfoText": "Це менеджер пристроїв. Виберіть екземпляр адаптера нижче, щоб переглядати, налаштовувати та оновлювати його пристрої.",
     "selectInstanceText": "Будь ласка, виберіть екземпляр",
     "toClipboard": "в буфер обміну",
     "updateAvailable": "Доступне оновлення",
     "updateConfirmation": "Бажаєте встановити доступне оновлення?",
+    "uploadImageTooltip": "Завантажити зображення пристрою",
     "yesButtonText": "Так"
 }

@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Por favor escribe",
     "refreshInstanceList": "Actualizar lista de instancias",
     "refreshTooltip": "Actualizar",
+    "resetFilters": "Restablecer filtros",
+    "resetFiltersTooltip": "Restablecer todos los filtros",
     "rootInfoText": "Este es el administrador de dispositivos. Seleccione una instancia de adaptador a continuación para ver, configurar y actualizar sus dispositivos.",
     "selectInstanceText": "Por favor seleccione una instancia",
     "toClipboard": "al portapapeles",
     "updateAvailable": "Actualización disponible",
     "updateConfirmation": "¿Desea instalar la actualización disponible?",
+    "uploadImageTooltip": "Subir una imagen del dispositivo",
     "yesButtonText": "Sí"
 }

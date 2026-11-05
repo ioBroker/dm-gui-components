@@ -1,4 +1,4 @@
-import React, { PureComponent, type JSX } from 'react';
+import { PureComponent, type JSX } from 'react';
 import { type Connection, type IobTheme, type ThemeName, type ThemeType } from '@iobroker/gui-components';
 import type { ActionBase, ControlBase, ControlState, DeviceDetails, DeviceControl, DeviceInfo, DeviceId } from './protocol/api';
 import type { StateOrObjectHandler } from './StateOrObjectHandler';
@@ -9,10 +9,10 @@ export type { DeviceFilterField } from './DeviceFields';
  * the same size, so that neither the layout nor the length of the scrollbar changes.
  */
 export declare const CARD_WIDTH = 300;
-export declare const CARD_MIN_HEIGHT = 280;
-export declare const CARD_MARGIN = 10;
-export declare const SMALL_CARD_WIDTH = 200;
-export declare const SMALL_CARD_MIN_HEIGHT = 200;
+export declare const CARD_MIN_HEIGHT = 250;
+export declare const CARD_MARGIN = 8;
+export declare const SMALL_CARD_WIDTH = 210;
+export declare const SMALL_CARD_MIN_HEIGHT = 190;
 export declare const SMALL_CARD_MARGIN = 5;
 interface DeviceCardProps {
     id: DeviceId;
@@ -55,6 +55,11 @@ interface DeviceCardState {
 /**
  * Device Card Component.
  *
+ * The card is laid out like the type plate of a device: its symbol (in the color of the device, with
+ * an LED for the connection) and its name at the top, the status line below, then the facts and at
+ * the bottom the actions. The status values are neutral while all is well and tinted when they need
+ * attention, so that in a long list the devices with a problem stand out.
+ *
  * A `PureComponent`: the list re-renders on every loading step, on every filter change and on every
  * resolved device value. Without the shallow property comparison all cards would be re-rendered
  * every time, so all properties the list passes down are kept stable there.
@@ -79,7 +84,7 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
      */
     loadDetails(): Promise<void>;
     /**
-     * Copy the device ID to the clipboard
+     * Copy the device ID to the clipboard. The copy symbol shows a check mark as confirmation.
      */
     copyToClipboard: () => void;
     renderDialog(): JSX.Element | null;
@@ -100,17 +105,24 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
     /** Resolve how a custom indicator behaves on click by looking up the referenced action */
     private resolveIndicatorAction;
     /** Custom indicators and the actions that requested to be shown in the status line */
-    renderIndicators(small?: boolean): JSX.Element | null;
+    renderIndicators(): JSX.Element | null;
     renderActions(): JSX.Element[] | null;
-    renderSmall(): JSX.Element;
-    getCardHeaderStyle(theme: IobTheme, maxWidth?: number): React.CSSProperties;
-    renderBig(): JSX.Element;
+    /** Color of the device symbol and of the glyph on it */
+    getAccent(theme: IobTheme): {
+        background: string;
+        color: string;
+    };
+    /** The device symbol with the LED and, if allowed, the image upload */
+    renderAvatar(name: string, small: boolean): JSX.Element;
+    /** The switch that enables or disables the device */
+    renderEnabled(small: boolean): JSX.Element | null;
+    /** Identifier, manufacturer and model as a table of labels and values */
+    renderFacts(): JSX.Element | null;
     render(): JSX.Element;
 }
 type DeviceCardSkeletonProps = Pick<DeviceCardProps, 'smallCards' | 'theme'>;
+/** Placeholder of a device that is not loaded yet, with the layout of the card */
 export declare class DeviceCardSkeleton extends PureComponent<DeviceCardSkeletonProps> {
+    constructor(props: DeviceCardSkeletonProps);
     render(): JSX.Element;
-    renderSmall(): JSX.Element;
-    renderBig(): JSX.Element;
-    getCardHeaderStyle(theme: IobTheme, maxWidth?: number): React.CSSProperties;
 }

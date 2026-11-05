@@ -1,20 +1,12 @@
-import React, { PureComponent, type JSX } from 'react';
+import React, { PureComponent, useState, type JSX } from 'react';
+import { Close as CloseIcon, VideogameAsset as ControlIcon, MoreVert as MoreVertIcon } from '@mui/icons-material';
 import {
-    Close as CloseIcon,
-    VideogameAsset as ControlIcon,
-    MoreVert as MoreVertIcon,
-    ExpandMore,
-} from '@mui/icons-material';
-import {
-    Box,
     Button,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
-    Fab,
     IconButton,
-    Paper,
     Skeleton,
     Tooltip,
     Typography,
@@ -31,13 +23,16 @@ import {
     type ThemeName,
     type ThemeType,
     Icon,
+    IconCopyToClipboard,
+    IconFolder,
 } from '@iobroker/gui-components';
 import DeviceActionButton from './DeviceActionButton';
 import DeviceControlComponent from './DeviceControl';
 import DeviceImageUpload from './DeviceImageUpload';
-import DeviceStatusComponent from './DeviceStatus';
+import DeviceStatusComponent, { DeviceLed } from './DeviceStatus';
 import JsonConfig from './JsonConfig';
 import { StatusIndicators } from './StatusIndicator';
+import Switch from './Switch';
 import type {
     ActionBase,
     ControlBase,
@@ -47,9 +42,11 @@ import type {
     DeviceControl,
     DeviceInfo,
     DeviceId,
+    DeviceStatus,
 } from './protocol/api';
 
 import { getText, getTranslation } from './Utils';
+import { ensureDmStyles, getThemeVars } from './styles';
 import type { StateOrObjectHandler } from './StateOrObjectHandler';
 import type { ResolvedDeviceFields } from './DeviceFields';
 
@@ -74,11 +71,11 @@ const ACTIONS = {
  * the same size, so that neither the layout nor the length of the scrollbar changes.
  */
 export const CARD_WIDTH = 300;
-export const CARD_MIN_HEIGHT = 280;
-export const CARD_MARGIN = 10;
+export const CARD_MIN_HEIGHT = 250;
+export const CARD_MARGIN = 8;
 
-export const SMALL_CARD_WIDTH = 200;
-export const SMALL_CARD_MIN_HEIGHT = 200;
+export const SMALL_CARD_WIDTH = 210;
+export const SMALL_CARD_MIN_HEIGHT = 190;
 export const SMALL_CARD_MARGIN = 5;
 
 const cardSize: React.CSSProperties = { width: CARD_WIDTH, minHeight: CARD_MIN_HEIGHT, margin: CARD_MARGIN };
@@ -90,6 +87,8 @@ const smallCardSize: React.CSSProperties = {
 /** A card that sits in a container which already has the footprint of a card */
 const filledCardSize: React.CSSProperties = { width: '100%', margin: 0 };
 
+const tooltipSlotProps = { popper: { sx: { pointerEvents: 'none' } } };
+
 /**
  * Icons read from the file storage of the adapter, keyed by `<instance>/<file>`.
  *
@@ -98,77 +97,50 @@ const filledCardSize: React.CSSProperties = { width: '100%', margin: 0 };
  */
 const fileIconCache = new Map<string, string>();
 
-const styles: Record<string, any> = {
-    cardStyle: (theme: IobTheme): React.CSSProperties => ({
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5',
-    }),
-    headerStyle: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        paddingLeft: 8,
-        paddingRight: 8,
-        position: 'relative',
-        minHeight: 60,
-        color: '#000',
-    },
-    imgAreaStyle: {
-        height: 45,
-        width: 45,
-        justifyContent: 'center',
-        display: 'flex',
-        alignItems: 'center',
-    },
-    imgStyle: {
-        zIndex: 2,
-        maxWidth: '100%',
-        maxHeight: '100%',
-        color: '#FFF',
-    },
-    titleStyle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        // whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-    },
-    detailsButtonStyle: {
-        right: 20,
-        bottom: -20,
-        position: 'absolute',
-    },
-    bodyStyle: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-    },
-    deviceInfoStyle: {
-        padding: '20px 16px 0 16px',
-    },
-    statusStyle: {
-        padding: '15px 25px 0 15px',
-        // The line may grow if the device provides custom indicators, so only the minimum is fixed
-        minHeight: 41,
-    },
-};
+/**
+ * True if the icon is a picture (a photo of the device, an uploaded image). A picture keeps its own
+ * colors and sits on a neutral tile; a device type or a symbol takes the color of the device.
+ */
+function isPicture(src: string): boolean {
+    if (src.startsWith('data:image/svg')) {
+        return false;
+    }
+    return src.startsWith('data:image') || src.includes('/') || /\.(png|jpe?g|gif|webp|ico|bmp)$/i.test(src);
+}
 
-function NoImageIcon(props: { style?: React.CSSProperties; className?: string }): JSX.Element {
+/** The status entries of a device as a list */
+function getStatusList(device: DeviceInfo): DeviceStatus[] {
+    if (!device.status) {
+        return [];
+    }
+    return Array.isArray(device.status) ? device.status : [device.status];
+}
+
+/** A group of controls in the control dialog: the folder opens with the group */
+function ControlGroup(props: { control: DeviceControl; children: React.ReactNode }): JSX.Element {
+    const [expanded, setExpanded] = useState(false);
+    const { control } = props;
     return (
-        <svg
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            style={props.style}
-            className={props.className}
+        <Accordion
+            expanded={expanded}
+            onChange={(_e, isExpanded) => setExpanded(isExpanded)}
+            disableGutters
         >
-            <path
-                fill="currentColor"
-                d="M21.9,21.9l-8.49-8.49l0,0L3.59,3.59l0,0L2.1,2.1L0.69,3.51L3,5.83V19c0,1.1,0.9,2,2,2h13.17l2.31,2.31L21.9,21.9z M5,18 l3.5-4.5l2.5,3.01L12.17,15l3,3H5z M21,18.17L5.83,3H19c1.1,0,2,0.9,2,2V18.17z"
-            />
-        </svg>
+            <AccordionSummary
+                expandIcon={<IconFolder open={expanded} />}
+                // The folder shows the state itself, it must not be turned around like the arrow
+                sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'none' } }}
+            >
+                <Typography
+                    component="span"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, color: control.color }}
+                >
+                    {control.icon ? <Icon src={control.icon} /> : null}
+                    {getTranslation(control.label!)}
+                </Typography>
+            </AccordionSummary>
+            <AccordionDetails style={{ display: 'flex', flexDirection: 'column' }}>{props.children}</AccordionDetails>
+        </Accordion>
     );
 }
 
@@ -221,6 +193,11 @@ interface DeviceCardState {
 /**
  * Device Card Component.
  *
+ * The card is laid out like the type plate of a device: its symbol (in the color of the device, with
+ * an LED for the connection) and its name at the top, the status line below, then the facts and at
+ * the bottom the actions. The status values are neutral while all is well and tinted when they need
+ * attention, so that in a long list the devices with a problem stand out.
+ *
  * A `PureComponent`: the list re-renders on every loading step, on every filter change and on every
  * resolved device value. Without the shallow property comparison all cards would be re-rendered
  * every time, so all properties the list passes down are kept stable there.
@@ -231,6 +208,7 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
 
     constructor(props: DeviceCardProps) {
         super(props);
+        ensureDmStyles();
 
         const cacheKey = DeviceCard.iconCacheKey(props);
 
@@ -280,17 +258,6 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
                     return;
                 }
                 this.setState({ localIcon });
-                // const response = await fetch(url);
-                // if (response.ok) {
-                //     const blob = await response.blob();
-                //     const reader = new FileReader();
-                //     reader.onloadend = () => {
-                //         setIcon(reader.result);
-                //     };
-                //     reader.readAsDataURL(blob);
-                // } else {
-                //     throw new Error('Response not ok');
-                // }
             } catch {
                 fileIconCache.set(cacheKey, '');
                 if (this.mounted && this.state.localIcon) {
@@ -336,15 +303,13 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
     }
 
     /**
-     * Copy the device ID to the clipboard
+     * Copy the device ID to the clipboard. The copy symbol shows a check mark as confirmation.
      */
     copyToClipboard = (): void => {
         const textToCopy = this.props.fields.identifier;
-        if (!textToCopy) {
-            return;
+        if (textToCopy) {
+            Utils.copyToClipboard(textToCopy);
         }
-        Utils.copyToClipboard(textToCopy);
-        alert(`${getTranslation('copied')} ${textToCopy} ${getTranslation('toClipboard')}!`);
     };
 
     renderDialog(): JSX.Element | null {
@@ -399,20 +364,12 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
                 if (control.type === 'group') {
                     const children = allControls.filter(ctrl => ctrl.group === control.id);
                     return (
-                        <Accordion key={control.id}>
-                            <AccordionSummary expandIcon={<ExpandMore />}>
-                                <Typography
-                                    component="span"
-                                    style={{ display: 'flex', gap: 8, color: control.color }}
-                                >
-                                    {control.icon ? <Icon src={control.icon} /> : null}
-                                    {getTranslation(control.label!)}
-                                </Typography>
-                            </AccordionSummary>
-                            <AccordionDetails style={{ display: 'flex', flexDirection: 'column' }}>
-                                {this.renderControlItems(children, allControls, colors, control.id)}
-                            </AccordionDetails>
-                        </Accordion>
+                        <ControlGroup
+                            key={control.id}
+                            control={control}
+                        >
+                            {this.renderControlItems(children, allControls, colors, control.id)}
+                        </ControlGroup>
                     );
                 }
                 return (
@@ -480,14 +437,14 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
         if (this.props.device.controls?.length) {
             // place a button and show a control dialog
             return (
-                <Fab
+                <IconButton
                     size="small"
-                    style={{ width: 32, height: 32, minHeight: 32 }}
+                    color="primary"
                     disabled={!this.props.alive}
                     onClick={() => this.setState({ showControlDialog: true })}
                 >
-                    <ControlIcon />
-                </Fab>
+                    <ControlIcon className="dm-ani dm-ani-tick" />
+                </IconButton>
             );
         }
         return null;
@@ -544,7 +501,7 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
     };
 
     /** Custom indicators and the actions that requested to be shown in the status line */
-    renderIndicators(small?: boolean): JSX.Element | null {
+    renderIndicators(): JSX.Element | null {
         const reserved: string[] = [ACTIONS.STATUS, ACTIONS.ENABLE_DISABLE, ACTIONS.UPDATE, ACTIONS.BATTERY];
         const statusActions: DeviceAction[] =
             this.props.device.actions?.filter(a => a.placement === 'status' && !reserved.includes(a.id)) || [];
@@ -566,7 +523,8 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
                 stateOrObjectHandler={this.props.stateOrObjectHandler}
                 disabled={!this.props.alive}
                 resolveAction={this.resolveIndicatorAction}
-                style={{ marginTop: small ? 2 : 4 }}
+                // The indicators flow in the status line together with the built-in values
+                style={{ display: 'contents' }}
             >
                 {statusActions.map(action => (
                     <DeviceActionButton
@@ -598,180 +556,8 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
             : null;
     }
 
-    renderSmall(): JSX.Element {
-        const status = !this.props.device.status
-            ? []
-            : Array.isArray(this.props.device.status)
-              ? this.props.device.status
-              : [this.props.device.status];
-
-        const iconSrc = this.state.localIcon || this.props.fields.icon;
-        const icon = iconSrc ? (
-            <DeviceTypeIcon
-                src={iconSrc}
-                style={styles.imgStyle}
-            />
-        ) : (
-            <NoImageIcon style={styles.imgStyle} />
-        );
-        const headerStyle = this.getCardHeaderStyle(this.props.theme);
-
-        const title: string = this.state.details?.data?.name || this.props.device.name || '';
-
-        return (
-            <Paper
-                style={this.props.fillContainer ? filledCardSize : smallCardSize}
-                sx={styles.cardStyle}
-            >
-                {/* Header */}
-                <Box
-                    sx={headerStyle}
-                    style={{ ...styles.headerStyle, minHeight: 48 }}
-                >
-                    <div style={{ ...styles.imgAreaStyle, height: 32, width: 32 }}>
-                        {this.props.uploadImagesToInstance ? (
-                            <DeviceImageUpload
-                                uploadImagesToInstance={this.props.uploadImagesToInstance}
-                                deviceId={this.props.device.id}
-                                manufacturer={this.props.fields.manufacturer}
-                                model={this.props.fields.model}
-                                onImageSelect={(imageData: string): void => {
-                                    if (imageData) {
-                                        this.setState({ localIcon: imageData });
-                                    }
-                                }}
-                                socket={this.props.socket}
-                            />
-                        ) : null}
-                        {icon}
-                    </div>
-                    <Box
-                        style={{ ...styles.titleStyle, fontSize: 14 }}
-                        title={title.length > 15 ? title : undefined}
-                        sx={theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText })}
-                    >
-                        {this.state.details?.data?.name || this.props.fields.name}
-                    </Box>
-                    {this.props.fields.hasDetails ? (
-                        <Fab
-                            disabled={!this.props.alive}
-                            size="small"
-                            style={styles.detailsButtonStyle}
-                            onClick={() => {
-                                if (!this.state.open) {
-                                    this.loadDetails().catch(console.error);
-                                    this.setState({ open: true });
-                                }
-                            }}
-                            color="primary"
-                        >
-                            <MoreVertIcon />
-                        </Fab>
-                    ) : null}
-                </Box>
-                {/* Status */}
-                <div style={{ ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' }}>
-                    {status.map((s, i) => (
-                        <DeviceStatusComponent
-                            key={i}
-                            socket={this.props.socket}
-                            deviceId={this.props.device.id}
-                            connectionType={this.props.fields.connectionType}
-                            status={s}
-                            enabled={this.props.fields.enabled}
-                            statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
-                            disableEnableAction={this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE)}
-                            update={i === 0 ? this.props.device.update : undefined}
-                            updateAction={
-                                i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined
-                            }
-                            batteryAction={this.props.device.actions?.find(a => a.id === ACTIONS.BATTERY)}
-                            deviceHandler={this.props.deviceHandler}
-                            theme={this.props.theme}
-                            stateOrObjectHandler={this.props.stateOrObjectHandler}
-                        />
-                    ))}
-                    {this.renderIndicators(true)}
-                </div>
-                {/* Body */}
-                <div style={styles.bodyStyle}>
-                    <Typography
-                        variant="body2"
-                        style={{ ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' }}
-                    >
-                        {this.props.fields.identifier ? (
-                            <div
-                                onClick={this.copyToClipboard}
-                                style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}
-                            >
-                                <b>{getText(this.props.identifierLabel)}:</b>
-                                <span style={{ marginLeft: 4 }}>{this.props.fields.identifier}</span>
-                            </div>
-                        ) : null}
-                        {this.props.fields.manufacturer ? (
-                            <Tooltip
-                                title={getTranslation('manufacturer')}
-                                slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
-                            >
-                                <div>{this.props.fields.manufacturer}</div>
-                            </Tooltip>
-                        ) : null}
-                        {this.props.fields.model ? (
-                            <Tooltip
-                                title={getTranslation('model')}
-                                slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
-                            >
-                                <div>{this.props.fields.model}</div>
-                            </Tooltip>
-                        ) : null}
-                    </Typography>
-                    {this.props.device.customInfo ? (
-                        // The bottom padding is not symmetry for its own sake: the footer below is
-                        // only rendered when the device has actions or controls, so without it the
-                        // last row would sit flush on the card's lower edge.
-                        <div style={{ padding: '0 10px 10px' }}>
-                            <JsonConfig
-                                instanceId={this.props.instanceId}
-                                socket={this.props.socket}
-                                schema={this.props.device.customInfo.schema}
-                                data={this.props.device.customInfo.data || {}}
-                                onChange={(_data: Record<string, any> | null) => {
-                                    /* ignore */
-                                }}
-                                themeName={this.props.themeName}
-                                themeType={this.props.themeType}
-                                theme={this.props.theme}
-                                isFloatComma={this.props.isFloatComma}
-                                dateFormat={this.props.dateFormat}
-                            />
-                        </div>
-                    ) : null}
-                    {/* Footer */}
-                    {!!(this.hasFooterActions() || this.props.device.controls?.length) && (
-                        <div
-                            style={{
-                                marginTop: 'auto',
-                                display: 'flex',
-                                gap: 4,
-                                paddingBottom: 5,
-                                minHeight: 34,
-                                paddingLeft: 8,
-                                paddingRight: 8,
-                            }}
-                        >
-                            {this.renderActions()}
-                            <div style={{ flexGrow: 1 }} />
-                            {this.renderControls()}
-                        </div>
-                    )}
-                </div>
-                {this.renderDialog()}
-                {this.renderControlDialog()}
-            </Paper>
-        );
-    }
-
-    getCardHeaderStyle(theme: IobTheme, maxWidth?: number): React.CSSProperties {
+    /** Color of the device symbol and of the glyph on it */
+    getAccent(theme: IobTheme): { background: string; color: string } {
         const backgroundColor =
             this.props.fields.backgroundColor === 'primary'
                 ? theme.palette.primary.main
@@ -802,86 +588,206 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
             }
         }
 
-        return {
-            backgroundColor,
-            color,
-            maxWidth,
-        };
+        return { background: backgroundColor, color };
     }
 
-    renderBig(): JSX.Element {
-        const status = !this.props.device.status
-            ? []
-            : Array.isArray(this.props.device.status)
-              ? this.props.device.status
-              : [this.props.device.status];
-
+    /** The device symbol with the LED and, if allowed, the image upload */
+    renderAvatar(name: string, small: boolean): JSX.Element {
         const iconSrc = this.state.localIcon || this.props.fields.icon;
-        const icon = iconSrc ? (
-            <DeviceTypeIcon
-                src={iconSrc}
-                style={styles.imgStyle}
-            />
-        ) : (
-            <NoImageIcon style={styles.imgStyle} />
-        );
-        const headerStyle = this.getCardHeaderStyle(this.props.theme);
+        const picture = !!iconSrc && isPicture(iconSrc);
+        const accent = this.getAccent(this.props.theme);
+        const firstStatus = getStatusList(this.props.device)[0];
 
-        const title: string = this.state.details?.data?.name || this.props.device.name || '';
+        let glyph: JSX.Element;
+        if (iconSrc) {
+            // The size is given inline, because `DeviceTypeIcon` sets an inline size of its own
+            const glyphSize = small ? 20 : 26;
+            glyph = (
+                <DeviceTypeIcon
+                    src={iconSrc}
+                    className="dm-avatar-glyph"
+                    style={
+                        picture
+                            ? { width: '100%', height: '100%', objectFit: 'contain' }
+                            : { width: glyphSize, height: glyphSize, color: accent.color }
+                    }
+                />
+            );
+        } else {
+            // Without an icon, the initial of the name gives each device its own symbol
+            glyph = <span className="dm-avatar-letter">{Array.from(name.trim())[0] || '?'}</span>;
+        }
 
         return (
-            <Paper
-                style={this.props.fillContainer ? filledCardSize : cardSize}
-                sx={styles.cardStyle}
+            <div
+                className={picture ? 'dm-avatar dm-avatar-img' : 'dm-avatar'}
+                style={
+                    picture
+                        ? undefined
+                        : ({
+                              '--dm-accent': accent.background,
+                              '--dm-accent-text': accent.color,
+                          } as React.CSSProperties)
+                }
             >
-                {/* Header */}
-                <Box
-                    sx={headerStyle}
-                    style={styles.headerStyle}
+                {glyph}
+                {this.props.uploadImagesToInstance ? (
+                    <DeviceImageUpload
+                        uploadImagesToInstance={this.props.uploadImagesToInstance}
+                        deviceId={this.props.device.id}
+                        manufacturer={this.props.fields.manufacturer}
+                        model={this.props.fields.model}
+                        onImageSelect={(imageData: string): void => {
+                            if (imageData) {
+                                this.setState({ localIcon: imageData });
+                            }
+                        }}
+                        socket={this.props.socket}
+                    />
+                ) : null}
+                {firstStatus ? (
+                    <DeviceLed
+                        status={firstStatus}
+                        stateOrObjectHandler={this.props.stateOrObjectHandler}
+                        alive={this.props.alive}
+                        enabled={this.props.fields.enabled}
+                    />
+                ) : null}
+            </div>
+        );
+    }
+
+    /** The switch that enables or disables the device */
+    renderEnabled(small: boolean): JSX.Element | null {
+        if (typeof this.props.fields.enabled !== 'boolean') {
+            return null;
+        }
+        const action = this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE);
+        const tooltip = this.props.fields.enabled
+            ? getTranslation('disableIconTooltip')
+            : getTranslation('enableIconTooltip');
+        return (
+            <div className="dm-status-end">
+                <Tooltip
+                    title={tooltip}
+                    slotProps={tooltipSlotProps}
                 >
-                    <div style={styles.imgAreaStyle}>
-                        {this.props.uploadImagesToInstance ? (
-                            <DeviceImageUpload
-                                uploadImagesToInstance={this.props.uploadImagesToInstance}
-                                deviceId={this.props.device.id}
-                                manufacturer={this.props.fields.manufacturer}
-                                model={this.props.fields.model}
-                                onImageSelect={(imageData: string): void => {
-                                    if (imageData) {
-                                        this.setState({ localIcon: imageData });
+                    <div>
+                        <Switch
+                            size={small ? 'small' : undefined}
+                            checked={this.props.fields.enabled}
+                            disabled={!action || !this.props.alive}
+                            ariaLabel={tooltip}
+                            onChange={() => action && this.props.deviceHandler(this.props.device.id, action)()}
+                            theme={this.props.theme}
+                        />
+                    </div>
+                </Tooltip>
+            </div>
+        );
+    }
+
+    /** Identifier, manufacturer and model as a table of labels and values */
+    renderFacts(): JSX.Element | null {
+        const { identifier, manufacturer, model } = this.props.fields;
+        if (!identifier && !manufacturer && !model) {
+            return null;
+        }
+        return (
+            <div className="dm-facts">
+                {identifier ? (
+                    <>
+                        <span className="dm-fact-label">{getText(this.props.identifierLabel)}</span>
+                        <span className="dm-fact-copy">
+                            <span title={identifier}>{identifier}</span>
+                            <Tooltip
+                                title={getTranslation('ctcButtonText')}
+                                slotProps={tooltipSlotProps}
+                            >
+                                <IconButton
+                                    size="small"
+                                    className="dm-copy-btn"
+                                    aria-label={getTranslation('ctcButtonText')}
+                                    onClick={this.copyToClipboard}
+                                >
+                                    {/* Listens to the click on the button and draws a check mark */}
+                                    <IconCopyToClipboard />
+                                </IconButton>
+                            </Tooltip>
+                        </span>
+                    </>
+                ) : null}
+                {manufacturer ? (
+                    <>
+                        <span className="dm-fact-label">{getTranslation('manufacturer')}</span>
+                        <span
+                            className="dm-fact-value"
+                            title={manufacturer}
+                        >
+                            {manufacturer}
+                        </span>
+                    </>
+                ) : null}
+                {model ? (
+                    <>
+                        <span className="dm-fact-label">{getTranslation('model')}</span>
+                        <span
+                            className="dm-fact-value"
+                            title={model}
+                        >
+                            {model}
+                        </span>
+                    </>
+                ) : null}
+            </div>
+        );
+    }
+
+    render(): JSX.Element {
+        const small = !!this.props.smallCards;
+        const status = getStatusList(this.props.device);
+        const name: string = this.state.details?.data?.name || this.props.fields.name || '';
+        const off = this.props.fields.enabled === false;
+
+        let className = small ? 'dm-card dm-small' : 'dm-card';
+        if (off) {
+            className += ' dm-off';
+        }
+
+        const size = this.props.fillContainer ? filledCardSize : small ? smallCardSize : cardSize;
+
+        return (
+            <div
+                className={className}
+                style={{ ...getThemeVars(this.props.theme), ...size }}
+            >
+                <div className="dm-head">
+                    {this.renderAvatar(name, small)}
+                    <div
+                        className="dm-name"
+                        title={name.length > (small ? 15 : 20) ? name : undefined}
+                    >
+                        {name}
+                    </div>
+                    {this.props.fields.hasDetails ? (
+                        <div className="dm-head-end">
+                            <IconButton
+                                size="small"
+                                disabled={!this.props.alive}
+                                aria-label={getTranslation('moreInformation')}
+                                onClick={() => {
+                                    if (!this.state.open) {
+                                        this.loadDetails().catch(console.error);
+                                        this.setState({ open: true });
                                     }
                                 }}
-                                socket={this.props.socket}
-                            />
-                        ) : null}
-                        {icon}
-                    </div>
-                    <Box
-                        style={styles.titleStyle}
-                        title={title.length > 20 ? title : undefined}
-                        sx={theme => ({ color: headerStyle.color || theme.palette.secondary.contrastText })}
-                    >
-                        {this.state.details?.data?.name || this.props.fields.name}
-                    </Box>
-                    {this.props.fields.hasDetails ? (
-                        <Fab
-                            disabled={!this.props.alive}
-                            size="small"
-                            style={styles.detailsButtonStyle}
-                            onClick={() => {
-                                if (!this.state.open) {
-                                    this.loadDetails().catch(console.error);
-                                    this.setState({ open: true });
-                                }
-                            }}
-                            color="primary"
-                        >
-                            <MoreVertIcon />
-                        </Fab>
+                            >
+                                <MoreVertIcon className="dm-ani dm-ani-turn" />
+                            </IconButton>
+                        </div>
                     ) : null}
-                </Box>
-                {/* Body */}
-                <div style={styles.statusStyle}>
+                </div>
+                <div className="dm-status">
                     {status.map((s, i) => (
                         <DeviceStatusComponent
                             key={i}
@@ -889,9 +795,7 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
                             deviceId={this.props.device.id}
                             connectionType={this.props.fields.connectionType}
                             status={s}
-                            enabled={this.props.fields.enabled}
                             statusAction={this.props.device.actions?.find(a => a.id === ACTIONS.STATUS)}
-                            disableEnableAction={this.props.device.actions?.find(a => a.id === ACTIONS.ENABLE_DISABLE)}
                             update={i === 0 ? this.props.device.update : undefined}
                             updateAction={
                                 i === 0 ? this.props.device.actions?.find(a => a.id === ACTIONS.UPDATE) : undefined
@@ -903,204 +807,85 @@ export default class DeviceCard extends PureComponent<DeviceCardProps, DeviceCar
                         />
                     ))}
                     {this.renderIndicators()}
+                    {this.renderEnabled(small)}
                 </div>
-                <div style={styles.bodyStyle}>
-                    <Typography
-                        variant="body1"
-                        style={styles.deviceInfoStyle}
-                    >
-                        {this.props.fields.identifier ? (
-                            <div onClick={this.copyToClipboard}>
-                                <b style={{ marginRight: 4 }}>{getText(this.props.identifierLabel)}:</b>
-                                {this.props.fields.identifier}
-                            </div>
-                        ) : null}
-                        {this.props.fields.manufacturer ? (
-                            <div>
-                                <b style={{ marginRight: 4 }}>{getTranslation('manufacturer')}:</b>
-                                {this.props.fields.manufacturer}
-                            </div>
-                        ) : null}
-                        {this.props.fields.model ? (
-                            <div>
-                                <b style={{ marginRight: 4 }}>{getTranslation('model')}:</b>
-                                {this.props.fields.model}
-                            </div>
-                        ) : null}
-                    </Typography>
-                    {this.props.device.customInfo ? (
-                        // See the compact card above — the footer that used to provide the gap is
-                        // conditional, so the padding has to be here.
-                        <div style={{ padding: '0 16px 16px' }}>
-                            <JsonConfig
-                                instanceId={this.props.instanceId}
-                                socket={this.props.socket}
-                                schema={this.props.device.customInfo.schema}
-                                data={this.props.device.customInfo.data || {}}
-                                onChange={(_data: Record<string, any> | null) => {
-                                    /* ignore */
-                                }}
-                                themeName={this.props.themeName}
-                                themeType={this.props.themeType}
-                                theme={this.props.theme}
-                                isFloatComma={this.props.isFloatComma}
-                                dateFormat={this.props.dateFormat}
-                            />
-                        </div>
-                    ) : null}
-                    {/* Footer */}
-                    {!!(this.hasFooterActions() || this.props.device.controls?.length) && (
-                        <div
-                            style={{
-                                marginTop: 'auto',
-                                display: 'flex',
-                                gap: 8,
-                                paddingBottom: 5,
-                                minHeight: 34,
-                                paddingLeft: 10,
-                                paddingRight: 10,
+                {this.renderFacts()}
+                {this.props.device.customInfo ? (
+                    <div className="dm-custom">
+                        <JsonConfig
+                            instanceId={this.props.instanceId}
+                            socket={this.props.socket}
+                            schema={this.props.device.customInfo.schema}
+                            data={this.props.device.customInfo.data || {}}
+                            onChange={(_data: Record<string, any> | null) => {
+                                /* ignore */
                             }}
-                        >
-                            {this.renderActions()}
-                            <div style={{ flexGrow: 1 }} />
-                            {this.renderControls()}
-                        </div>
-                    )}
-                </div>
+                            themeName={this.props.themeName}
+                            themeType={this.props.themeType}
+                            theme={this.props.theme}
+                            isFloatComma={this.props.isFloatComma}
+                            dateFormat={this.props.dateFormat}
+                        />
+                    </div>
+                ) : null}
+                {this.hasFooterActions() || this.props.device.controls?.length ? (
+                    <div className="dm-foot">
+                        {this.renderActions()}
+                        <div className="dm-foot-end">{this.renderControls()}</div>
+                    </div>
+                ) : null}
                 {this.renderDialog()}
                 {this.renderControlDialog()}
-            </Paper>
+            </div>
         );
-    }
-
-    render(): JSX.Element {
-        if (this.props.smallCards) {
-            return this.renderSmall();
-        }
-
-        return this.renderBig();
     }
 }
 
 type DeviceCardSkeletonProps = Pick<DeviceCardProps, 'smallCards' | 'theme'>;
 
+/** Placeholder of a device that is not loaded yet, with the layout of the card */
 export class DeviceCardSkeleton extends PureComponent<DeviceCardSkeletonProps> {
+    constructor(props: DeviceCardSkeletonProps) {
+        super(props);
+        ensureDmStyles();
+    }
+
     render(): JSX.Element {
-        if (this.props.smallCards) {
-            return this.renderSmall();
-        }
-
-        return this.renderBig();
-    }
-
-    renderSmall(): JSX.Element {
-        const headerStyle = this.getCardHeaderStyle(this.props.theme);
-
+        const small = !!this.props.smallCards;
         return (
-            <Paper
-                sx={styles.cardStyle}
-                style={smallCardSize}
+            <div
+                className={small ? 'dm-card dm-small dm-skeleton' : 'dm-card dm-skeleton'}
+                style={{ ...getThemeVars(this.props.theme), ...(small ? smallCardSize : cardSize) }}
             >
-                <Box
-                    sx={headerStyle}
-                    style={{ ...styles.headerStyle, minHeight: 48 }}
-                >
-                    <div style={{ ...styles.imgAreaStyle, height: 32, width: 32 }}>
-                        <Skeleton
-                            variant="rounded"
-                            width={24}
-                            height={24}
-                        />
+                <div className="dm-head">
+                    <div className="dm-avatar" />
+                    <div className="dm-name">
+                        <Skeleton width="70%" />
                     </div>
-                    <Box
-                        style={{ ...styles.titleStyle, fontSize: 14, minWidth: '50%' }}
-                        sx={theme => ({
-                            color: headerStyle.color || theme.palette.secondary.contrastText,
-                        })}
-                    >
-                        <Skeleton />
-                    </Box>
-                </Box>
-                <div style={{ ...styles.statusStyle, height: 'auto', padding: '8px 15px 0 15px' }} />
-                <div style={styles.bodyStyle}>
-                    <Typography
-                        variant="body2"
-                        style={{ ...styles.deviceInfoStyle, padding: '10px 10px 0 10px' }}
-                    >
-                        <div>
-                            <Skeleton />
-                        </div>
-                        <div>
-                            <Skeleton />
-                        </div>
-                        <div>
-                            <Skeleton />
-                        </div>
-                    </Typography>
                 </div>
-            </Paper>
-        );
-    }
-
-    renderBig(): JSX.Element {
-        const headerStyle = this.getCardHeaderStyle(this.props.theme);
-
-        return (
-            <Paper
-                sx={styles.cardStyle}
-                style={cardSize}
-            >
-                <Box
-                    sx={headerStyle}
-                    style={styles.headerStyle}
-                >
-                    <div style={styles.imgAreaStyle}>
-                        <Skeleton
-                            variant="rounded"
-                            width={24}
-                            height={24}
-                        />
-                    </div>
-                    <Box
-                        style={styles.titleStyle}
-                        sx={theme => ({
-                            color: headerStyle.color || theme.palette.secondary.contrastText,
-                            minWidth: '50%',
-                        })}
-                    >
-                        <Skeleton />
-                    </Box>
-                </Box>
-                <div style={styles.statusStyle}></div>
-                <div style={styles.bodyStyle}>
-                    <Typography
-                        variant="body1"
-                        style={styles.deviceInfoStyle}
-                    >
-                        <div>
-                            <Skeleton />
-                        </div>
-                        <div>
-                            <Skeleton />
-                        </div>
-                        <div>
-                            <Skeleton />
-                        </div>
-                    </Typography>
+                <div className="dm-status">
+                    <Skeleton
+                        variant="rounded"
+                        width={small ? 120 : 150}
+                        height={20}
+                    />
                 </div>
-            </Paper>
+                <div className="dm-facts">
+                    {[0, 1, 2].map(i => (
+                        <React.Fragment key={i}>
+                            <Skeleton width={small ? 42 : 56} />
+                            <Skeleton width={`${70 - i * 12}%`} />
+                        </React.Fragment>
+                    ))}
+                </div>
+                <div className="dm-foot">
+                    <Skeleton
+                        variant="rounded"
+                        width={small ? 110 : 150}
+                        height={20}
+                    />
+                </div>
+            </div>
         );
-    }
-
-    // eslint-disable-next-line class-methods-use-this
-    getCardHeaderStyle(theme: IobTheme, maxWidth?: number): React.CSSProperties {
-        const backgroundColor = theme.palette.secondary.main;
-        const color = theme.palette.secondary.contrastText;
-
-        return {
-            backgroundColor,
-            color,
-            maxWidth,
-        };
     }
 }

@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Prego entra",
     "refreshInstanceList": "Aggiorna l'elenco delle istanze",
     "refreshTooltip": "ricaricare",
+    "resetFilters": "Reimposta filtri",
+    "resetFiltersTooltip": "Reimposta tutti i filtri",
     "rootInfoText": "Questo è il gestore dei dispositivi. Seleziona un'istanza dell'adattatore qui sotto per visualizzare, configurare e aggiornare i suoi dispositivi.",
     "selectInstanceText": "Seleziona l'istanza",
     "toClipboard": "negli appunti",
     "updateAvailable": "Aggiornamento disponibile",
     "updateConfirmation": "Vuoi installare l'aggiornamento disponibile?",
+    "uploadImageTooltip": "Carica un'immagine del dispositivo",
     "yesButtonText": "SÌ"
 }

@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Kom binnen alstublieft",
     "refreshInstanceList": "Ververs de exemplaarlijst",
     "refreshTooltip": "Vernieuwen",
+    "resetFilters": "Filters wissen",
+    "resetFiltersTooltip": "Alle filters wissen",
     "rootInfoText": "Dit is de apparaatbeheerder. Selecteer hieronder een adapterinstantie om de apparaten te bekijken, te configureren en bij te werken.",
     "selectInstanceText": "Selecteer een instantie",
     "toClipboard": "naar klembord",
     "updateAvailable": "Update beschikbaar",
     "updateConfirmation": "Wilt u de beschikbare update installeren?",
+    "uploadImageTooltip": "Een afbeelding van het apparaat uploaden",
     "yesButtonText": "Ja"
 }

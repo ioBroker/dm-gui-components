@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Пожалуйста входите",
     "refreshInstanceList": "Обновить список экземпляров",
     "refreshTooltip": "Обновить",
+    "resetFilters": "Сбросить фильтры",
+    "resetFiltersTooltip": "Сбросить все фильтры",
     "rootInfoText": "Это менеджер настроек устройств. Выберите экземпляр адаптера ниже, чтобы просматривать, настраивать и обновлять его устройства.",
     "selectInstanceText": "Пожалуйста, выберите экземпляр.",
     "toClipboard": "в буфер обмена",
     "updateAvailable": "Доступно обновление",
     "updateConfirmation": "Вы хотите установить доступное обновление?",
+    "uploadImageTooltip": "Загрузить изображение устройства",
     "yesButtonText": "Да"
 }

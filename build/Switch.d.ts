@@ -9,8 +9,11 @@ interface SwitchProps {
     labelOff?: string;
     size?: 'small';
     disabled?: boolean;
+    /** Accessible name */
+    ariaLabel?: string;
 }
 export default class Switch extends Component<SwitchProps> {
+    private toggle;
     render(): React.JSX.Element;
 }
 export {};

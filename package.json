@@ -53,10 +53,10 @@
   },
   "homepage": "https://github.com/ioBroker/dm-gui-components#readme",
   "dependencies": {
-    "@iobroker/gui-components": "^10.3.1",
-    "@iobroker/json-config": "^10.0.6",
-    "@mui/icons-material": "^9.4.0",
-    "@mui/material": "^9.4.0"
+    "@iobroker/gui-components": "^10.4.2",
+    "@iobroker/json-config": "^10.1.14",
+    "@mui/icons-material": "^9.5.0",
+    "@mui/material": "^9.5.0"
   },
   "devDependencies": {
     "@alcalzone/release-script": "^5.2.1",
@@ -67,14 +67,14 @@
     "@iobroker/eslint-config": "^2.3.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "tsc-alias": "^1.9.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tsc-alias": "^1.9.10",
     "typescript": "~6.0.3"
   },
   "overrides": {
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0"
   }

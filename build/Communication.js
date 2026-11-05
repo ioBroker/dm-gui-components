@@ -1,5 +1,5 @@
-import { I18n, Icon, Utils, } from '@iobroker/gui-components';
-import { Check, Close, ContentCopy } from '@mui/icons-material';
+import { I18n, Icon, IconCopyToClipboard, IconResult, Utils, } from '@iobroker/gui-components';
+import { Check, Close } from '@mui/icons-material';
 import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, Input, InputAdornment, InputLabel, LinearProgress, MenuItem, Select, Slider, Snackbar, TextField, ThemeProvider, Typography, } from '@mui/material';
 import React, { Component } from 'react';
 import JsonConfig from './JsonConfig';
@@ -8,12 +8,16 @@ import { DmProtocolV2 } from './protocol/DmProtocolV2';
 import { DmProtocolV3 } from './protocol/DmProtocolV3';
 import { UnknownDmProtocol } from './protocol/UnknownDmProtocol';
 import { getTranslation } from './Utils';
+import { ensureDmStyles, getThemeVars } from './styles';
+/** How long the check mark after a successful action is shown (the CSS animation takes as long) */
+const RESULT_FLASH_DURATION = 1250;
 /**
  * Communication Component
  */
 export default class Communication extends Component {
     protocol = new UnknownDmProtocol();
     responseTimeout = null;
+    resultFlashTimeout = null;
     // eslint-disable-next-line react/no-unused-class-component-methods
     instanceHandler;
     // eslint-disable-next-line react/no-unused-class-component-methods
@@ -24,6 +28,7 @@ export default class Communication extends Component {
     controlStateHandler;
     constructor(props) {
         super(props);
+        ensureDmStyles();
         this.state = {
             showSpinner: false,
             showToast: null,
@@ -34,6 +39,7 @@ export default class Communication extends Component {
             showConfirmation: null,
             showInput: null,
             inputValue: null,
+            resultFlash: 0,
             selectedInstance: this.props.selectedInstance ??
                 this.props.instance ??
                 (window.localStorage.getItem('dmSelectedInstance') || ''),
@@ -76,6 +82,21 @@ export default class Communication extends Component {
             clearTimeout(this.responseTimeout);
             this.responseTimeout = null;
         }
+        if (this.resultFlashTimeout) {
+            clearTimeout(this.resultFlashTimeout);
+            this.resultFlashTimeout = null;
+        }
+    }
+    /** Confirms a successful action: the spinner is followed by a check mark that draws itself */
+    showResultFlash() {
+        if (this.resultFlashTimeout) {
+            clearTimeout(this.resultFlashTimeout);
+        }
+        this.setState({ resultFlash: Date.now() });
+        this.resultFlashTimeout = setTimeout(() => {
+            this.resultFlashTimeout = null;
+            this.setState({ resultFlash: 0 });
+        }, RESULT_FLASH_DURATION);
     }
     // eslint-disable-next-line class-methods-use-this
     loadAllData() {
@@ -98,8 +119,7 @@ export default class Communication extends Component {
         const send = async () => {
             this.setState({ showSpinner: true });
             this.responseTimeout = setTimeout(() => {
-                this.setState({ showSpinner: false });
-                window.alert(I18n.t('ra_No response from the backend'));
+                this.setState({ showSpinner: false, showToast: I18n.t('ra_No response from the backend') });
             }, messageToSend.timeout || 5000);
             const response = await this.protocol.sendAction(command, messageToSend);
             if (this.responseTimeout) {
@@ -219,6 +239,7 @@ export default class Communication extends Component {
                     }
                     else {
                         this.setState({ showSpinner: false });
+                        this.showResultFlash();
                     }
                     break;
                 default:
@@ -295,8 +316,18 @@ export default class Communication extends Component {
                 React.createElement(Button, { variant: "contained", color: "primary", onClick: () => confirm.handleClose(true), autoFocus: true }, getTranslation('yesButtonText')),
                 React.createElement(Button, { variant: "contained", color: "grey", onClick: () => confirm.handleClose(false), autoFocus: true }, getTranslation('noButtonText')))));
     }
+    /** The toast shows errors: the cross draws itself and shakes */
     renderSnackbar() {
-        return (React.createElement(Snackbar, { open: !!this.state.showToast, autoHideDuration: 6_000, onClose: () => this.setState({ showToast: null }), message: this.state.showToast }));
+        return (React.createElement(Snackbar, { open: !!this.state.showToast, autoHideDuration: 6_000, onClose: () => this.setState({ showToast: null }), message: this.state.showToast ? (React.createElement("span", { className: "dm-toast" },
+                React.createElement(IconResult, { type: "error", replay: this.state.showToast }),
+                this.state.showToast)) : null }));
+    }
+    renderResultFlash() {
+        if (!this.state.resultFlash) {
+            return null;
+        }
+        return (React.createElement("div", { key: this.state.resultFlash, className: "dm-result", style: getThemeVars(this.props.theme) },
+            React.createElement(IconResult, { type: "success" })));
     }
     getOkButton(button) {
         if (typeof button === 'string') {
@@ -359,7 +390,9 @@ export default class Communication extends Component {
                                 ? button.color
                                 : undefined,
                             ...(button.style || undefined),
-                        }, onClick: () => {
+                        }, 
+                        // The copy symbol confirms the copy with a check mark
+                        onClick: () => {
                             if (button.copyToClipboardAttr && form.data) {
                                 const val = form.data[button.copyToClipboardAttr];
                                 if (typeof val === 'string') {
@@ -368,16 +401,14 @@ export default class Communication extends Component {
                                 else {
                                     Utils.copyToClipboard(JSON.stringify(val, null, 2));
                                 }
-                                window.alert(I18n.t('copied'));
                             }
                             else if (form.data) {
                                 Utils.copyToClipboard(JSON.stringify(form.data, null, 2));
-                                window.alert(I18n.t('copied'));
                             }
                             else {
-                                window.alert(I18n.t('nothingToCopy'));
+                                this.setState({ showToast: I18n.t('nothingToCopy') });
                             }
-                        }, startIcon: button?.icon ? React.createElement(Icon, { src: button?.icon }) : React.createElement(ContentCopy, null) }, getTranslation(button?.label || 'ctcButtonText', button?.noTranslation)));
+                        }, startIcon: button?.icon ? React.createElement(Icon, { src: button?.icon }) : React.createElement(IconCopyToClipboard, null) }, getTranslation(button?.label || 'ctcButtonText', button?.noTranslation)));
                 }
                 else if (button === 'apply' || button.type === 'apply') {
                     buttons.push(this.getOkButton(button));
@@ -587,7 +618,8 @@ export default class Communication extends Component {
             this.renderProgressDialog(),
             this.renderConfirmationDialog(),
             this.renderInputDialog(),
-            this.renderSpinner()));
+            this.renderSpinner(),
+            this.renderResultFlash()));
     }
 }
 //# sourceMappingURL=Communication.js.map

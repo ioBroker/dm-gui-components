@@ -197,6 +197,16 @@ const indicator = {
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Redesigned the device cards (big and small): device tile with a live connection LED, compact status pills that are only tinted when a value needs attention, a facts grid and an action footer
+- (@GermanBluefox) Added animations: the animated icons of `@iobroker/gui-components` (refresh, filter, delete, upload, folder, copy, play/pause, result) and own ones (battery, signal and update icons, hover animations of the actions, value ticks, LED pulse on status changes, snapping switch)
+- (@GermanBluefox) Added: a successful action is confirmed with a check mark, the error toast shows an animated cross
+- (@GermanBluefox) Changed: "No response from the backend" and the copy confirmations no longer use `window.alert`
+- (@GermanBluefox) Added: "Reset filters" button in the toolbar and in the empty list
+- (@GermanBluefox) Redesigned the instance selection and the empty states
+- (@GermanBluefox) Animations respect `prefers-reduced-motion`
+- (@GermanBluefox) Corrected: a slider or select control without `stateId` never got its range or options and showed only "..."
+
 ### 10.0.23 (2026-09-21)
 - (@BenAhrdt) Supported explicit line breaks in status indicator tooltips
 

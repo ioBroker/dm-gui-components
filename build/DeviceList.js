@@ -1,7 +1,7 @@
 import React from 'react';
-import { IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Card, CardActionArea, CardContent, Typography, Menu, Checkbox, ListSubheader, } from '@mui/material';
-import { ArrowBack, Clear, QuestionMark, Refresh, FilterAlt, FilterAltOff, SystemUpdateAlt, BatteryAlert, Tune, } from '@mui/icons-material';
-import { I18n, DeviceTypeIcon, Icon, InfoBox } from '@iobroker/gui-components';
+import { Button, ButtonBase, IconButton, InputAdornment, TextField, Toolbar, Tooltip, LinearProgress, Select, MenuItem, Typography, Menu, Checkbox, ListSubheader, } from '@mui/material';
+import { ArrowBack, Clear, DevicesOther, QuestionMark, FilterAltOff, Tune } from '@mui/icons-material';
+import { I18n, DeviceTypeIcon, Icon, IconConnectionState, IconFilter, IconRefresh, InfoBox, } from '@iobroker/gui-components';
 import DeviceCard, { DeviceCardSkeleton, CARD_WIDTH, CARD_MIN_HEIGHT, CARD_MARGIN, SMALL_CARD_WIDTH, SMALL_CARD_MIN_HEIGHT, SMALL_CARD_MARGIN, } from './DeviceCard';
 import { getTranslation, renderIcon } from './Utils';
 import Communication from './Communication';
@@ -10,6 +10,8 @@ import { StatusIndicators } from './StatusIndicator';
 import { StateOrObjectHandler } from './StateOrObjectHandler';
 import { DeviceFieldsResolver } from './DeviceFields';
 import { LazyRender, LazyRenderObserver } from './LazyRender';
+import { IconBattery, IconUpdate } from './AnimatedIcons';
+import { ensureDmStyles, getThemeVars } from './styles';
 import de from './i18n/de.json';
 import en from './i18n/en.json';
 import ru from './i18n/ru.json';
@@ -107,6 +109,7 @@ export default class DeviceList extends Communication {
     hiddenIndicatorsCache = null;
     constructor(props) {
         super(props);
+        ensureDmStyles();
         this.stateOrObjectHandler = new StateOrObjectHandler(this.props.socket);
         this.fieldsResolver = new DeviceFieldsResolver(this.stateOrObjectHandler, this.onFieldsChanged);
         if (!DeviceList.i18nInitialized) {
@@ -518,45 +521,59 @@ export default class DeviceList extends Communication {
         }
         const instanceIds = Object.keys(this.state.dmInstances);
         if (!instanceIds.length) {
-            return [
-                React.createElement("div", { style: { padding: 25 }, key: "noInstances" },
-                    React.createElement("span", null, getTranslation('noInstancesFoundText'))),
-            ];
+            return [this.renderEmpty('noInstances', getTranslation('noInstancesFoundText'))];
         }
-        const backgroundColor = this.props.theme.palette.mode === 'dark' ? '#0b0b0b' : '#d5d5d5';
-        if (this.props.smallCards) {
-            return instanceIds.map(id => {
-                const info = this.state.dmInstances[id];
-                return (React.createElement(Card, { key: id, sx: { width: 200, margin: '5px', backgroundColor } },
-                    React.createElement(CardActionArea, { onClick: () => this.selectInstance(id), style: { height: '100%' } },
-                        React.createElement(CardContent, { style: {
-                                height: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                padding: 8,
-                            } },
-                            info.icon ? (React.createElement(Icon, { src: info.icon, style: { width: 32, height: 32, flexShrink: 0 } })) : (React.createElement(QuestionMark, { style: { width: 32, height: 32, flexShrink: 0 } })),
-                            React.createElement("div", { style: { overflow: 'hidden' } },
-                                React.createElement(Typography, { variant: "body1", noWrap: true, style: { fontSize: 14, fontWeight: 'bold' } }, id),
-                                info.title ? (React.createElement(Typography, { variant: "caption", color: "textSecondary", noWrap: true, component: "div" }, info.title)) : null)))));
-            });
-        }
+        const small = !!this.props.smallCards;
         return instanceIds.map(id => {
             const info = this.state.dmInstances[id];
-            return (React.createElement(Card, { key: id, sx: { width: 240, margin: '10px', backgroundColor } },
-                React.createElement(CardActionArea, { onClick: () => this.selectInstance(id), style: { height: '100%' } },
-                    React.createElement(CardContent, { style: {
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 8,
-                        } },
-                        info.icon ? (React.createElement(Icon, { src: info.icon, style: { width: 64, height: 64 } })) : (React.createElement(QuestionMark, { style: { width: 64, height: 64 } })),
-                        React.createElement(Typography, { variant: "h6", style: { textAlign: 'center', wordBreak: 'break-all' } }, id),
-                        info.title ? (React.createElement(Typography, { variant: "body2", color: "textSecondary", style: { textAlign: 'center' } }, info.title)) : null))));
+            return (React.createElement("div", { key: id, className: small ? 'dm-card dm-inst dm-inst-small' : 'dm-card dm-inst' },
+                React.createElement(ButtonBase, { className: "dm-inst-area", onClick: () => this.selectInstance(id) },
+                    React.createElement("div", { className: "dm-avatar" }, info.icon ? (React.createElement(Icon, { src: info.icon, style: { width: '100%', height: '100%', objectFit: 'contain' } })) : (React.createElement(QuestionMark, { style: { width: '70%', height: '70%' } }))),
+                    React.createElement("div", { className: "dm-inst-text" },
+                        React.createElement("div", { className: "dm-inst-id" }, id),
+                        info.title ? React.createElement("div", { className: "dm-inst-title" }, info.title) : null))));
         });
+    }
+    /** True if any filter hides devices: the text, the group or one of the toggles */
+    hasActiveFilter() {
+        return (!!this.state.filterText ||
+            this.state.onlyUpdatable ||
+            this.state.onlyBatteryProblem ||
+            (!!this.state.groupKey && this.state.groupKey !== '_'));
+    }
+    /** Removes all filters at once */
+    resetFilters() {
+        if (this.filterTimeout) {
+            clearTimeout(this.filterTimeout);
+            this.filterTimeout = null;
+        }
+        window.localStorage.setItem('dm_onlyUpdatable', 'false');
+        window.localStorage.setItem('dm_onlyBatteryProblem', 'false');
+        window.localStorage.removeItem(`dm_group_${this.state.selectedInstance}`);
+        this.setState({
+            filter: '',
+            filterText: '',
+            onlyUpdatable: false,
+            onlyBatteryProblem: false,
+            groupKey: '',
+        });
+    }
+    /** An empty list says what happened and, if possible, what to do */
+    renderEmpty(key, text, icon, action) {
+        return (React.createElement("div", { key: key, className: "dm-empty", style: getThemeVars(this.props.theme) },
+            icon,
+            React.createElement("span", null, text),
+            action));
+    }
+    /** The filter symbol in the toolbar. While a filter is set, a red cross shows that a click removes all filters */
+    renderFilterButton() {
+        const active = this.hasActiveFilter();
+        if (!active) {
+            return React.createElement(IconFilter, { active: false });
+        }
+        return (React.createElement(Tooltip, { title: getTranslation('resetFiltersTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
+            React.createElement(IconButton, { color: "inherit", size: "small", onClick: () => this.resetFilters(), style: { margin: -5 } },
+                React.createElement(IconFilter, { active: true }))));
     }
     /**
      * Apply the text filter and the "only updatable" / "only battery problem" filters.
@@ -770,9 +787,6 @@ export default class DeviceList extends Communication {
         return (React.createElement("div", { style: { marginLeft: 20 } }, actions.map(action => (React.createElement(InstanceActionButton, { key: action.id, action: action, instanceHandler: this.instanceHandler })))));
     }
     renderContent() {
-        const emptyStyle = {
-            padding: 25,
-        };
         const deviceGroups = [];
         const showRootPage = !this.props.embedded && this.props.selectedInstance === undefined && !this.state.selectedInstance;
         let list;
@@ -782,15 +796,13 @@ export default class DeviceList extends Communication {
         }
         else if (!this.props.embedded && !this.state.alive) {
             list = [
-                React.createElement("div", { style: emptyStyle, key: "notAlive" },
-                    React.createElement("span", null, getTranslation('instanceNotAlive'))),
+                this.renderEmpty('notAlive', getTranslation('instanceNotAlive'), 
+                // `null` while the state is still unknown: nothing is known yet, so no symbol
+                this.state.alive === false ? React.createElement(IconConnectionState, { state: "disconnected" }) : null),
             ];
         }
         else if (!this.state.devices.length && this.state.selectedInstance && !this.state.loading) {
-            list = [
-                React.createElement("div", { style: emptyStyle, key: "notFound" },
-                    React.createElement("span", null, getTranslation('noDevicesFoundText'))),
-            ];
+            list = [this.renderEmpty('notFound', getTranslation('noDevicesFoundText'), React.createElement(DevicesOther, null))];
         }
         else {
             // build a device types list
@@ -869,15 +881,11 @@ export default class DeviceList extends Communication {
                 else if (!visibleDevices.length && this.state.devices.length > 0) {
                     // The filter is applied here now, so the list knows that nothing is left instead
                     // of having to hide the message with a CSS rule
-                    list.push(React.createElement("div", { style: emptyStyle, key: "filtered" },
-                        React.createElement("span", null, getTranslation('allDevicesFilteredOut'))));
+                    list.push(this.renderEmpty('filtered', getTranslation('allDevicesFilteredOut'), React.createElement(IconFilter, { active: !this.props.embedded }), this.props.embedded ? null : (React.createElement(Button, { variant: "outlined", color: "primary", onClick: () => this.resetFilters() }, getTranslation('resetFilters')))));
                 }
             }
             else {
-                list = [
-                    React.createElement("div", { style: emptyStyle, key: "selectInstance" },
-                        React.createElement("span", null, getTranslation('selectInstanceText'))),
-                ];
+                list = [this.renderEmpty('selectInstance', getTranslation('selectInstanceText'))];
             }
         }
         if (this.props.embedded) {
@@ -885,7 +893,14 @@ export default class DeviceList extends Communication {
                 this.state.loading ? React.createElement(LinearProgress, { style: { width: '100%' } }) : null,
                 this.state.apiVersionError ? React.createElement("div", null, I18n.t('apiVersionError')) : list));
         }
-        return (React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' } },
+        return (React.createElement("div", { style: {
+                ...getThemeVars(this.props.theme),
+                width: '100%',
+                height: '100%',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+            } },
             React.createElement(Toolbar, { variant: "dense", sx: TOOLBAR_SX, style: {
                     display: 'flex',
                     flexWrap: 'wrap',
@@ -905,11 +920,11 @@ export default class DeviceList extends Communication {
                 this.props.selectedInstance === undefined && !this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshInstanceList'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
                         React.createElement(IconButton, { onClick: () => this.refreshInstanceList(), disabled: !this.state.dmInstances, color: "inherit", size: "small" },
-                            React.createElement(Refresh, null))))) : null,
+                            React.createElement(IconRefresh, { loading: !this.state.dmInstances }))))) : null,
                 this.state.selectedInstance ? (React.createElement(Tooltip, { title: getTranslation('refreshTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
                     React.createElement("span", null,
                         React.createElement(IconButton, { onClick: () => this.loadAllData(), disabled: !this.state.alive || this.state.apiVersionError, color: "inherit", size: "small" },
-                            React.createElement(Refresh, null))))) : null,
+                            React.createElement(IconRefresh, { loading: !!this.state.loading }))))) : null,
                 !this.state.apiVersionError && this.state.alive && this.renderInstanceActions(),
                 !this.state.apiVersionError && this.state.alive && this.state.instanceInfo?.indicators?.length ? (React.createElement(StatusIndicators, { indicators: this.state.instanceInfo.indicators.filter(indicator => this.isIndicatorVisible(indicator)), theme: this.props.theme, stateOrObjectHandler: this.stateOrObjectHandler, resolveAction: this.resolveInstanceIndicatorAction, defaultColor: "#fff", style: { marginLeft: 20 } })) : null,
                 React.createElement("div", { style: { flexGrow: 1 } }),
@@ -922,7 +937,7 @@ export default class DeviceList extends Communication {
                             this.setState({ onlyUpdatable });
                             window.localStorage.setItem('dm_onlyUpdatable', onlyUpdatable ? 'true' : 'false');
                         }, size: "small" },
-                        React.createElement(SystemUpdateAlt, null)))) : null,
+                        React.createElement(IconUpdate, null)))) : null,
                 !this.state.apiVersionError &&
                     this.state.alive &&
                     this.state.devices.some(device => hasBatteryStatus(device.status)) ? (React.createElement(Tooltip, { title: getTranslation('onlyBatteryProblemTooltip'), slotProps: { popper: { sx: { pointerEvents: 'none' } } } },
@@ -931,10 +946,10 @@ export default class DeviceList extends Communication {
                             this.setState({ onlyBatteryProblem });
                             window.localStorage.setItem('dm_onlyBatteryProblem', onlyBatteryProblem ? 'true' : 'false');
                         }, size: "small" },
-                        React.createElement(BatteryAlert, null)))) : null,
+                        React.createElement(IconBattery, { level: 10 })))) : null,
                 !this.state.apiVersionError && this.state.alive ? this.renderIndicatorSettings() : null,
                 !this.state.apiVersionError && this.state.alive ? (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
-                    React.createElement(FilterAlt, null),
+                    this.renderFilterButton(),
                     this.renderFilterFields(),
                     this.renderFilterValue())) : null,
                 React.createElement(Typography, { sx: { display: { xs: 'none', md: 'block' } }, style: {

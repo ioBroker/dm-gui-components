@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Connection } from '@iobroker/gui-components';
+import { type Connection } from '@iobroker/gui-components';
 import type { DeviceId } from './protocol/api';
 interface DeviceImageUploadProps {
     socket: Connection;
@@ -9,5 +9,9 @@ interface DeviceImageUploadProps {
     onImageSelect: (image: string) => void;
     uploadImagesToInstance: string;
 }
+/**
+ * Lies over the device symbol: on hover it shows the upload symbol, a click opens the file selection,
+ * and while the image is stored, the arrow moves up again and again.
+ */
 declare function DeviceImageUpload(params: DeviceImageUploadProps): React.JSX.Element | null;
 export default DeviceImageUpload;

@@ -33,10 +33,13 @@
     "pleaseEnterValueText": "Bitte eingeben",
     "refreshInstanceList": "Instanzliste aktualisieren",
     "refreshTooltip": "Aktualisieren",
+    "resetFilters": "Filter zurücksetzen",
+    "resetFiltersTooltip": "Alle Filter zurücksetzen",
     "rootInfoText": "Dies ist der Konfigurations-Manager. Wählen Sie unten eine Adapter-Instanz aus, um deren Geräte anzuzeigen, zu konfigurieren und zu aktualisieren.",
     "selectInstanceText": "Bitte eine Instanz auswählen.",
     "toClipboard": "in die Zwischenablage kopiert",
     "updateAvailable": "Update verfügbar",
     "updateConfirmation": "Möchten Sie das verfügbare Update installieren?",
+    "uploadImageTooltip": "Bild des Geräts hochladen",
     "yesButtonText": "Ja"
 }

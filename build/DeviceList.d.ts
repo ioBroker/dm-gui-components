@@ -142,6 +142,14 @@ export default class DeviceList extends Communication<DeviceListProps, DeviceLis
         icon?: React.JSX.Element | string | null;
     }[] | undefined): React.JSX.Element | null;
     renderInstanceCards(): React.JSX.Element[];
+    /** True if any filter hides devices: the text, the group or one of the toggles */
+    private hasActiveFilter;
+    /** Removes all filters at once */
+    private resetFilters;
+    /** An empty list says what happened and, if possible, what to do */
+    private renderEmpty;
+    /** The filter symbol in the toolbar. While a filter is set, a red cross shows that a click removes all filters */
+    private renderFilterButton;
     /**
      * Apply the text filter and the "only updatable" / "only battery problem" filters.
      *

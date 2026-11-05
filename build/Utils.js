@@ -1,6 +1,26 @@
 import React from 'react';
-import { Add, Article, BatteryAlert, BatteryChargingFull, BatteryFull, Bluetooth, BluetoothDisabled, Delete, Edit, FastForward, FastRewind, Fluorescent, Group, Info, Lightbulb, Link as LinkIcon, LinkOff, NotListedLocation, Pause, Person, PlayArrow, Power, QrCode, QuestionMark, Refresh, Search, Settings, Stop, Visibility, Upgrade, WbIncandescent, Wifi, WifiOff, Launch, } from '@mui/icons-material';
-import { I18n, Icon } from '@iobroker/gui-components';
+import { Add, Article, BatteryAlert, BatteryChargingFull, BatteryFull, Bluetooth, BluetoothDisabled, Edit, FastForward, FastRewind, Fluorescent, Group, Info, Lightbulb, Link as LinkIcon, LinkOff, NotListedLocation, Pause, Person, PlayArrow, Power, QrCode, QuestionMark, Refresh, Search, Settings, Stop, Visibility, Upgrade, WbIncandescent, Wifi, WifiOff, Launch, } from '@mui/icons-material';
+import { I18n, Icon, IconPlayPause, IconTrash } from '@iobroker/gui-components';
+/**
+ * Class of an action symbol that shows what its button does while the mouse is over the button
+ * (see `styles.ts`): the gear turns, the pen writes, the lamp glows...
+ */
+const HOVER = {
+    spin: 'dm-ani dm-ani-spin',
+    gear: 'dm-ani dm-ani-gear',
+    turn: 'dm-ani dm-ani-turn',
+    pen: 'dm-ani dm-ani-pen',
+    hop: 'dm-ani dm-ani-hop',
+    search: 'dm-ani dm-ani-search',
+    nudge: 'dm-ani dm-ani-nudge',
+    launch: 'dm-ani dm-ani-launch',
+    glow: 'dm-ani dm-ani-glow',
+    tick: 'dm-ani dm-ani-tick',
+};
+/** An MUI icon with the given hover animation */
+function animated(IconComponent, hover, color) {
+    return (React.createElement(IconComponent, { className: hover, style: { color } }));
+}
 /**
  * Get Icon by font-awesome name. Do not use these names, use names from getIconByName
  *
@@ -31,19 +51,20 @@ function getFaIcon(icon, color) {
         .map(s => s.trim())
         .filter(s => s !== 'fa-solid');
     if (iconStyle.includes('fa-trash-can') || iconStyle.includes('fa-trash')) {
-        return React.createElement(Delete, { style: { color } });
+        // The lid opens while the mouse is over the button
+        return React.createElement(IconTrash, { style: { color } });
     }
     if (iconStyle.includes('fa-pen')) {
-        return React.createElement(Edit, { style: { color } });
+        return animated(Edit, HOVER.pen, color);
     }
     if (iconStyle.includes('fa-redo-alt')) {
-        return React.createElement(Refresh, { style: { color } });
+        return animated(Refresh, HOVER.spin, color);
     }
     if (iconStyle.includes('fa-plus')) {
-        return React.createElement(Add, { style: { color } });
+        return animated(Add, HOVER.turn, color);
     }
     if (iconStyle.includes('fa-qrcode') || iconStyle.includes('qrcode')) {
-        return React.createElement(QrCode, { style: { color } });
+        return animated(QrCode, HOVER.tick, color);
     }
     if (iconStyle.includes('fa-wifi')) {
         return React.createElement(Wifi, { style: { color } });
@@ -58,10 +79,10 @@ function getFaIcon(icon, color) {
         return React.createElement(BluetoothDisabled, { style: { color } });
     }
     if (iconStyle.includes('fa-eye')) {
-        return React.createElement(Visibility, { style: { color } });
+        return animated(Visibility, HOVER.tick, color);
     }
     if (iconStyle.includes('fa-search')) {
-        return React.createElement(Search, { style: { color } });
+        return animated(Search, HOVER.search, color);
     }
     if (iconStyle.includes('fa-unlink')) {
         return React.createElement(LinkOff, { style: { color } });
@@ -70,10 +91,10 @@ function getFaIcon(icon, color) {
         return React.createElement(LinkIcon, { style: { color } });
     }
     if (iconStyle.includes('fa-search-location')) {
-        return React.createElement(NotListedLocation, { style: { color } });
+        return animated(NotListedLocation, HOVER.hop, color);
     }
     if (iconStyle.includes('fa-play')) {
-        return React.createElement(PlayArrow, { style: { color } });
+        return animated(PlayArrow, HOVER.nudge, color);
     }
     if (iconStyle.includes('fa-stop')) {
         return React.createElement(Stop, { style: { color } });
@@ -120,93 +141,90 @@ function getFaIcon(icon, color) {
  * @param noDefaultIcon if true, no "question mark" icon will be returned for unknown names
  */
 function getIconByName(name, altName, color, noDefaultIcon) {
-    if (name === 'edit' || name === 'rename' || altName === 'edit' || altName === 'rename') {
-        return React.createElement(Edit, { style: { color } });
+    const is = (...names) => names.includes(name) || (!!altName && names.includes(altName));
+    if (is('edit', 'rename')) {
+        return animated(Edit, HOVER.pen, color);
     }
-    if (name === 'delete' || altName === 'delete') {
-        return React.createElement(Delete, { style: { color } });
+    if (is('delete')) {
+        // The lid opens while the mouse is over the button
+        return React.createElement(IconTrash, { style: { color } });
     }
-    if (name === 'refresh' || altName === 'refresh') {
-        return React.createElement(Refresh, { style: { color } });
+    if (is('refresh')) {
+        return animated(Refresh, HOVER.spin, color);
     }
-    if (name === 'newDevice' ||
-        name === 'new' ||
-        name === 'add' ||
-        altName === 'newDevice' ||
-        altName === 'new' ||
-        altName === 'add') {
-        return React.createElement(Add, { style: { color } });
+    if (is('newDevice', 'new', 'add')) {
+        return animated(Add, HOVER.turn, color);
     }
-    if (name === 'discover' || name === 'search' || altName === 'discover' || altName === 'search') {
-        return React.createElement(Search, { style: { color } });
+    if (is('discover', 'search')) {
+        return animated(Search, HOVER.search, color);
     }
-    if (name === 'unpairDevice' || name === 'unpair' || altName === 'unpairDevice' || altName === 'unpair') {
+    if (is('unpairDevice', 'unpair')) {
         return React.createElement(LinkOff, { style: { color } });
     }
-    if (name === 'pairDevice' || name === 'pair' || altName === 'pairDevice' || altName === 'pair') {
+    if (is('pairDevice', 'pair')) {
         return React.createElement(LinkIcon, { style: { color } });
     }
-    if (name === 'identify' || altName === 'identify') {
-        return React.createElement(NotListedLocation, { style: { color } });
+    if (is('identify')) {
+        return animated(NotListedLocation, HOVER.hop, color);
     }
-    if (name === 'play' || altName === 'play') {
-        return React.createElement(PlayArrow, { style: { color } });
+    if (is('play')) {
+        return animated(PlayArrow, HOVER.nudge, color);
     }
-    if (name === 'stop' || altName === 'stop') {
+    if (is('stop')) {
         return React.createElement(Stop, { style: { color } });
     }
-    if (name === 'pause' || altName === 'pause') {
+    if (is('pause')) {
         return React.createElement(Pause, { style: { color } });
     }
-    if (name === 'forward' || name === 'next' || altName === 'forward' || altName === 'next') {
-        return React.createElement(FastForward, { style: { color } });
+    if (is('forward', 'next')) {
+        return animated(FastForward, HOVER.nudge, color);
     }
-    if (name === 'rewind' || name === 'previous' || altName === 'rewind' || altName === 'previous') {
+    if (is('rewind', 'previous')) {
         return React.createElement(FastRewind, { style: { color } });
     }
-    if (name === 'lamp' || name === 'light' || altName === 'lamp' || altName === 'light') {
-        return React.createElement(Lightbulb, { style: { color } });
+    if (is('lamp', 'light')) {
+        return animated(Lightbulb, HOVER.glow, color);
     }
-    if (name === 'backlight' || altName === 'backlight') {
-        return React.createElement(Fluorescent, { style: { color } });
+    if (is('backlight')) {
+        return animated(Fluorescent, HOVER.glow, color);
     }
-    if (name === 'dimmer' || altName === 'dimmer') {
-        return React.createElement(WbIncandescent, { style: { color } });
+    if (is('dimmer')) {
+        return animated(WbIncandescent, HOVER.glow, color);
     }
-    if (name === 'socket' || altName === 'socket') {
+    if (is('socket')) {
         return React.createElement(Power, { style: { color } });
     }
-    if (name === 'settings' || altName === 'settings') {
-        return React.createElement(Settings, { style: { color } });
+    if (is('settings')) {
+        return animated(Settings, HOVER.gear, color);
     }
-    if (name === 'users' || name === 'group' || altName === 'users' || altName === 'group') {
+    if (is('users', 'group')) {
         return React.createElement(Group, { style: { color } });
     }
-    if (name === 'user' || altName === 'user') {
+    if (is('user')) {
         return React.createElement(Person, { style: { color } });
     }
-    if (name === 'update' || altName === 'update') {
-        return React.createElement(Upgrade, { style: { color } });
+    if (is('update')) {
+        return animated(Upgrade, HOVER.hop, color);
     }
-    if (name === 'qrcode' || altName === 'qrcode') {
-        return React.createElement(QrCode, { style: { color } });
+    if (is('qrcode')) {
+        return animated(QrCode, HOVER.tick, color);
     }
-    if (name === 'info' || altName === 'info') {
-        return React.createElement(Info, { style: { color } });
+    if (is('info')) {
+        return animated(Info, HOVER.tick, color);
     }
-    if (name === 'lines' || altName === 'lines') {
+    if (is('lines')) {
         return React.createElement(Article, { style: { color } });
     }
-    if (name === 'web' || altName === 'web') {
-        return React.createElement(Launch, { style: { color } });
+    if (is('web')) {
+        return animated(Launch, HOVER.launch, color);
     }
-    if (name === 'battery' || altName === 'battery') {
+    if (is('battery')) {
         return React.createElement(BatteryFull, { style: { color } });
     }
-    if (name === 'batteryLow' || name === 'batteryAlert' || altName === 'batteryLow' || altName === 'batteryAlert') {
+    if (is('batteryLow', 'batteryAlert')) {
         return React.createElement(BatteryAlert, { style: { color } });
     }
-    if (name === 'batteryCharging' || altName === 'batteryCharging') {
+    if (is('batteryCharging')) {
         return React.createElement(BatteryChargingFull, { style: { color } });
     }
     if (noDefaultIcon) {
@@ -226,6 +244,20 @@ export function renderControlIcon(action, colors, value, noDefaultIcon) {
         else if (color === 'secondary') {
             color = colors.secondary;
         }
+    }
+    // A play or pause toggle shows what a click does: play while it is stopped, pause while it runs.
+    // The symbol morphs from one into the other.
+    const isPlayPause = 'type' in action &&
+        action.type === 'icon' &&
+        !action.iconOn &&
+        (action.id === 'play' ||
+            action.id === 'pause' ||
+            action.icon === 'play' ||
+            action.icon === 'pause' ||
+            action.icon === 'fa-play' ||
+            action.icon === 'fa-pause');
+    if (isPlayPause) {
+        return (React.createElement(IconPlayPause, { running: !!value, style: { color } }));
     }
     if (action.icon?.startsWith('fa-') || action.icon?.startsWith('fas')) {
         return getFaIcon(action.icon, color);
