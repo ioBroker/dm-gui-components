@@ -197,7 +197,7 @@ const indicator = {
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 10.1.0 (2026-11-05)
 - (@GermanBluefox) Redesigned the device cards (big and small): device tile with a live connection LED, compact status pills that are only tinted when a value needs attention, a facts grid and an action footer
 - (@GermanBluefox) Added animations: the animated icons of `@iobroker/gui-components` (refresh, filter, delete, upload, folder, copy, play/pause, result) and own ones (battery, signal and update icons, hover animations of the actions, value ticks, LED pulse on status changes, snapping switch)
 - (@GermanBluefox) Added: a successful action is confirmed with a check mark, the error toast shows an animated cross
